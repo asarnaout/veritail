@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from search_eval.backends.file import FileBackend
-from search_eval.llm.client import LLMClient, LLMResponse
-from search_eval.pipeline import run_evaluation
-from search_eval.types import ExperimentConfig, QueryEntry, SearchResult
+from veritail.backends.file import FileBackend
+from veritail.llm.client import LLMClient, LLMResponse
+from veritail.pipeline import run_evaluation
+from veritail.types import ExperimentConfig, QueryEntry, SearchResult
 
 
 def _make_mock_adapter():

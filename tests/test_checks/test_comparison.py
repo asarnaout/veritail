@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from search_eval.checks.comparison import (
+from veritail.checks.comparison import (
     check_rank_correlation,
     check_result_overlap,
     find_position_shifts,
 )
-from search_eval.types import SearchResult
+from veritail.types import SearchResult
 
 
 def _make_result(product_id: str, position: int) -> SearchResult:

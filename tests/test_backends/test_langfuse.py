@@ -12,7 +12,7 @@ try:
 except ImportError:
     HAS_LANGFUSE = False
 
-from search_eval.types import JudgmentRecord, SearchResult
+from veritail.types import JudgmentRecord, SearchResult
 
 
 pytestmark = pytest.mark.skipif(
@@ -42,7 +42,7 @@ def _make_judgment() -> JudgmentRecord:
 
 @patch("langfuse.Langfuse")
 def test_log_judgment(mock_langfuse_cls):
-    from search_eval.backends.langfuse import LangfuseBackend
+    from veritail.backends.langfuse import LangfuseBackend
 
     mock_client = mock_langfuse_cls.return_value
     mock_trace = MagicMock()
@@ -63,7 +63,7 @@ def test_log_judgment(mock_langfuse_cls):
 
 @patch("langfuse.Langfuse")
 def test_log_experiment(mock_langfuse_cls):
-    from search_eval.backends.langfuse import LangfuseBackend
+    from veritail.backends.langfuse import LangfuseBackend
 
     mock_client = mock_langfuse_cls.return_value
     backend = LangfuseBackend()

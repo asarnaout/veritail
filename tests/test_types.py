@@ -1,6 +1,6 @@
 """Tests for core data types."""
 
-from search_eval.types import (
+from veritail.types import (
     CheckResult,
     ExperimentConfig,
     HumanScore,

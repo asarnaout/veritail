@@ -6,14 +6,14 @@ import math
 
 import pytest
 
-from search_eval.metrics.ir import (
+from veritail.metrics.ir import (
     average_precision,
     compute_all_metrics,
     mrr,
     ndcg_at_k,
     precision_at_k,
 )
-from search_eval.types import JudgmentRecord, QueryEntry, SearchResult
+from veritail.types import JudgmentRecord, QueryEntry, SearchResult
 
 
 def _j(score: int, position: int, query: str = "test") -> JudgmentRecord:

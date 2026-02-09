@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Evaluation Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 960px; margin: 0 auto; padding: 24px; background: #f8f9fa; }
+        h1 { font-size: 24px; margin-bottom: 24px; color: #1a1a2e; border-bottom: 2px solid #e0e0e0; padding-bottom: 12px; }
+        h2 { font-size: 18px; margin: 24px 0 12px; color: #1a1a2e; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th { background: #1a1a2e; color: white; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 14px; }
+        td { padding: 10px 16px; border-bottom: 1px solid #eee; font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: #f5f5ff; }
+        .metric-value { font-family: 'Menlo', monospace; font-weight: 600; }
+        .positive { color: #16a34a; }
+        .negative { color: #dc2626; }
+        .neutral { color: #6b7280; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e0e0e0; color: #9ca3af; font-size: 12px; }
+    </style>
+</head>
+<body>
+    {% if is_comparison %}
+    <h1>Search Evaluation Comparison: {{ config_a }} vs {{ config_b }}</h1>
+
+    <h2>Metrics Comparison</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>{{ config_a }}</th>
+                <th>{{ config_b }}</th>
+                <th>Delta</th>
+                <th>% Change</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in comparison_data %}
+            <tr>
+                <td>{{ d.name }}</td>
+                <td class="metric-value">{{ "%.4f"|format(d.value_a) }}</td>
+                <td class="metric-value">{{ "%.4f"|format(d.value_b) }}</td>
+                <td class="metric-value {% if d.delta > 0 %}positive{% elif d.delta < 0 %}negative{% else %}neutral{% endif %}">
+                    {{ "%+.4f"|format(d.delta) }}
+                </td>
+                <td class="metric-value {% if d.pct_change > 0 %}positive{% elif d.pct_change < 0 %}negative{% else %}neutral{% endif %}">
+                    {{ "%+.1f"|format(d.pct_change) }}%
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if shift_checks %}
+    <h2>Biggest Position Shifts</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Query</th>
+                <th>Product</th>
+                <th>Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in shift_checks %}
+            <tr>
+                <td>{{ c.query }}</td>
+                <td>{{ c.product_id }}</td>
+                <td>{{ c.detail }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% else %}
+    <h1>Search Evaluation Report</h1>
+
+    <h2>IR Metrics</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in metrics %}
+            <tr>
+                <td>{{ m.metric_name }}</td>
+                <td class="metric-value">{{ "%.4f"|format(m.value) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if check_summary %}
+    <h2>Deterministic Checks</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Check</th>
+                <th>Passed</th>
+                <th>Failed</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, counts in check_summary.items() | sort %}
+            <tr>
+                <td>{{ name }}</td>
+                <td class="positive">{{ counts.passed }}</td>
+                <td class="{% if counts.failed > 0 %}negative{% else %}neutral{% endif %}">{{ counts.failed }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if worst_queries %}
+    <h2>Worst Performing Queries (NDCG@10)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Query</th>
+                <th>NDCG@10</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for query, value in worst_queries %}
+            <tr>
+                <td>{{ query }}</td>
+                <td class="metric-value">{{ "%.4f"|format(value) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if agreement %}
+    <h2>LLM-Human Agreement</h2>
+    <div class="card">
+        <p><strong>Cohen's kappa:</strong> <span class="metric-value">{{ "%.3f"|format(agreement.kappa) }}</span></p>
+        <p><strong>Matched pairs:</strong> {{ agreement.n_matched }}</p>
+        <p><strong>Exact agreement:</strong> {{ "%.1f"|format(agreement.agreement_rate * 100) }}%</p>
+        <p><strong>Calibration:</strong> {{ agreement.calibration }}</p>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="footer">
+        Generated by veritail
+    </div>
+</body>
+</html>

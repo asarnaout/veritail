@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from search_eval.queries import load_queries
+from veritail.queries import load_queries
 
 
 def test_load_csv(tmp_path):

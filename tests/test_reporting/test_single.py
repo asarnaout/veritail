@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from search_eval.reporting.single import generate_single_report
-from search_eval.types import CheckResult, MetricResult
+from veritail.reporting.single import generate_single_report
+from veritail.types import CheckResult, MetricResult
 
 
 def _make_metrics() -> list[MetricResult]:

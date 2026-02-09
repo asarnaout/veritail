@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from search_eval.reporting.comparison import generate_comparison_report
-from search_eval.types import CheckResult, MetricResult
+from veritail.reporting.comparison import generate_comparison_report
+from veritail.types import CheckResult, MetricResult
 
 
 def _make_metrics_a() -> list[MetricResult]:

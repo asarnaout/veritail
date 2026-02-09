@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from search_eval.metrics.agreement import cohens_kappa, compute_agreement
-from search_eval.types import HumanScore, JudgmentRecord, SearchResult
+from veritail.metrics.agreement import cohens_kappa, compute_agreement
+from veritail.types import HumanScore, JudgmentRecord, SearchResult
 
 
 def _j(query: str, product_id: str, score: int) -> JudgmentRecord:

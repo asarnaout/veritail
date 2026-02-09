@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import csv
 
-from search_eval.backends.file import FileBackend
-from search_eval.types import JudgmentRecord, SearchResult
+from veritail.backends.file import FileBackend
+from veritail.types import JudgmentRecord, SearchResult
 
 
 def _make_judgment(

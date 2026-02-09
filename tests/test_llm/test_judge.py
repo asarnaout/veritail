@@ -6,9 +6,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from search_eval.llm.client import LLMClient, LLMResponse
-from search_eval.llm.judge import RelevanceJudge
-from search_eval.types import SearchResult
+from veritail.llm.client import LLMClient, LLMResponse
+from veritail.llm.judge import RelevanceJudge
+from veritail.types import SearchResult
 
 
 def _make_mock_client(response_text: str) -> LLMClient:

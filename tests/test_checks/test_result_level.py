@@ -1,13 +1,13 @@
 """Tests for result-level deterministic checks."""
 
-from search_eval.checks.result_level import (
+from veritail.checks.result_level import (
     check_attribute_match,
     check_category_alignment,
     check_duplicates,
     check_price_outliers,
     check_text_overlap,
 )
-from search_eval.types import QueryEntry, SearchResult
+from veritail.types import QueryEntry, SearchResult
 
 
 def _make_result(

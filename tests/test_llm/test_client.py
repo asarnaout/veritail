@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from search_eval.llm.client import (
+from veritail.llm.client import (
     AnthropicClient,
     OpenAIClient,
     create_llm_client,

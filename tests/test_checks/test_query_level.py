@@ -1,7 +1,7 @@
 """Tests for query-level deterministic checks."""
 
-from search_eval.checks.query_level import check_result_count, check_zero_results
-from search_eval.types import SearchResult
+from veritail.checks.query_level import check_result_count, check_zero_results
+from veritail.types import SearchResult
 
 
 def _make_result(product_id: str = "SKU-001") -> SearchResult:

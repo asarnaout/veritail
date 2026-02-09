@@ -6,7 +6,7 @@ import json
 
 from click.testing import CliRunner
 
-from search_eval.cli import main
+from veritail.cli import main
 
 
 class TestCLI:
@@ -14,7 +14,7 @@ class TestCLI:
         runner = CliRunner()
         result = runner.invoke(main, ["--help"])
         assert result.exit_code == 0
-        assert "search-eval" in result.output
+        assert "veritail" in result.output
 
     def test_run_help(self):
         runner = CliRunner()
@@ -65,7 +65,7 @@ class TestCLI:
 
         adapter_file = tmp_path / "adapter.py"
         adapter_file.write_text(
-            "from search_eval.types import SearchResult\n"
+            "from veritail.types import SearchResult\n"
             "def search(q):\n"
             "    return [SearchResult(product_id='SKU-1', title='Shoe', description='A shoe',\n"
             "                        category='Shoes', price=50.0, position=0)]\n"
@@ -73,7 +73,7 @@ class TestCLI:
 
         # Mock the LLM client to avoid needing real API keys
         from unittest.mock import Mock, patch
-        from search_eval.llm.client import LLMClient, LLMResponse
+        from veritail.llm.client import LLMClient, LLMResponse
 
         mock_client = Mock(spec=LLMClient)
         mock_client.complete.return_value = LLMResponse(
@@ -83,7 +83,7 @@ class TestCLI:
             output_tokens=50,
         )
 
-        with patch("search_eval.cli.create_llm_client", return_value=mock_client):
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
             runner = CliRunner()
             result = runner.invoke(main, [
                 "run",

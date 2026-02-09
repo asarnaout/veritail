@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "search-eval"
+name = "veritail"
 version = "0.1.0"
 description = "Ecommerce search relevance evaluation tool"
 readme = "README.md"
@@ -44,10 +44,10 @@ dev = [
 ]
 
 [project.scripts]
-search-eval = "search_eval.cli:main"
+veritail = "veritail.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/search_eval"]
+packages = ["src/veritail"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

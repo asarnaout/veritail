@@ -1,4 +1,4 @@
-"""Shared test fixtures for search-eval."""
+"""Shared test fixtures for veritail."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from search_eval.types import (
+from veritail.types import (
     CheckResult,
     HumanScore,
     JudgmentRecord,

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from search_eval.adapter import load_adapter
+from veritail.adapter import load_adapter
 
 
 def test_load_valid_adapter(tmp_path):
     adapter_file = tmp_path / "my_adapter.py"
     adapter_file.write_text(
-        "from search_eval.types import SearchResult\n"
+        "from veritail.types import SearchResult\n"
         "\n"
         "def search(query: str) -> list[SearchResult]:\n"
         "    return [\n"
