@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
+from dotenv import load_dotenv
 from rich.console import Console
 
 from veritail.adapter import load_adapter
@@ -19,6 +20,10 @@ from veritail.rubrics import load_rubric
 from veritail.types import ExperimentConfig
 
 console = Console()
+
+# Load environment variables from .env file if it exists
+# Search in current directory, then parent directories
+load_dotenv(verbose=False, override=False)
 
 
 @click.group()
