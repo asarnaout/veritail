@@ -167,7 +167,7 @@ def check_text_overlap(
                     if passed
                     else f"Low title overlap: {overlap:.2f} — title '{result.title}' may be irrelevant"
                 ),
-                severity="info" if passed else "fail",
+                severity="info" if passed else "warning",
             )
         )
 

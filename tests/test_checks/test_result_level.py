@@ -101,7 +101,7 @@ class TestTextOverlap:
         checks = check_text_overlap("running shoes", results)
         assert len(checks) == 1
         assert not checks[0].passed
-        assert checks[0].severity == "fail"
+        assert checks[0].severity == "warning"
 
     def test_partial_overlap(self):
         results = [_make_result(title="Nike Running Jacket Waterproof")]
