@@ -45,16 +45,6 @@ class JudgmentRecord:
 
 
 @dataclass
-class HumanScore:
-    """Human reviewer's score for one query-result pair."""
-
-    query: str
-    product_id: str
-    score: int
-    experiment: str
-
-
-@dataclass
 class CheckResult:
     """Result of one deterministic quality check."""
 

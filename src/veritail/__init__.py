@@ -5,7 +5,6 @@ __version__ = "0.1.0"
 from veritail.types import (
     CheckResult,
     ExperimentConfig,
-    HumanScore,
     JudgmentRecord,
     MetricResult,
     QueryEntry,
@@ -16,7 +15,6 @@ __all__ = [
     "SearchResult",
     "QueryEntry",
     "JudgmentRecord",
-    "HumanScore",
     "CheckResult",
     "ExperimentConfig",
     "MetricResult",

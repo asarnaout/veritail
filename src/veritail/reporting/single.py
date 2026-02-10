@@ -25,7 +25,6 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
 def generate_single_report(
     metrics: list[MetricResult],
     checks: list[CheckResult],
-    agreement: Optional[dict] = None,
     format: str = "terminal",
     judgments: Optional[list[JudgmentRecord]] = None,
 ) -> str:
@@ -34,7 +33,6 @@ def generate_single_report(
     Args:
         metrics: Computed IR metrics
         checks: Deterministic check results
-        agreement: Optional inter-rater agreement data
         format: "terminal" for rich console output, "html" for HTML file
         judgments: Optional list of per-product LLM judgments (used in HTML output)
 
@@ -42,14 +40,13 @@ def generate_single_report(
         Formatted report string.
     """
     if format == "html":
-        return _generate_html(metrics, checks, agreement, judgments)
-    return _generate_terminal(metrics, checks, agreement)
+        return _generate_html(metrics, checks, judgments)
+    return _generate_terminal(metrics, checks)
 
 
 def _generate_terminal(
     metrics: list[MetricResult],
     checks: list[CheckResult],
-    agreement: Optional[dict],
 ) -> str:
     """Generate a rich-formatted terminal report."""
     console = Console(file=StringIO(), force_terminal=True, width=100)
@@ -125,15 +122,6 @@ def _generate_terminal(
 
         console.print(worst_table)
 
-    # Agreement
-    if agreement:
-        console.print("\n")
-        console.print("[bold]LLM-Human Agreement[/bold]")
-        console.print(f"  Cohen's kappa: {agreement['kappa']:.3f}")
-        console.print(f"  Matched pairs: {agreement['n_matched']}")
-        console.print(f"  Exact agreement: {agreement['agreement_rate']:.1%}")
-        console.print(f"  Calibration: {agreement['calibration']}")
-
     output = console.file.getvalue()
     return output
 
@@ -141,7 +129,6 @@ def _generate_terminal(
 def _generate_html(
     metrics: list[MetricResult],
     checks: list[CheckResult],
-    agreement: Optional[dict],
     judgments: Optional[list[JudgmentRecord]] = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
@@ -187,7 +174,6 @@ def _generate_html(
         metrics=metrics,
         check_summary=check_summary,
         worst_queries=worst_queries,
-        agreement=agreement,
         is_comparison=False,
         judgments_for_template=judgments_for_template,
         metric_descriptions=METRIC_DESCRIPTIONS,

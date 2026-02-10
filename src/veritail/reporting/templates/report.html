@@ -204,15 +204,6 @@
     {% endfor %}
     {% endif %}
 
-    {% if agreement %}
-    <h2>LLM-Human Agreement</h2>
-    <div class="card">
-        <p><strong>Cohen's kappa:</strong> <span class="metric-value">{{ "%.3f"|format(agreement.kappa) }}</span></p>
-        <p><strong>Matched pairs:</strong> {{ agreement.n_matched }}</p>
-        <p><strong>Exact agreement:</strong> {{ "%.1f"|format(agreement.agreement_rate * 100) }}%</p>
-        <p><strong>Calibration:</strong> {{ agreement.calibration }}</p>
-    </div>
-    {% endif %}
     {% endif %}
 
     <div class="footer">

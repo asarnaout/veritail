@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import csv
-
 from veritail.backends.file import FileBackend
 from veritail.types import JudgmentRecord, SearchResult
 
@@ -59,70 +57,6 @@ class TestFileBackend:
         backend = FileBackend(output_dir=str(tmp_path))
         judgments = backend.get_judgments("nonexistent")
         assert judgments == []
-
-    def test_get_human_scores(self, tmp_path):
-        backend = FileBackend(output_dir=str(tmp_path))
-
-        # Create the experiment directory and human scores file
-        exp_dir = tmp_path / "test-exp"
-        exp_dir.mkdir()
-        scores_file = exp_dir / "human-scores.csv"
-        with open(scores_file, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["query", "product_id", "human_score"])
-            writer.writerow(["running shoes", "SKU-001", "3"])
-            writer.writerow(["running shoes", "SKU-002", "2"])
-            writer.writerow(["laptop", "SKU-003", ""])  # blank = skip
-
-        scores = backend.get_human_scores("test-exp")
-        assert len(scores) == 2
-        assert scores[0].query == "running shoes"
-        assert scores[0].product_id == "SKU-001"
-        assert scores[0].score == 3
-
-    def test_get_human_scores_empty(self, tmp_path):
-        backend = FileBackend(output_dir=str(tmp_path))
-        scores = backend.get_human_scores("nonexistent")
-        assert scores == []
-
-    def test_create_review_queue_random(self, tmp_path):
-        backend = FileBackend(output_dir=str(tmp_path))
-
-        # Log 10 judgments
-        for i in range(10):
-            backend.log_judgment(_make_judgment(product_id=f"SKU-{i:03d}", score=i % 4))
-
-        backend.create_review_queue("test-exp", sample_rate=0.5, strategy="random")
-
-        review_file = tmp_path / "test-exp" / "review-sample.csv"
-        assert review_file.exists()
-
-        with open(review_file) as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-            assert len(rows) == 5  # 50% of 10
-            assert rows[0]["human_score"] == ""  # blank for reviewer
-            assert "query" in reader.fieldnames
-            assert "llm_score" in reader.fieldnames
-
-    def test_create_review_queue_stratified(self, tmp_path):
-        backend = FileBackend(output_dir=str(tmp_path))
-
-        # Log judgments with different scores
-        for i in range(12):
-            backend.log_judgment(_make_judgment(product_id=f"SKU-{i:03d}", score=i % 4))
-
-        backend.create_review_queue("test-exp", sample_rate=0.5, strategy="stratified")
-
-        review_file = tmp_path / "test-exp" / "review-sample.csv"
-        assert review_file.exists()
-
-    def test_create_review_queue_empty(self, tmp_path):
-        backend = FileBackend(output_dir=str(tmp_path))
-        backend.create_review_queue("test-exp", sample_rate=0.5)
-        # Should not create file if no judgments
-        review_file = tmp_path / "test-exp" / "review-sample.csv"
-        assert not review_file.exists()
 
     def test_round_trip_with_attributes(self, tmp_path):
         backend = FileBackend(output_dir=str(tmp_path))

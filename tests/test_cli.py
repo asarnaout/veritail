@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 from click.testing import CliRunner
 
 from veritail.cli import main
@@ -27,18 +25,6 @@ class TestCLI:
     def test_report_help(self):
         runner = CliRunner()
         result = runner.invoke(main, ["report", "--help"])
-        assert result.exit_code == 0
-        assert "--experiment" in result.output
-
-    def test_review_help(self):
-        runner = CliRunner()
-        result = runner.invoke(main, ["review", "--help"])
-        assert result.exit_code == 0
-        assert "--sample-rate" in result.output
-
-    def test_agreement_help(self):
-        runner = CliRunner()
-        result = runner.invoke(main, ["agreement", "--help"])
         assert result.exit_code == 0
         assert "--experiment" in result.output
 
@@ -97,46 +83,6 @@ class TestCLI:
 
         assert result.exit_code == 0
         assert "ndcg" in result.output.lower() or "Evaluating" in result.output
-
-    def test_review_command(self, tmp_path):
-        # Set up a file backend with some judgments
-        results_dir = tmp_path / "results" / "test-exp"
-        results_dir.mkdir(parents=True)
-
-        judgments_file = results_dir / "judgments.jsonl"
-        for i in range(5):
-            record = {
-                "query": "shoes",
-                "product": {
-                    "product_id": f"SKU-{i}",
-                    "title": f"Shoe {i}",
-                    "description": "A shoe",
-                    "category": "Shoes",
-                    "price": 50.0,
-                    "position": i,
-                    "image_url": None,
-                    "attributes": {},
-                    "in_stock": True,
-                },
-                "score": i % 4,
-                "reasoning": "Test",
-                "model": "test",
-                "experiment": "test-exp",
-                "metadata": {},
-            }
-            with open(judgments_file, "a") as f:
-                f.write(json.dumps(record) + "\n")
-
-        runner = CliRunner()
-        result = runner.invoke(main, [
-            "review",
-            "--experiment", "test-exp",
-            "--sample-rate", "0.5",
-            "--backend", "file",
-            "--output-dir", str(tmp_path / "results"),
-        ])
-        assert result.exit_code == 0
-        assert "Review queue created" in result.output
 
     def test_version(self):
         runner = CliRunner()

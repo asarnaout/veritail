@@ -3,7 +3,6 @@
 from veritail.types import (
     CheckResult,
     ExperimentConfig,
-    HumanScore,
     JudgmentRecord,
     MetricResult,
     QueryEntry,
@@ -72,16 +71,6 @@ def test_judgment_record(sample_search_result):
     )
     assert judgment.score == 2
     assert judgment.metadata == {}
-
-
-def test_human_score():
-    score = HumanScore(
-        query="running shoes",
-        product_id="SKU-001",
-        score=3,
-        experiment="exp-1",
-    )
-    assert score.score == 3
 
 
 def test_check_result_defaults():

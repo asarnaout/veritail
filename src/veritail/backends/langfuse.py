@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import random
 from typing import Any
 
 from langfuse import Langfuse
 
 from veritail.backends import EvalBackend
-from veritail.types import HumanScore, JudgmentRecord, SearchResult
+from veritail.types import JudgmentRecord, SearchResult
 
 
 class LangfuseBackend(EvalBackend):
@@ -86,28 +85,6 @@ class LangfuseBackend(EvalBackend):
             tags=[name, "experiment-config"],
         )
 
-    def get_human_scores(self, experiment: str) -> list[HumanScore]:
-        """Retrieve human annotation scores from Langfuse."""
-        scores: list[HumanScore] = []
-
-        # Fetch traces for this experiment
-        traces = self._client.fetch_traces(tags=[experiment])
-        for trace in traces.data:
-            # Look for human-annotated scores
-            trace_scores = self._client.fetch_scores(trace_id=trace.id)
-            for score in trace_scores.data:
-                if score.name == "human-relevance" and trace.metadata:
-                    scores.append(
-                        HumanScore(
-                            query=trace.metadata.get("query", ""),
-                            product_id=trace.metadata.get("product_id", ""),
-                            score=int(score.value),
-                            experiment=experiment,
-                        )
-                    )
-
-        return scores
-
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
         """Retrieve all LLM judgments from Langfuse traces."""
         judgments: list[JudgmentRecord] = []
@@ -152,31 +129,3 @@ class LangfuseBackend(EvalBackend):
 
         return judgments
 
-    def create_review_queue(
-        self,
-        experiment: str,
-        sample_rate: float,
-        strategy: str = "random",
-    ) -> None:
-        """Create a Langfuse annotation queue with sampled traces.
-
-        Users can then review and annotate in the Langfuse web UI.
-        """
-        traces = self._client.fetch_traces(tags=[experiment])
-        all_traces = [
-            t for t in traces.data
-            if t.metadata and t.metadata.get("type") != "experiment_registration"
-        ]
-
-        if not all_traces:
-            return
-
-        sample_size = max(1, int(len(all_traces) * sample_rate))
-        sampled = random.sample(all_traces, min(sample_size, len(all_traces)))
-
-        # Tag sampled traces for review
-        for trace in sampled:
-            self._client.trace(
-                id=trace.id,
-                tags=list(set((trace.tags or []) + [f"{experiment}-review"])),
-            )

@@ -41,17 +41,6 @@ class TestGenerateSingleReport:
         assert "zero_results" in report
         assert "category_alignment" in report
 
-    def test_terminal_report_with_agreement(self):
-        agreement = {
-            "kappa": 0.75,
-            "n_matched": 50,
-            "agreement_rate": 0.82,
-            "calibration": "LLM judgments are trustworthy (kappa > 0.7)",
-        }
-        report = generate_single_report(_make_metrics(), _make_checks(), agreement=agreement)
-        assert "0.750" in report
-        assert "trustworthy" in report
-
     def test_terminal_report_worst_queries(self):
         report = generate_single_report(_make_metrics(), _make_checks())
         assert "laptop" in report  # lower NDCG query
@@ -62,12 +51,3 @@ class TestGenerateSingleReport:
         assert "ndcg@10" in report
         assert "0.8500" in report
 
-    def test_html_report_with_agreement(self):
-        agreement = {
-            "kappa": 0.75,
-            "n_matched": 50,
-            "agreement_rate": 0.82,
-            "calibration": "LLM judgments are trustworthy",
-        }
-        report = generate_single_report(_make_metrics(), _make_checks(), agreement=agreement, format="html")
-        assert "kappa" in report.lower()

@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from veritail.types import HumanScore, JudgmentRecord
+from veritail.types import JudgmentRecord
 
 
 class EvalBackend(ABC):
@@ -22,23 +22,8 @@ class EvalBackend(ABC):
         ...
 
     @abstractmethod
-    def get_human_scores(self, experiment: str) -> list[HumanScore]:
-        """Retrieve human-annotated scores for an experiment."""
-        ...
-
-    @abstractmethod
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
         """Retrieve all LLM judgments for an experiment."""
-        ...
-
-    @abstractmethod
-    def create_review_queue(
-        self,
-        experiment: str,
-        sample_rate: float,
-        strategy: str = "random",
-    ) -> None:
-        """Set up human review for a sample of judgments."""
         ...
 
 

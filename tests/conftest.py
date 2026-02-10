@@ -8,7 +8,6 @@ import pytest
 
 from veritail.types import (
     CheckResult,
-    HumanScore,
     JudgmentRecord,
     QueryEntry,
     SearchResult,
@@ -82,16 +81,6 @@ def sample_judgment(sample_search_result: SearchResult) -> JudgmentRecord:
         score=3,
         reasoning="Exact match for running shoes query.",
         model="claude-sonnet-4-5",
-        experiment="test-experiment",
-    )
-
-
-@pytest.fixture
-def sample_human_score() -> HumanScore:
-    return HumanScore(
-        query="running shoes",
-        product_id="SKU-001",
-        score=3,
         experiment="test-experiment",
     )
 

@@ -11,7 +11,6 @@ from rich.console import Console
 from veritail.adapter import load_adapter
 from veritail.backends import create_backend
 from veritail.llm.client import create_llm_client
-from veritail.metrics.agreement import compute_agreement
 from veritail.pipeline import run_dual_evaluation, run_evaluation
 from veritail.queries import load_queries
 from veritail.reporting.comparison import generate_comparison_report
@@ -169,7 +168,6 @@ def run(
 @main.command()
 @click.option("--experiment", required=True, help="Experiment name")
 @click.option("--baseline", default=None, help="Baseline experiment name (for comparison)")
-@click.option("--include-human-agreement", is_flag=True, help="Include LLM-human agreement analysis")
 @click.option("--output", "output_path", default=None, type=click.Path(), help="Output file path (HTML)")
 @click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]))
 @click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
@@ -179,7 +177,6 @@ def run(
 def report(
     experiment: str,
     baseline: str | None,
-    include_human_agreement: bool,
     output_path: str | None,
     backend_type: str,
     output_dir: str,
@@ -212,14 +209,6 @@ def report(
     query_entries = [QueryEntry(query=q) for q in judgments_by_query]
     metrics = compute_all_metrics(judgments_by_query, query_entries)
 
-    agreement = None
-    if include_human_agreement:
-        human_scores = backend.get_human_scores(experiment)
-        if human_scores:
-            agreement = compute_agreement(judgments, human_scores)
-        else:
-            console.print("[yellow]No human scores found for agreement computation")
-
     needs_html = open_browser or (output_path is not None and output_path.endswith(".html"))
     output_format = "html" if needs_html else "terminal"
 
@@ -241,7 +230,7 @@ def report(
         )
     else:
         report_str = generate_single_report(
-            metrics, [], agreement=agreement, format=output_format,
+            metrics, [], format=output_format,
             judgments=judgments if output_format == "html" else None,
         )
 
@@ -259,82 +248,6 @@ def report(
         webbrowser.open(html_path.resolve().as_uri())
     else:
         console.print(report_str)
-
-
-@main.command()
-@click.option("--experiment", required=True, help="Experiment name")
-@click.option("--sample-rate", default=0.10, type=float, help="Fraction of judgments to sample for review")
-@click.option("--strategy", default="random", type=click.Choice(["random", "stratified"]), help="Sampling strategy")
-@click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]))
-@click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
-@click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
-def review(
-    experiment: str,
-    sample_rate: float,
-    strategy: str,
-    backend_type: str,
-    output_dir: str,
-    backend_url: str | None,
-) -> None:
-    """Create human review annotation queue from evaluation results."""
-    backend_kwargs: dict = {}
-    if backend_type == "file":
-        backend_kwargs["output_dir"] = output_dir
-    elif backend_type == "langfuse" and backend_url:
-        backend_kwargs["url"] = backend_url
-
-    backend = create_backend(backend_type, **backend_kwargs)
-    backend.create_review_queue(experiment, sample_rate, strategy)
-
-    console.print(
-        f"Review queue created for '{experiment}' "
-        f"(sample rate: {sample_rate:.0%}, strategy: {strategy})"
-    )
-
-
-@main.command()
-@click.option("--experiment", required=True, help="Experiment name")
-@click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]))
-@click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
-@click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
-def agreement(
-    experiment: str,
-    backend_type: str,
-    output_dir: str,
-    backend_url: str | None,
-) -> None:
-    """Compute inter-rater agreement between LLM and human scores."""
-    backend_kwargs: dict = {}
-    if backend_type == "file":
-        backend_kwargs["output_dir"] = output_dir
-    elif backend_type == "langfuse" and backend_url:
-        backend_kwargs["url"] = backend_url
-
-    backend = create_backend(backend_type, **backend_kwargs)
-
-    judgments = backend.get_judgments(experiment)
-    human_scores = backend.get_human_scores(experiment)
-
-    if not judgments:
-        console.print(f"[red]No LLM judgments found for experiment '{experiment}'")
-        raise SystemExit(1)
-
-    if not human_scores:
-        console.print(f"[red]No human scores found for experiment '{experiment}'")
-        console.print(
-            "Run 'veritail review' first to create a review queue, "
-            "then fill in human scores."
-        )
-        raise SystemExit(1)
-
-    result = compute_agreement(judgments, human_scores)
-
-    console.print(f"\n[bold]Inter-Rater Agreement: '{experiment}'[/bold]\n")
-    console.print(f"  Cohen's kappa:    {result['kappa']:.3f}")
-    console.print(f"  Matched pairs:    {result['n_matched']}")
-    console.print(f"  Exact agreement:  {result['agreement_rate']:.1%}")
-    console.print(f"  Calibration:      {result['calibration']}")
-    console.print()
 
 
 if __name__ == "__main__":
