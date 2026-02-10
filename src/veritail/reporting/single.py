@@ -12,6 +12,15 @@ from rich.table import Table
 
 from veritail.types import CheckResult, JudgmentRecord, MetricResult
 
+METRIC_DESCRIPTIONS: dict[str, str] = {
+    "ndcg@5": "Ranking quality at top 5 — rewards placing the most relevant products highest (graded 0-3)",
+    "ndcg@10": "Ranking quality at top 10 — rewards placing the most relevant products highest (graded 0-3)",
+    "mrr": "Mean Reciprocal Rank — how high up the first relevant result appears (1.0 = first position)",
+    "map": "Mean Average Precision — overall precision across all relevant results",
+    "p@5": "Precision at 5 — fraction of top 5 results that are relevant (score >= 2)",
+    "p@10": "Precision at 10 — fraction of top 10 results that are relevant (score >= 2)",
+}
+
 
 def generate_single_report(
     metrics: list[MetricResult],
@@ -181,4 +190,5 @@ def _generate_html(
         agreement=agreement,
         is_comparison=False,
         judgments_for_template=judgments_for_template,
+        metric_descriptions=METRIC_DESCRIPTIONS,
     )

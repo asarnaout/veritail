@@ -38,7 +38,7 @@ def run_evaluation(
     llm_client: LLMClient,
     rubric: Tuple[str, Callable[[str, SearchResult], str]],
     backend: EvalBackend,
-    skip_llm_on_fail: bool = True,
+    skip_llm_on_fail: bool = False,
 ) -> Tuple[list[JudgmentRecord], list[CheckResult], list[MetricResult]]:
     """Run a full evaluation pipeline for a single configuration.
 
@@ -83,25 +83,38 @@ def run_evaluation(
             checks = run_all_checks(query_entry, results)
             all_checks.extend(checks)
 
-            # Build set of product IDs that failed hard checks
+            # Build failed-checks info per product
+            failed_checks_by_product: dict[str, list[dict]] = {}
+            for check in checks:
+                if check.severity == "fail" and check.product_id:
+                    failed_checks_by_product.setdefault(check.product_id, []).append({
+                        "check_name": check.check_name,
+                        "detail": check.detail,
+                    })
+
+            # Build the skip set (only used when skip_llm_on_fail=True)
             failed_product_ids: set[str] = set()
             if skip_llm_on_fail:
-                for check in checks:
-                    if check.severity == "fail" and check.product_id:
-                        failed_product_ids.add(check.product_id)
+                failed_product_ids = set(failed_checks_by_product.keys())
 
             # Step 3: LLM judgment for each result
             for result in results:
+                product_failed_checks = failed_checks_by_product.get(result.product_id, [])
+
                 if result.product_id in failed_product_ids:
-                    # Skip LLM, create a judgment with score 0
+                    # Skip LLM — build a descriptive reasoning string
+                    reasons = "; ".join(
+                        f"[{fc['check_name']}] {fc['detail']}"
+                        for fc in product_failed_checks
+                    )
                     judgment = JudgmentRecord(
                         query=query_entry.query,
                         product=result,
                         score=0,
-                        reasoning="Skipped: failed deterministic check",
+                        reasoning=f"Skipped: {reasons}",
                         model=config.llm_model,
                         experiment=config.name,
-                        metadata={"skipped": True},
+                        metadata={"skipped": True, "failed_checks": product_failed_checks},
                     )
                 else:
                     try:
@@ -120,6 +133,9 @@ def run_evaluation(
                             experiment=config.name,
                             metadata={"error": str(e)},
                         )
+                    # Annotate with check failures even when LLM ran
+                    if product_failed_checks:
+                        judgment.metadata["failed_checks"] = product_failed_checks
 
                 backend.log_judgment(judgment)
                 all_judgments.append(judgment)
@@ -142,6 +158,7 @@ def run_dual_evaluation(
     llm_client: LLMClient,
     rubric: Tuple[str, Callable[[str, SearchResult], str]],
     backend: EvalBackend,
+    skip_llm_on_fail: bool = False,
 ) -> Tuple[
     list[JudgmentRecord], list[JudgmentRecord],
     list[CheckResult], list[CheckResult],
@@ -159,11 +176,13 @@ def run_dual_evaluation(
     # Run evaluation for config A
     judgments_a, checks_a, metrics_a = run_evaluation(
         queries, adapter_a, config_a, llm_client, rubric, backend,
+        skip_llm_on_fail=skip_llm_on_fail,
     )
 
     # Run evaluation for config B
     judgments_b, checks_b, metrics_b = run_evaluation(
         queries, adapter_b, config_b, llm_client, rubric, backend,
+        skip_llm_on_fail=skip_llm_on_fail,
     )
 
     # Run comparison checks

@@ -45,6 +45,8 @@ def main() -> None:
 @click.option("--top-k", default=10, type=int, help="Number of results to retrieve per query")
 @click.option("--open", "open_browser", is_flag=True, default=False,
               help="Generate an HTML report and open it in the browser when complete.")
+@click.option("--skip-on-check-fail/--no-skip-on-check-fail", default=False,
+              help="Skip LLM judgment when a deterministic check fails (default: always run LLM).")
 def run(
     queries: str,
     adapters: tuple[str, ...],
@@ -56,6 +58,7 @@ def run(
     backend_url: str | None,
     top_k: int,
     open_browser: bool,
+    skip_on_check_fail: bool,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
     if len(adapters) != len(config_names):
@@ -95,6 +98,7 @@ def run(
 
         judgments, checks, metrics = run_evaluation(
             query_entries, adapter_fn, config, llm_client, rubric_data, backend,
+            skip_llm_on_fail=skip_on_check_fail,
         )
 
         report = generate_single_report(metrics, checks)
@@ -137,6 +141,7 @@ def run(
             adapter_a, config_a,
             adapter_b, config_b,
             llm_client, rubric_data, backend,
+            skip_llm_on_fail=skip_on_check_fail,
         )
 
         report = generate_comparison_report(

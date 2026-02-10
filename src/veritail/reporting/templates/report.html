@@ -90,7 +90,13 @@
         <tbody>
             {% for m in metrics %}
             <tr>
-                <td>{{ m.metric_name }}</td>
+                <td>
+                  {{ m.metric_name }}
+                  {% if metric_descriptions and metric_descriptions.get(m.metric_name) %}
+                  <span style="cursor:help; color:#9ca3af; margin-left:4px;"
+                        title="{{ metric_descriptions[m.metric_name] }}">&#9432;</span>
+                  {% endif %}
+                </td>
                 <td class="metric-value">{{ "%.4f"|format(m.value) }}</td>
             </tr>
             {% endfor %}
@@ -168,7 +174,7 @@
         </thead>
         <tbody>
           {% for j in item.judgments %}
-          <tr>
+          <tr{% if j.metadata.get('skipped') %} style="background:#fff7ed;"{% endif %}>
             <td style="color:#9ca3af">{{ j.product.position + 1 }}</td>
             <td>
               <strong>{{ j.product.title }}</strong><br>
@@ -176,8 +182,20 @@
             </td>
             <td class="metric-value" style="color:{% if j.score == 3 %}#16a34a{% elif j.score == 2 %}#ca8a04{% elif j.score == 1 %}#ea580c{% else %}#dc2626{% endif %}">
               {{ j.score }}/3
+              {% if j.metadata.get('skipped') %}
+              <span style="display:inline-block; margin-left:4px; padding:1px 6px; background:#fed7aa; color:#9a3412; border-radius:9999px; font-size:10px; font-weight:600; vertical-align:middle;">SKIPPED</span>
+              {% endif %}
             </td>
-            <td style="font-size:13px; color:#4b5563">{{ j.reasoning }}</td>
+            <td style="font-size:13px; color:#4b5563">
+              {{ j.reasoning }}
+              {% if j.metadata.get('failed_checks') and not j.metadata.get('skipped') %}
+              <div style="margin-top:6px; padding:4px 8px; background:#fef3c7; border-radius:4px; font-size:12px; color:#92400e;">
+                {% for fc in j.metadata.failed_checks %}
+                <span style="font-weight:600;">{{ fc.check_name }}:</span> {{ fc.detail }}{% if not loop.last %}; {% endif %}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
