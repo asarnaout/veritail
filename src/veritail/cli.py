@@ -104,7 +104,7 @@ def run(
             html = generate_single_report(metrics, checks, judgments=judgments, format="html")
             html_path = Path(output_dir) / config_names[0] / "report.html"
             html_path.write_text(html, encoding="utf-8")
-            console.print(f"[dim]HTML report → {html_path}[/dim]")
+            console.print(f"[dim]HTML report ->{html_path}[/dim]")
             import webbrowser
             webbrowser.open(html_path.resolve().as_uri())
 
@@ -156,7 +156,7 @@ def run(
             html_path = Path(output_dir) / f"{config_names[0]}_vs_{config_names[1]}" / "report.html"
             html_path.parent.mkdir(parents=True, exist_ok=True)
             html_path.write_text(html, encoding="utf-8")
-            console.print(f"[dim]HTML report → {html_path}[/dim]")
+            console.print(f"[dim]HTML report ->{html_path}[/dim]")
             import webbrowser
             webbrowser.open(html_path.resolve().as_uri())
 
@@ -249,7 +249,7 @@ def report(
     elif open_browser:
         html_path = Path(output_dir) / experiment / "report.html"
         html_path.write_text(report_str, encoding="utf-8")
-        console.print(f"[dim]HTML report → {html_path}[/dim]")
+        console.print(f"[dim]HTML report ->{html_path}[/dim]")
         import webbrowser
         webbrowser.open(html_path.resolve().as_uri())
     else:
