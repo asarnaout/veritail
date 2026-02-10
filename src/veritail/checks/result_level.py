@@ -131,14 +131,24 @@ def check_attribute_match(
     return checks
 
 
+def _jaccard(tokens_a: set[str], tokens_b: set[str]) -> float:
+    """Compute Jaccard similarity between two token sets."""
+    if not tokens_a or not tokens_b:
+        return 0.0
+    return len(tokens_a & tokens_b) / len(tokens_a | tokens_b)
+
+
 def check_text_overlap(
     query: str,
     results: list[SearchResult],
     min_overlap: float = 0.1,
 ) -> list[CheckResult]:
-    """Check if result titles have meaningful text overlap with the query.
+    """Check if results have meaningful text overlap with the query.
 
-    Uses Jaccard similarity on word tokens between query and result title.
+    Computes Jaccard similarity between query tokens and each of the result's
+    text fields (title, category, description).  The best score across fields
+    is used so that a match in *any* field is sufficient.  Empty fields are
+    ignored and never penalize the score.
     """
     checks: list[CheckResult] = []
     query_tokens = _tokenize(query)
@@ -147,15 +157,24 @@ def check_text_overlap(
         return checks
 
     for result in results:
-        title_tokens = _tokenize(result.title)
-        if not title_tokens:
-            overlap = 0.0
-        else:
-            intersection = query_tokens & title_tokens
-            union = query_tokens | title_tokens
-            overlap = len(intersection) / len(union)
+        fields = {
+            "title": _tokenize(result.title),
+            "category": _tokenize(result.category),
+            "description": _tokenize(result.description),
+        }
 
-        passed = overlap >= min_overlap
+        best_score = 0.0
+        best_field = "title"
+        best_tokens: set[str] = set()
+
+        for name, tokens in fields.items():
+            score = _jaccard(query_tokens, tokens)
+            if score > best_score:
+                best_score = score
+                best_field = name
+                best_tokens = query_tokens & tokens
+
+        passed = best_score >= min_overlap
         checks.append(
             CheckResult(
                 check_name="text_overlap",
@@ -163,9 +182,9 @@ def check_text_overlap(
                 product_id=result.product_id,
                 passed=passed,
                 detail=(
-                    f"Title overlap: {overlap:.2f} (tokens: {query_tokens & title_tokens})"
+                    f"Best overlap: {best_score:.2f} on {best_field} (tokens: {best_tokens})"
                     if passed
-                    else f"Low title overlap: {overlap:.2f} — title '{result.title}' may be irrelevant"
+                    else f"Low overlap across all fields (best: {best_score:.2f} on {best_field})"
                 ),
                 severity="info" if passed else "warning",
             )

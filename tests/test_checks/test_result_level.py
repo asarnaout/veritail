@@ -13,6 +13,7 @@ from veritail.types import QueryEntry, SearchResult
 def _make_result(
     product_id: str = "SKU-001",
     title: str = "Test Product",
+    description: str = "Test description",
     category: str = "Test",
     price: float = 9.99,
     position: int = 0,
@@ -21,7 +22,7 @@ def _make_result(
     return SearchResult(
         product_id=product_id,
         title=title,
-        description="Test description",
+        description=description,
         category=category,
         price=price,
         position=position,
@@ -108,6 +109,26 @@ class TestTextOverlap:
         checks = check_text_overlap("running shoes", results)
         assert len(checks) == 1
         # "running" overlaps -> should pass with default threshold of 0.1
+        assert checks[0].passed
+
+    def test_category_match_saves_title_miss(self):
+        results = [_make_result(title="Modern Leather Sofa Set", category="Living Room Seating Shoes")]
+        checks = check_text_overlap("running shoes", results)
+        assert len(checks) == 1
+        assert checks[0].passed
+        assert "category" in checks[0].detail
+
+    def test_description_match_saves_title_miss(self):
+        results = [_make_result(title="Premium Sofa Set", description="Great for running outdoors")]
+        checks = check_text_overlap("running shoes", results)
+        assert len(checks) == 1
+        assert checks[0].passed
+        assert "description" in checks[0].detail
+
+    def test_empty_fields_no_penalty(self):
+        results = [_make_result(title="Running Shoes Nike", description="", category="")]
+        checks = check_text_overlap("running shoes", results)
+        assert len(checks) == 1
         assert checks[0].passed
 
 
