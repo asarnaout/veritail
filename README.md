@@ -10,7 +10,7 @@ veritail takes a set of search queries, runs them against your search implementa
 2. **Deterministic quality checks** — Category alignment, text overlap, duplicate detection, price outlier detection, and attribute matching
 3. **IR metrics** — NDCG@K, MRR, MAP, and Precision@K computed from the LLM scores
 
-You can evaluate a single search configuration or compare two configurations side-by-side to detect regressions and improvements. Results are stored locally or in [Langfuse](https://langfuse.com) for experiment tracking.
+You can evaluate a single search configuration or compare two configurations side-by-side to detect regressions and improvements. Results are stored locally or in [Langfuse](https://langfuse.com) for experiment tracking and human annotation.
 
 ## Installation
 
@@ -76,10 +76,11 @@ veritail run \
   --adapter my_adapter.py \
   --config-name baseline \
   --llm-model claude-sonnet-4-5 \
-  --top-k 10
+  --top-k 10 \
+  --open
 ```
 
-This produces a terminal report with IR metrics, check summaries, and the worst-performing queries.
+This produces a terminal report with IR metrics, check summaries, and the worst-performing queries. The `--open` flag also generates an HTML report and opens it in your browser with per-query judgment drill-downs, metric tooltips, and check failure details.
 
 ### 4. Compare two configurations
 
@@ -108,6 +109,8 @@ Run a single or dual-configuration evaluation.
 | `--backend` | `file` | Storage backend (`file` or `langfuse`) |
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
 | `--top-k` | `10` | Number of results to evaluate per query |
+| `--open` | off | Generate an HTML report and open it in the browser |
+| `--skip-on-check-fail` | off | Skip LLM judgment when a deterministic check fails (default: always run LLM) |
 
 ### `veritail report`
 
@@ -123,28 +126,8 @@ veritail report --experiment v2 --baseline v1
 # HTML output
 veritail report --experiment baseline --output report.html
 
-# Include LLM-human agreement stats
-veritail report --experiment baseline --include-human-agreement
-```
-
-### `veritail review`
-
-Create a human review annotation queue by sampling from LLM judgments.
-
-```bash
-veritail review --experiment baseline --sample-rate 0.10 --strategy stratified
-```
-
-Sampling strategies:
-- `random` — Uniform random sample
-- `stratified` — Samples proportionally from each score level (0-3)
-
-### `veritail agreement`
-
-Compute inter-rater agreement (Cohen's kappa) between LLM and human scores.
-
-```bash
-veritail agreement --experiment baseline
+# Open HTML report in browser
+veritail report --experiment baseline --open
 ```
 
 ## Relevance scoring
@@ -162,7 +145,7 @@ Evaluation criteria (in order of importance): explicit intent match, implicit in
 
 ## Deterministic checks
 
-These checks run before LLM judgments and can optionally skip LLM calls for results that fail:
+These checks run alongside LLM judgments. By default the LLM always runs, but you can use `--skip-on-check-fail` to skip LLM calls for results that fail a check. Check failures are always recorded in judgment metadata and displayed in the HTML report regardless of skip behavior.
 
 **Query-level:**
 - Zero results detection
@@ -191,7 +174,18 @@ All metrics are computed from the 0-3 LLM relevance scores:
 | MAP | Mean Average Precision (relevance threshold: 2) |
 | P@5, P@10 | Precision at K (relevance threshold: 2) |
 
-Metrics are reported as aggregates, per-query breakdowns, and by query type.
+Metrics are reported as aggregates, per-query breakdowns, and by query type. The HTML report includes info tooltips explaining each metric.
+
+## HTML report
+
+Use `--open` with `veritail run` or `veritail report` to generate a standalone HTML report that includes:
+
+- IR metrics table with tooltip descriptions
+- Deterministic check pass/fail summary
+- Worst-performing queries ranked by NDCG@10
+- Per-query judgment drill-down with product scores and LLM reasoning
+- Check failure annotations on products that failed deterministic checks
+- Visual indicators for skipped judgments (when using `--skip-on-check-fail`)
 
 ## Custom rubrics
 
@@ -221,13 +215,11 @@ eval-results/
     config.json
     judgments.jsonl
     deterministic.jsonl
-    review-sample.csv
-    human-scores.csv
 ```
 
 ### Langfuse backend
 
-Stores results as Langfuse traces with scores for experiment tracking.
+Stores results as Langfuse traces with scores for experiment tracking. Use Langfuse's built-in annotation queues and scoring UI for human review.
 
 ```bash
 pip install veritail[langfuse]
@@ -242,22 +234,10 @@ veritail run \
   --backend langfuse
 ```
 
-## Human-in-the-loop workflow
-
-1. Run an evaluation: `veritail run ...`
-2. Create a review queue: `veritail review --experiment baseline --sample-rate 0.10 --strategy stratified`
-3. Have human annotators fill in scores (via CSV for file backend, or Langfuse UI)
-4. Compute agreement: `veritail agreement --experiment baseline`
-
-Cohen's kappa calibration:
-- **> 0.7** — LLM judgments are trustworthy
-- **0.4 - 0.7** — Systematic biases present; consider rubric adjustments
-- **< 0.4** — LLM judgments are unreliable; human review needed
-
 ## Development
 
 ```bash
-git clone https://github.com/your-org/veritail.git
+git clone https://github.com/asarnaout/veritail.git
 cd veritail
 pip install -e ".[dev]"
 ```
