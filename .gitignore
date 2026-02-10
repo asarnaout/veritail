@@ -209,3 +209,6 @@ __marimo__/
 # Example directory (except .env.example and other committed files)
 example/.env
 example/results/
+
+# Evaluation results
+eval-results/

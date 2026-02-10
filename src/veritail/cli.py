@@ -289,3 +289,7 @@ def agreement(
     console.print(f"  Exact agreement:  {result['agreement_rate']:.1%}")
     console.print(f"  Calibration:      {result['calibration']}")
     console.print()
+
+
+if __name__ == "__main__":
+    main()
