@@ -39,6 +39,7 @@ def run_evaluation(
     rubric: Tuple[str, Callable[[str, SearchResult], str]],
     backend: EvalBackend,
     skip_llm_on_fail: bool = False,
+    context: str | None = None,
 ) -> Tuple[list[JudgmentRecord], list[CheckResult], list[MetricResult]]:
     """Run a full evaluation pipeline for a single configuration.
 
@@ -51,6 +52,11 @@ def run_evaluation(
         Tuple of (judgments, check_results, metrics)
     """
     system_prompt, format_user_prompt = rubric
+    if context:
+        system_prompt = (
+            f"## Business Context\n{context}\n\n"
+            f"{system_prompt}"
+        )
     judge = RelevanceJudge(llm_client, system_prompt, format_user_prompt, config.name)
 
     backend.log_experiment(config.name, {
@@ -58,6 +64,7 @@ def run_evaluation(
         "llm_model": config.llm_model,
         "rubric": config.rubric,
         "top_k": config.top_k,
+        "context": context,
     })
 
     all_judgments: list[JudgmentRecord] = []
@@ -159,6 +166,7 @@ def run_dual_evaluation(
     rubric: Tuple[str, Callable[[str, SearchResult], str]],
     backend: EvalBackend,
     skip_llm_on_fail: bool = False,
+    context: str | None = None,
 ) -> Tuple[
     list[JudgmentRecord], list[JudgmentRecord],
     list[CheckResult], list[CheckResult],
@@ -177,12 +185,14 @@ def run_dual_evaluation(
     judgments_a, checks_a, metrics_a = run_evaluation(
         queries, adapter_a, config_a, llm_client, rubric, backend,
         skip_llm_on_fail=skip_llm_on_fail,
+        context=context,
     )
 
     # Run evaluation for config B
     judgments_b, checks_b, metrics_b = run_evaluation(
         queries, adapter_b, config_b, llm_client, rubric, backend,
         skip_llm_on_fail=skip_llm_on_fail,
+        context=context,
     )
 
     # Run comparison checks
