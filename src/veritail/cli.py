@@ -43,6 +43,8 @@ def main() -> None:
 @click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
 @click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
 @click.option("--top-k", default=10, type=int, help="Number of results to retrieve per query")
+@click.option("--open", "open_browser", is_flag=True, default=False,
+              help="Generate an HTML report and open it in the browser when complete.")
 def run(
     queries: str,
     adapters: tuple[str, ...],
@@ -53,6 +55,7 @@ def run(
     output_dir: str,
     backend_url: str | None,
     top_k: int,
+    open_browser: bool,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
     if len(adapters) != len(config_names):
@@ -97,6 +100,14 @@ def run(
         report = generate_single_report(metrics, checks)
         console.print(report)
 
+        if open_browser:
+            html = generate_single_report(metrics, checks, judgments=judgments, format="html")
+            html_path = Path(output_dir) / config_names[0] / "report.html"
+            html_path.write_text(html, encoding="utf-8")
+            console.print(f"[dim]HTML report → {html_path}[/dim]")
+            import webbrowser
+            webbrowser.open(html_path.resolve().as_uri())
+
     else:
         # Dual configuration
         config_a = ExperimentConfig(
@@ -135,6 +146,20 @@ def run(
         )
         console.print(report)
 
+        if open_browser:
+            html = generate_comparison_report(
+                metrics_a, metrics_b,
+                comparison_checks,
+                config_names[0], config_names[1],
+                format="html",
+            )
+            html_path = Path(output_dir) / f"{config_names[0]}_vs_{config_names[1]}" / "report.html"
+            html_path.parent.mkdir(parents=True, exist_ok=True)
+            html_path.write_text(html, encoding="utf-8")
+            console.print(f"[dim]HTML report → {html_path}[/dim]")
+            import webbrowser
+            webbrowser.open(html_path.resolve().as_uri())
+
 
 @main.command()
 @click.option("--experiment", required=True, help="Experiment name")
@@ -144,6 +169,8 @@ def run(
 @click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]))
 @click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
 @click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
+@click.option("--open", "open_browser", is_flag=True, default=False,
+              help="Open the HTML report in the browser when complete.")
 def report(
     experiment: str,
     baseline: str | None,
@@ -152,6 +179,7 @@ def report(
     backend_type: str,
     output_dir: str,
     backend_url: str | None,
+    open_browser: bool,
 ) -> None:
     """Generate report from existing evaluation results."""
     backend_kwargs: dict = {}
@@ -187,7 +215,8 @@ def report(
         else:
             console.print("[yellow]No human scores found for agreement computation")
 
-    output_format = "html" if output_path and output_path.endswith(".html") else "terminal"
+    needs_html = open_browser or (output_path is not None and output_path.endswith(".html"))
+    output_format = "html" if needs_html else "terminal"
 
     if baseline:
         baseline_judgments = backend.get_judgments(baseline)
@@ -206,11 +235,23 @@ def report(
             baseline_metrics, metrics, [], baseline, experiment, format=output_format,
         )
     else:
-        report_str = generate_single_report(metrics, [], agreement=agreement, format=output_format)
+        report_str = generate_single_report(
+            metrics, [], agreement=agreement, format=output_format,
+            judgments=judgments if output_format == "html" else None,
+        )
 
     if output_path:
         Path(output_path).write_text(report_str, encoding="utf-8")
         console.print(f"Report written to {output_path}")
+        if open_browser:
+            import webbrowser
+            webbrowser.open(Path(output_path).resolve().as_uri())
+    elif open_browser:
+        html_path = Path(output_dir) / experiment / "report.html"
+        html_path.write_text(report_str, encoding="utf-8")
+        console.print(f"[dim]HTML report → {html_path}[/dim]")
+        import webbrowser
+        webbrowser.open(html_path.resolve().as_uri())
     else:
         console.print(report_str)
 

@@ -212,3 +212,6 @@ example/results/
 
 # Evaluation results
 eval-results/
+
+# Local example overrides
+example.local/

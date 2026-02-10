@@ -10,7 +10,7 @@ from jinja2 import Template
 from rich.console import Console
 from rich.table import Table
 
-from veritail.types import CheckResult, MetricResult
+from veritail.types import CheckResult, JudgmentRecord, MetricResult
 
 
 def generate_single_report(
@@ -18,6 +18,7 @@ def generate_single_report(
     checks: list[CheckResult],
     agreement: Optional[dict] = None,
     format: str = "terminal",
+    judgments: Optional[list[JudgmentRecord]] = None,
 ) -> str:
     """Generate a report for a single evaluation configuration.
 
@@ -26,12 +27,13 @@ def generate_single_report(
         checks: Deterministic check results
         agreement: Optional inter-rater agreement data
         format: "terminal" for rich console output, "html" for HTML file
+        judgments: Optional list of per-product LLM judgments (used in HTML output)
 
     Returns:
         Formatted report string.
     """
     if format == "html":
-        return _generate_html(metrics, checks, agreement)
+        return _generate_html(metrics, checks, agreement, judgments)
     return _generate_terminal(metrics, checks, agreement)
 
 
@@ -131,6 +133,7 @@ def _generate_html(
     metrics: list[MetricResult],
     checks: list[CheckResult],
     agreement: Optional[dict],
+    judgments: Optional[list[JudgmentRecord]] = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     template_path = Path(__file__).parent / "templates" / "report.html"
@@ -153,10 +156,29 @@ def _generate_html(
     if ndcg and ndcg.per_query:
         worst_queries = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:10]
 
+    # Group judgments by query for the drill-down section
+    judgments_for_template: list[dict] = []
+    if judgments:
+        from collections import defaultdict
+        grouped: dict[str, list[JudgmentRecord]] = defaultdict(list)
+        for j in judgments:
+            grouped[j.query].append(j)
+        for q in grouped:
+            grouped[q].sort(key=lambda j: j.product.position)
+        judgments_for_template = [
+            {
+                "query": q,
+                "avg_score": sum(j.score for j in js) / len(js),
+                "judgments": js,
+            }
+            for q, js in sorted(grouped.items())
+        ]
+
     return template.render(
         metrics=metrics,
         check_summary=check_summary,
         worst_queries=worst_queries,
         agreement=agreement,
         is_comparison=False,
+        judgments_for_template=judgments_for_template,
     )
