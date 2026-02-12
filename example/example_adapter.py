@@ -45,6 +45,7 @@ def search(query: str) -> list[SearchResult]:
             "price": 189.99,
             "attributes": {"color": "white", "brand": "Adidas", "size": "10"},
             "in_stock": True,
+            "metadata": {"highlights": ["Free shipping", "Best seller"]},
         },
     ]
 
@@ -61,6 +62,7 @@ def search(query: str) -> list[SearchResult]:
             image_url=None,
             attributes=product["attributes"],
             in_stock=product["in_stock"],
+            metadata=product.get("metadata", {}),
         ))
 
     return results

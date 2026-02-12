@@ -22,6 +22,7 @@ def test_search_result_defaults():
     assert result.image_url is None
     assert result.attributes == {}
     assert result.in_stock is True
+    assert result.metadata == {}
 
 
 def test_search_result_full():
@@ -35,10 +36,12 @@ def test_search_result_full():
         image_url="https://example.com/img.jpg",
         attributes={"color": "red"},
         in_stock=False,
+        metadata={"highlights": ["On sale"], "source": "api-v2"},
     )
     assert result.product_id == "SKU-001"
     assert result.attributes["color"] == "red"
     assert result.in_stock is False
+    assert result.metadata == {"highlights": ["On sale"], "source": "api-v2"}
 
 
 def test_query_entry_defaults():

@@ -75,6 +75,7 @@ class TestFileBackend:
                 attributes={"color": "red", "brand": "Nike"},
                 in_stock=True,
                 image_url="https://example.com/img.jpg",
+                metadata={"highlights": ["Free shipping"]},
             ),
             score=3,
             reasoning="Perfect color match",
@@ -89,6 +90,7 @@ class TestFileBackend:
         assert len(loaded) == 1
         assert loaded[0].product.attributes == {"color": "red", "brand": "Nike"}
         assert loaded[0].product.image_url == "https://example.com/img.jpg"
+        assert loaded[0].product.metadata == {"highlights": ["Free shipping"]}
         assert loaded[0].attribute_verdict == "match"
         assert loaded[0].metadata == {"input_tokens": 100}
 
