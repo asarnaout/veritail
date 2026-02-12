@@ -7,6 +7,7 @@ import math
 import pytest
 
 from veritail.metrics.ir import (
+    attribute_match_rate_at_k,
     average_precision,
     compute_all_metrics,
     mrr,
@@ -16,7 +17,12 @@ from veritail.metrics.ir import (
 from veritail.types import JudgmentRecord, QueryEntry, SearchResult
 
 
-def _j(score: int, position: int, query: str = "test") -> JudgmentRecord:
+def _j(
+    score: int,
+    position: int,
+    query: str = "test",
+    attribute_verdict: str = "n/a",
+) -> JudgmentRecord:
     """Helper to create a judgment with just a score and position."""
     return JudgmentRecord(
         query=query,
@@ -32,6 +38,7 @@ def _j(score: int, position: int, query: str = "test") -> JudgmentRecord:
         reasoning="",
         model="test",
         experiment="test",
+        attribute_verdict=attribute_verdict,
     )
 
 
@@ -136,6 +143,64 @@ class TestPrecisionAtK:
         assert precision_at_k([], k=5) == 0.0
 
 
+class TestAttributeMatchRate:
+    def test_all_match(self):
+        judgments = [
+            _j(3, 0, attribute_verdict="match"),
+            _j(2, 1, attribute_verdict="match"),
+            _j(1, 2, attribute_verdict="match"),
+        ]
+        assert attribute_match_rate_at_k(judgments, k=5) == pytest.approx(1.0)
+
+    def test_all_mismatch(self):
+        judgments = [
+            _j(3, 0, attribute_verdict="mismatch"),
+            _j(2, 1, attribute_verdict="mismatch"),
+        ]
+        assert attribute_match_rate_at_k(judgments, k=5) == pytest.approx(0.0)
+
+    def test_partial_counts_as_match(self):
+        judgments = [
+            _j(3, 0, attribute_verdict="match"),
+            _j(2, 1, attribute_verdict="partial"),
+        ]
+        assert attribute_match_rate_at_k(judgments, k=5) == pytest.approx(1.0)
+
+    def test_mixed(self):
+        judgments = [
+            _j(3, 0, attribute_verdict="match"),
+            _j(2, 1, attribute_verdict="mismatch"),
+            _j(1, 2, attribute_verdict="partial"),
+            _j(0, 3, attribute_verdict="mismatch"),
+        ]
+        # 2 match/partial out of 4 applicable
+        assert attribute_match_rate_at_k(judgments, k=5) == pytest.approx(0.5)
+
+    def test_all_na_returns_none(self):
+        judgments = [_j(3, 0), _j(2, 1)]  # default is "n/a"
+        assert attribute_match_rate_at_k(judgments, k=5) is None
+
+    def test_na_excluded_from_denominator(self):
+        judgments = [
+            _j(3, 0, attribute_verdict="match"),
+            _j(2, 1),  # n/a
+            _j(1, 2, attribute_verdict="mismatch"),
+        ]
+        # 1 match out of 2 applicable (n/a excluded)
+        assert attribute_match_rate_at_k(judgments, k=5) == pytest.approx(0.5)
+
+    def test_empty(self):
+        assert attribute_match_rate_at_k([], k=5) is None
+
+    def test_respects_k(self):
+        judgments = [
+            _j(3, 0, attribute_verdict="match"),
+            _j(2, 1, attribute_verdict="match"),
+            _j(1, 2, attribute_verdict="mismatch"),  # outside k=2
+        ]
+        assert attribute_match_rate_at_k(judgments, k=2) == pytest.approx(1.0)
+
+
 class TestComputeAllMetrics:
     def test_basic(self):
         queries = [
@@ -143,8 +208,14 @@ class TestComputeAllMetrics:
             QueryEntry(query="laptop", type="navigational"),
         ]
         judgments_by_query = {
-            "shoes": [_j(3, 0, "shoes"), _j(2, 1, "shoes")],
-            "laptop": [_j(0, 0, "laptop"), _j(3, 1, "laptop")],
+            "shoes": [
+                _j(3, 0, "shoes", attribute_verdict="match"),
+                _j(2, 1, "shoes", attribute_verdict="mismatch"),
+            ],
+            "laptop": [
+                _j(0, 0, "laptop", attribute_verdict="match"),
+                _j(3, 1, "laptop", attribute_verdict="partial"),
+            ],
         }
 
         results = compute_all_metrics(judgments_by_query, queries)
@@ -156,6 +227,8 @@ class TestComputeAllMetrics:
         assert "map" in metric_names
         assert "p@5" in metric_names
         assert "p@10" in metric_names
+        assert "attribute_match@5" in metric_names
+        assert "attribute_match@10" in metric_names
 
         # Check per-query values exist
         ndcg10 = next(r for r in results if r.metric_name == "ndcg@10")
@@ -165,3 +238,12 @@ class TestComputeAllMetrics:
         # Check by-type values exist
         assert "broad" in ndcg10.by_query_type
         assert "navigational" in ndcg10.by_query_type
+
+        # Check attribute metric values
+        attr5 = next(r for r in results if r.metric_name == "attribute_match@5")
+        assert "shoes" in attr5.per_query
+        assert "laptop" in attr5.per_query
+        # shoes: 1 match, 1 mismatch -> 0.5; laptop: 2 match/partial -> 1.0
+        assert attr5.per_query["shoes"] == pytest.approx(0.5)
+        assert attr5.per_query["laptop"] == pytest.approx(1.0)
+        assert attr5.value == pytest.approx(0.75)  # mean of 0.5 and 1.0

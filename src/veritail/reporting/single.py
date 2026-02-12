@@ -19,6 +19,16 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
     "map": "Mean Average Precision — overall precision across all relevant results",
     "p@5": "Precision at 5 — fraction of top 5 results that are relevant (score >= 2)",
     "p@10": "Precision at 10 — fraction of top 10 results that are relevant (score >= 2)",
+    "attribute_match@5": (
+        "Fraction of top-5 results where LLM-judged attributes"
+        " match or partially match the query"
+        " (excludes queries with no attribute constraints)"
+    ),
+    "attribute_match@10": (
+        "Fraction of top-10 results where LLM-judged attributes"
+        " match or partially match the query"
+        " (excludes queries with no attribute constraints)"
+    ),
 }
 
 
