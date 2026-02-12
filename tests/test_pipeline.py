@@ -33,9 +33,9 @@ def _make_mock_llm_client() -> LLMClient:
     client = Mock(spec=LLMClient)
     # Return different scores for different calls
     responses = [
-        LLMResponse(content="SCORE: 3\nREASONING: Excellent match", model="test", input_tokens=100, output_tokens=50),
-        LLMResponse(content="SCORE: 2\nREASONING: Good match", model="test", input_tokens=100, output_tokens=50),
-        LLMResponse(content="SCORE: 1\nREASONING: Marginal match", model="test", input_tokens=100, output_tokens=50),
+        LLMResponse(content="SCORE: 3\nATTRIBUTES: match\nREASONING: Excellent match", model="test", input_tokens=100, output_tokens=50),
+        LLMResponse(content="SCORE: 2\nATTRIBUTES: partial\nREASONING: Good match", model="test", input_tokens=100, output_tokens=50),
+        LLMResponse(content="SCORE: 1\nATTRIBUTES: mismatch\nREASONING: Marginal match", model="test", input_tokens=100, output_tokens=50),
     ]
     client.complete.side_effect = responses * 10  # enough for multiple queries
     return client

@@ -167,8 +167,9 @@
         <thead>
           <tr>
             <th style="width:3%">#</th>
-            <th style="width:35%">Product</th>
+            <th style="width:30%">Product</th>
             <th style="width:8%">Score</th>
+            <th style="width:9%">Attributes</th>
             <th>Reasoning</th>
           </tr>
         </thead>
@@ -185,6 +186,9 @@
               {% if j.metadata.get('skipped') %}
               <span style="display:inline-block; margin-left:4px; padding:1px 6px; background:#fed7aa; color:#9a3412; border-radius:9999px; font-size:10px; font-weight:600; vertical-align:middle;">SKIPPED</span>
               {% endif %}
+            </td>
+            <td class="metric-value" style="color:{% if j.attribute_verdict == 'match' %}#16a34a{% elif j.attribute_verdict == 'partial' %}#ca8a04{% elif j.attribute_verdict == 'mismatch' %}#dc2626{% else %}#9ca3af{% endif %}">
+              {{ j.attribute_verdict }}
             </td>
             <td style="font-size:13px; color:#4b5563">
               {{ j.reasoning }}

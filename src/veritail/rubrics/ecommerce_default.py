@@ -53,9 +53,15 @@ main product score lower.
 You MUST respond in exactly this format:
 
 SCORE: <score>
+ATTRIBUTES: <verdict>
 REASONING: <your chain-of-thought explanation>
 
 Where <score> is a single digit 0, 1, 2, or 3.
+Where <verdict> is one of:
+- match — all query-specified attributes (color, size, brand, material, etc.) are satisfied by the product
+- partial — some but not all query-specified attributes are satisfied
+- mismatch — the product contradicts one or more query-specified attributes
+- n/a — the query does not specify any filterable attributes
 Where <reasoning> is a clear explanation of why you assigned that score, \
 referencing the specific criteria above.
 """

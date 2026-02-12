@@ -29,13 +29,14 @@ class RelevanceJudge:
         user_prompt = self._format_user_prompt(query, result)
         response = self._client.complete(self._system_prompt, user_prompt)
 
-        score, reasoning = self._parse_response(response.content)
+        score, attribute_verdict, reasoning = self._parse_response(response.content)
 
         return JudgmentRecord(
             query=query,
             product=result,
             score=score,
             reasoning=reasoning,
+            attribute_verdict=attribute_verdict,
             model=response.model,
             experiment=self._experiment,
             metadata={
@@ -46,10 +47,11 @@ class RelevanceJudge:
 
     @staticmethod
     def _parse_response(response_text: str) -> tuple:
-        """Parse the LLM response to extract score and reasoning.
+        """Parse the LLM response to extract score, attribute verdict, and reasoning.
 
         Expected format:
             SCORE: <0-3>
+            ATTRIBUTES: <match|partial|mismatch|n/a>
             REASONING: <text>
         """
         # Extract score
@@ -67,6 +69,14 @@ class RelevanceJudge:
                 f"Response:\n{response_text}"
             )
 
+        # Extract attribute verdict (default to "n/a" for custom rubrics)
+        attr_match = re.search(
+            r"ATTRIBUTES:\s*(\w[\w/ ]*?)(?:\n|$)", response_text
+        )
+        attribute_verdict = (
+            attr_match.group(1).strip().lower() if attr_match else "n/a"
+        )
+
         # Extract reasoning
         reasoning_match = re.search(
             r"REASONING:\s*(.*)", response_text, re.DOTALL
@@ -75,4 +85,4 @@ class RelevanceJudge:
             reasoning_match.group(1).strip() if reasoning_match else ""
         )
 
-        return score, reasoning
+        return score, attribute_verdict, reasoning

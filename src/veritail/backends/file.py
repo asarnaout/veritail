@@ -63,6 +63,7 @@ class FileBackend(EvalBackend):
                     continue
                 data = json.loads(line)
                 product_data = data.pop("product")
+                data.setdefault("attribute_verdict", "n/a")
                 product = SearchResult(**product_data)
                 judgments.append(JudgmentRecord(product=product, **data))
 

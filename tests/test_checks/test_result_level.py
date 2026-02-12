@@ -1,7 +1,6 @@
 """Tests for result-level deterministic checks."""
 
 from veritail.checks.result_level import (
-    check_attribute_match,
     check_category_alignment,
     check_duplicates,
     check_price_outliers,
@@ -64,30 +63,6 @@ class TestCategoryAlignment:
         checks = check_category_alignment(query, [])
         assert len(checks) == 0
 
-
-class TestAttributeMatch:
-    def test_color_match(self):
-        results = [_make_result(attributes={"color": "red"})]
-        checks = check_attribute_match("red dress", results)
-        assert len(checks) == 1
-        assert checks[0].passed
-
-    def test_color_mismatch(self):
-        results = [_make_result(attributes={"color": "blue"})]
-        checks = check_attribute_match("red dress", results)
-        assert len(checks) == 1
-        assert not checks[0].passed
-
-    def test_no_color_in_query(self):
-        results = [_make_result(attributes={"color": "red"})]
-        checks = check_attribute_match("running shoes", results)
-        assert len(checks) == 0
-
-    def test_no_attributes_on_result(self):
-        results = [_make_result()]
-        checks = check_attribute_match("red dress", results)
-        assert len(checks) == 1
-        assert not checks[0].passed
 
 
 class TestTextOverlap:

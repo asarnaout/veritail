@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from collections import Counter
 from difflib import SequenceMatcher
-from statistics import median
 
 from veritail.types import CheckResult, QueryEntry, SearchResult
 
@@ -72,59 +71,6 @@ def check_category_alignment(
                         else f"Category '{result.category}' differs from majority category"
                     ),
                     severity="info" if aligned else "warning",
-                )
-            )
-
-    return checks
-
-
-# Common attribute keywords that map to structured fields
-_ATTRIBUTE_KEYWORDS = {
-    "color": [
-        "red", "blue", "green", "black", "white", "yellow", "orange", "purple",
-        "pink", "brown", "grey", "gray", "navy", "beige", "gold", "silver",
-    ],
-    "brand": [],  # brands are dynamic, matched via attributes dict
-}
-
-
-def check_attribute_match(
-    query: str,
-    results: list[SearchResult],
-) -> list[CheckResult]:
-    """Check if results match attributes specified in the query.
-
-    Extracts color and other attribute tokens from the query string and
-    checks them against each result's structured attribute fields.
-    """
-    checks: list[CheckResult] = []
-    query_lower = query.lower()
-    query_tokens = _tokenize(query)
-
-    # Check color mentions in query
-    mentioned_colors = [c for c in _ATTRIBUTE_KEYWORDS["color"] if c in query_tokens]
-
-    if not mentioned_colors:
-        return checks
-
-    for result in results:
-        result_attrs = {k.lower(): str(v).lower() for k, v in result.attributes.items()}
-        result_color = result_attrs.get("color", "")
-
-        for color in mentioned_colors:
-            matched = color in result_color
-            checks.append(
-                CheckResult(
-                    check_name="attribute_match",
-                    query=query,
-                    product_id=result.product_id,
-                    passed=matched,
-                    detail=(
-                        f"Result has color '{result_color}' matching query color '{color}'"
-                        if matched
-                        else f"Result has color '{result_color}', query specifies '{color}'"
-                    ),
-                    severity="info" if matched else "warning",
                 )
             )
 

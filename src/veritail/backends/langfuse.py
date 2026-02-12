@@ -48,6 +48,7 @@ class LangfuseBackend(EvalBackend):
                 "query": judgment.query,
                 "product_id": judgment.product.product_id,
                 "product_title": judgment.product.title,
+                "attribute_verdict": judgment.attribute_verdict,
             },
             tags=[judgment.experiment],
         )
@@ -122,6 +123,7 @@ class LangfuseBackend(EvalBackend):
                     product=product,
                     score=relevance_score,
                     reasoning=reasoning,
+                    attribute_verdict=trace.metadata.get("attribute_verdict", "n/a"),
                     model="",
                     experiment=experiment,
                 )

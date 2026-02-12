@@ -34,6 +34,7 @@ def _make_judgment() -> JudgmentRecord:
         ),
         score=3,
         reasoning="Great match",
+        attribute_verdict="match",
         model="claude-sonnet-4-5",
         experiment="test-exp",
         metadata={"input_tokens": 100, "output_tokens": 50},

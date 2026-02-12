@@ -80,6 +80,7 @@ def sample_judgment(sample_search_result: SearchResult) -> JudgmentRecord:
         product=sample_search_result,
         score=3,
         reasoning="Exact match for running shoes query.",
+        attribute_verdict="match",
         model="claude-sonnet-4-5",
         experiment="test-experiment",
     )

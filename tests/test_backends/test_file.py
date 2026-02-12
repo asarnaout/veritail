@@ -11,6 +11,7 @@ def _make_judgment(
     product_id: str = "SKU-001",
     score: int = 3,
     experiment: str = "test-exp",
+    attribute_verdict: str = "match",
 ) -> JudgmentRecord:
     return JudgmentRecord(
         query=query,
@@ -25,6 +26,7 @@ def _make_judgment(
         ),
         score=score,
         reasoning="Good match",
+        attribute_verdict=attribute_verdict,
         model="test-model",
         experiment=experiment,
     )
@@ -76,6 +78,7 @@ class TestFileBackend:
             ),
             score=3,
             reasoning="Perfect color match",
+            attribute_verdict="match",
             model="test-model",
             experiment="test-exp",
             metadata={"input_tokens": 100},
@@ -86,4 +89,36 @@ class TestFileBackend:
         assert len(loaded) == 1
         assert loaded[0].product.attributes == {"color": "red", "brand": "Nike"}
         assert loaded[0].product.image_url == "https://example.com/img.jpg"
+        assert loaded[0].attribute_verdict == "match"
         assert loaded[0].metadata == {"input_tokens": 100}
+
+    def test_backwards_compat_missing_attribute_verdict(self, tmp_path):
+        """Old JSONL files without attribute_verdict should load with default 'n/a'."""
+        backend = FileBackend(output_dir=str(tmp_path))
+        exp_dir = tmp_path / "test-exp"
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write a JSONL line without attribute_verdict (simulates old data)
+        import json
+        old_record = {
+            "query": "shoes",
+            "product": {
+                "product_id": "SKU-OLD",
+                "title": "Old Shoes",
+                "description": "From before attribute_verdict existed",
+                "category": "Shoes",
+                "price": 50.0,
+                "position": 0,
+            },
+            "score": 2,
+            "reasoning": "Decent match",
+            "model": "old-model",
+            "experiment": "test-exp",
+            "metadata": {},
+        }
+        with open(exp_dir / "judgments.jsonl", "w", encoding="utf-8") as f:
+            f.write(json.dumps(old_record) + "\n")
+
+        loaded = backend.get_judgments("test-exp")
+        assert len(loaded) == 1
+        assert loaded[0].attribute_verdict == "n/a"

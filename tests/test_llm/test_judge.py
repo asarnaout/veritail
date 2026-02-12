@@ -40,43 +40,58 @@ def _format_user_prompt(query: str, result: SearchResult) -> str:
 
 class TestRelevanceJudge:
     def test_judge_score_3(self):
-        client = _make_mock_client("SCORE: 3\nREASONING: Exact match for running shoes.")
+        client = _make_mock_client(
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Exact match for running shoes."
+        )
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
         judgment = judge.judge("running shoes", _make_result())
         assert judgment.score == 3
+        assert judgment.attribute_verdict == "match"
         assert judgment.reasoning == "Exact match for running shoes."
         assert judgment.model == "test-model"
         assert judgment.experiment == "exp-1"
         assert judgment.query == "running shoes"
 
     def test_judge_score_0(self):
-        client = _make_mock_client("SCORE: 0\nREASONING: Completely irrelevant product.")
+        client = _make_mock_client(
+            "SCORE: 0\nATTRIBUTES: mismatch\nREASONING: Completely irrelevant product."
+        )
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
         judgment = judge.judge("laptop stand", _make_result())
         assert judgment.score == 0
+        assert judgment.attribute_verdict == "mismatch"
 
     def test_judge_with_extra_whitespace(self):
-        client = _make_mock_client("SCORE:  2 \n REASONING:  Decent match  ")
+        client = _make_mock_client(
+            "SCORE:  2 \nATTRIBUTES: partial\n REASONING:  Decent match  "
+        )
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
         judgment = judge.judge("shoes", _make_result())
         assert judgment.score == 2
+        assert judgment.attribute_verdict == "partial"
         assert judgment.reasoning == "Decent match"
 
     def test_judge_multiline_reasoning(self):
-        response = "SCORE: 2\nREASONING: First line.\nSecond line.\nThird line."
+        response = (
+            "SCORE: 2\nATTRIBUTES: n/a\n"
+            "REASONING: First line.\nSecond line.\nThird line."
+        )
         client = _make_mock_client(response)
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
         judgment = judge.judge("shoes", _make_result())
         assert judgment.score == 2
+        assert judgment.attribute_verdict == "n/a"
         assert "First line." in judgment.reasoning
         assert "Third line." in judgment.reasoning
 
     def test_judge_invalid_score(self):
-        client = _make_mock_client("SCORE: 5\nREASONING: Out of range.")
+        client = _make_mock_client(
+            "SCORE: 5\nATTRIBUTES: n/a\nREASONING: Out of range."
+        )
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
         with pytest.raises(ValueError, match="Score must be 0, 1, 2, or 3"):
@@ -90,17 +105,38 @@ class TestRelevanceJudge:
             judge.judge("shoes", _make_result())
 
     def test_judge_no_reasoning(self):
-        client = _make_mock_client("SCORE: 2")
+        client = _make_mock_client("SCORE: 2\nATTRIBUTES: match")
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
         judgment = judge.judge("shoes", _make_result())
         assert judgment.score == 2
+        assert judgment.attribute_verdict == "match"
         assert judgment.reasoning == ""
 
     def test_judge_metadata_includes_tokens(self):
-        client = _make_mock_client("SCORE: 3\nREASONING: Perfect match.")
+        client = _make_mock_client(
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect match."
+        )
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
         judgment = judge.judge("shoes", _make_result())
         assert judgment.metadata["input_tokens"] == 100
         assert judgment.metadata["output_tokens"] == 50
+
+    def test_judge_attributes_match(self):
+        client = _make_mock_client(
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Color and brand match."
+        )
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        judgment = judge.judge("black nike shoes", _make_result())
+        assert judgment.attribute_verdict == "match"
+
+    def test_judge_attributes_missing(self):
+        """Custom rubrics without ATTRIBUTES line should default to n/a."""
+        client = _make_mock_client("SCORE: 2\nREASONING: Decent match.")
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        judgment = judge.judge("shoes", _make_result())
+        assert judgment.attribute_verdict == "n/a"
+        assert judgment.reasoning == "Decent match."
