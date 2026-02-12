@@ -43,6 +43,7 @@ class JudgmentRecord:
     model: str  # e.g. "claude-sonnet-4-5"
     experiment: str  # config name
     attribute_verdict: str = "n/a"  # match | partial | mismatch | n/a
+    query_type: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

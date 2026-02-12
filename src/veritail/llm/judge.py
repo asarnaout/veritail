@@ -24,7 +24,13 @@ class RelevanceJudge:
         self._format_user_prompt = format_user_prompt
         self._experiment = experiment
 
-    def judge(self, query: str, result: SearchResult) -> JudgmentRecord:
+    def judge(
+        self,
+        query: str,
+        result: SearchResult,
+        *,
+        query_type: str | None = None,
+    ) -> JudgmentRecord:
         """Judge the relevance of a single search result to a query."""
         user_prompt = self._format_user_prompt(query, result)
         response = self._client.complete(self._system_prompt, user_prompt)
@@ -39,6 +45,7 @@ class RelevanceJudge:
             attribute_verdict=attribute_verdict,
             model=response.model,
             experiment=self._experiment,
+            query_type=query_type,
             metadata={
                 "input_tokens": response.input_tokens,
                 "output_tokens": response.output_tokens,

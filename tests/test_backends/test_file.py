@@ -82,6 +82,7 @@ class TestFileBackend:
             attribute_verdict="match",
             model="test-model",
             experiment="test-exp",
+            query_type="attribute",
             metadata={"input_tokens": 100},
         )
         backend.log_judgment(judgment)
@@ -92,6 +93,7 @@ class TestFileBackend:
         assert loaded[0].product.image_url == "https://example.com/img.jpg"
         assert loaded[0].product.metadata == {"highlights": ["Free shipping"]}
         assert loaded[0].attribute_verdict == "match"
+        assert loaded[0].query_type == "attribute"
         assert loaded[0].metadata == {"input_tokens": 100}
 
     def test_backwards_compat_missing_attribute_verdict(self, tmp_path):

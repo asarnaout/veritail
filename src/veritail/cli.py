@@ -209,9 +209,14 @@ def report(
     for j in judgments:
         judgments_by_query[j.query].append(j)
 
-    # Use empty query entries (no type info available from stored data)
     from veritail.types import QueryEntry
-    query_entries = [QueryEntry(query=q) for q in judgments_by_query]
+    query_entries = [
+        QueryEntry(
+            query=q,
+            type=next((j.query_type for j in jlist if j.query_type), None),
+        )
+        for q, jlist in judgments_by_query.items()
+    ]
     metrics = compute_all_metrics(judgments_by_query, query_entries)
 
     needs_html = open_browser or (output_path is not None and output_path.endswith(".html"))
@@ -227,7 +232,13 @@ def report(
         for j in baseline_judgments:
             baseline_by_query[j.query].append(j)
 
-        baseline_entries = [QueryEntry(query=q) for q in baseline_by_query]
+        baseline_entries = [
+            QueryEntry(
+                query=q,
+                type=next((j.query_type for j in jlist if j.query_type), None),
+            )
+            for q, jlist in baseline_by_query.items()
+        ]
         baseline_metrics = compute_all_metrics(baseline_by_query, baseline_entries)
 
         report_str = generate_comparison_report(

@@ -123,6 +123,24 @@ class TestRelevanceJudge:
         assert judgment.metadata["input_tokens"] == 100
         assert judgment.metadata["output_tokens"] == 50
 
+    def test_judge_passes_query_type(self):
+        client = _make_mock_client(
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect match."
+        )
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        judgment = judge.judge("shoes", _make_result(), query_type="broad")
+        assert judgment.query_type == "broad"
+
+    def test_judge_query_type_defaults_to_none(self):
+        client = _make_mock_client(
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect match."
+        )
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        judgment = judge.judge("shoes", _make_result())
+        assert judgment.query_type is None
+
     def test_judge_attributes_match(self):
         client = _make_mock_client(
             "SCORE: 3\nATTRIBUTES: match\nREASONING: Color and brand match."

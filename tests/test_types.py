@@ -73,7 +73,21 @@ def test_judgment_record(sample_search_result):
         experiment="exp-1",
     )
     assert judgment.score == 2
+    assert judgment.query_type is None
     assert judgment.metadata == {}
+
+
+def test_judgment_record_with_query_type(sample_search_result):
+    judgment = JudgmentRecord(
+        query="running shoes",
+        product=sample_search_result,
+        score=2,
+        reasoning="Good match",
+        model="test-model",
+        experiment="exp-1",
+        query_type="broad",
+    )
+    assert judgment.query_type == "broad"
 
 
 def test_check_result_defaults():

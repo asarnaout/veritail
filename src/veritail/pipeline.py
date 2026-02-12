@@ -122,11 +122,14 @@ def run_evaluation(
                         attribute_verdict="n/a",
                         model=config.llm_model,
                         experiment=config.name,
+                        query_type=query_entry.type,
                         metadata={"skipped": True, "failed_checks": product_failed_checks},
                     )
                 else:
                     try:
-                        judgment = judge.judge(query_entry.query, result)
+                        judgment = judge.judge(
+                            query_entry.query, result, query_type=query_entry.type,
+                        )
                     except Exception as e:
                         console.print(
                             f"[red]LLM error for '{query_entry.query}' / "
@@ -140,6 +143,7 @@ def run_evaluation(
                             attribute_verdict="n/a",
                             model=config.llm_model,
                             experiment=config.name,
+                            query_type=query_entry.type,
                             metadata={"error": str(e)},
                         )
                     # Annotate with check failures even when LLM ran
