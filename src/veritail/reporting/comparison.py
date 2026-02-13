@@ -6,11 +6,15 @@ from io import StringIO
 from pathlib import Path
 from typing import Optional
 
-from jinja2 import Template
+from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
 from veritail.types import CheckResult, MetricResult
+
+_JINJA_ENV = Environment(
+    autoescape=select_autoescape(("html", "xml"), default_for_string=True),
+)
 
 
 def generate_comparison_report(
@@ -164,7 +168,7 @@ def _generate_html(
     """Generate an HTML comparison report."""
     template_path = Path(__file__).parent / "templates" / "report.html"
     template_str = template_path.read_text(encoding="utf-8")
-    template = Template(template_str)
+    template = _JINJA_ENV.from_string(template_str)
 
     metrics_b_lookup = {m.metric_name: m for m in metrics_b}
     comparison_data = []

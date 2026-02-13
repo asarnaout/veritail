@@ -98,3 +98,28 @@ class TestGenerateComparisonReport:
         )
         assert "Regression" in report
         assert "shoes" in report
+
+    def test_html_escapes_untrusted_comparison_content(self):
+        checks = [
+            CheckResult(
+                check_name="position_shift",
+                query="<script>alert('query')</script>",
+                product_id="SKU-1",
+                passed=True,
+                detail="<img src=x onerror=alert('detail')>",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            checks,
+            "<script>alert('cfg-a')</script>",
+            "experiment",
+            format="html",
+        )
+
+        assert "<script>alert('cfg-a')</script>" not in report
+        assert "<script>alert('query')</script>" not in report
+        assert "<img src=x onerror=alert('detail')>" not in report
+        assert "&lt;script&gt;alert" in report
+        assert "&lt;img src=x onerror=alert" in report

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from veritail.reporting.single import generate_single_report
-from veritail.types import CheckResult, MetricResult
+from veritail.types import CheckResult, JudgmentRecord, MetricResult, SearchResult
 
 
 def _make_metrics() -> list[MetricResult]:
@@ -50,4 +50,34 @@ class TestGenerateSingleReport:
         assert "<html" in report
         assert "ndcg@10" in report
         assert "0.8500" in report
+
+    def test_html_escapes_untrusted_judgment_content(self):
+        judgment = JudgmentRecord(
+            query="<script>alert('query')</script>",
+            product=SearchResult(
+                product_id="SKU-XSS",
+                title="<img src=x onerror=alert('title')>",
+                description="Desc",
+                category="Shoes",
+                price=10.0,
+                position=0,
+            ),
+            score=1,
+            reasoning="<script>alert('reason')</script>",
+            attribute_verdict="n/a",
+            model="test-model",
+            experiment="test-exp",
+        )
+
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=[judgment],
+        )
+
+        assert "<script>alert('reason')</script>" not in report
+        assert "<img src=x onerror=alert('title')>" not in report
+        assert "&lt;script&gt;alert" in report
+        assert "&lt;img src=x onerror=alert" in report
 

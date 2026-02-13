@@ -6,11 +6,15 @@ from io import StringIO
 from pathlib import Path
 from typing import Optional
 
-from jinja2 import Template
+from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
 from veritail.types import CheckResult, JudgmentRecord, MetricResult
+
+_JINJA_ENV = Environment(
+    autoescape=select_autoescape(("html", "xml"), default_for_string=True),
+)
 
 METRIC_DESCRIPTIONS: dict[str, str] = {
     "ndcg@5": "Ranking quality at top 5 — rewards placing the most relevant products highest (graded 0-3)",
@@ -144,7 +148,7 @@ def _generate_html(
     """Generate an HTML report using Jinja2."""
     template_path = Path(__file__).parent / "templates" / "report.html"
     template_str = template_path.read_text(encoding="utf-8")
-    template = Template(template_str)
+    template = _JINJA_ENV.from_string(template_str)
 
     # Build check summary
     check_summary: dict[str, dict[str, int]] = {}
