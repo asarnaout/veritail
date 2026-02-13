@@ -30,6 +30,10 @@ class FileBackend(EvalBackend):
         d.mkdir(parents=True, exist_ok=True)
         return d
 
+    def _experiment_path(self, experiment: str) -> Path:
+        """Return the experiment directory path without creating it."""
+        return self._output_dir / experiment
+
     def log_judgment(self, judgment: JudgmentRecord) -> None:
         """Append a judgment record as a JSON line."""
         exp_dir = self._experiment_dir(judgment.experiment)
@@ -43,13 +47,17 @@ class FileBackend(EvalBackend):
         """Write experiment configuration to a JSON file."""
         exp_dir = self._experiment_dir(name)
         config_file = exp_dir / "config.json"
+        judgments_file = exp_dir / "judgments.jsonl"
 
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump({"name": name, **config}, f, indent=2, default=str)
 
+        # One experiment run should produce one deterministic judgments file.
+        judgments_file.write_text("", encoding="utf-8")
+
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
         """Read all judgments from JSONL file."""
-        exp_dir = self._experiment_dir(experiment)
+        exp_dir = self._experiment_path(experiment)
         judgments_file = exp_dir / "judgments.jsonl"
 
         if not judgments_file.exists():

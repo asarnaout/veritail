@@ -60,6 +60,26 @@ class TestFileBackend:
         judgments = backend.get_judgments("nonexistent")
         assert judgments == []
 
+    def test_get_judgments_empty_does_not_create_experiment_dir(self, tmp_path):
+        backend = FileBackend(output_dir=str(tmp_path))
+        exp_dir = tmp_path / "nonexistent"
+
+        judgments = backend.get_judgments("nonexistent")
+
+        assert judgments == []
+        assert not exp_dir.exists()
+
+    def test_log_experiment_resets_existing_judgments(self, tmp_path):
+        backend = FileBackend(output_dir=str(tmp_path))
+
+        backend.log_experiment("test-exp", {"llm_model": "claude-sonnet-4-5", "top_k": 10})
+        backend.log_judgment(_make_judgment(product_id="SKU-001", score=3))
+        assert len(backend.get_judgments("test-exp")) == 1
+
+        backend.log_experiment("test-exp", {"llm_model": "claude-sonnet-4-5", "top_k": 10})
+
+        assert backend.get_judgments("test-exp") == []
+
     def test_round_trip_with_attributes(self, tmp_path):
         backend = FileBackend(output_dir=str(tmp_path))
 
