@@ -78,7 +78,7 @@ def main() -> None:
 @click.option("--open", "open_browser", is_flag=True, default=False,
               help="Open the HTML report in the browser when complete.")
 @click.option("--skip-on-check-fail/--no-skip-on-check-fail", default=False,
-              help="Skip LLM judgment when a deterministic check fails (default: always run LLM).")
+              help="Skip LLM judgment for a result when any deterministic check fails for that result (default: always run LLM).")
 @click.option("--context", default=None, type=str,
               help="Business context for the LLM judge (e.g. 'B2B industrial kitchen equipment supplier').")
 @click.option("--vertical", default=None, type=str,

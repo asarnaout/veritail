@@ -97,10 +97,12 @@ def run_evaluation(
             checks = run_all_checks(query_entry, results)
             all_checks.extend(checks)
 
-            # Build failed-checks info per product
+            # Build failed-checks info per product.
+            # A "failed check" is any deterministic check with passed=False
+            # attached to a specific product row.
             failed_checks_by_product: dict[str, list[dict]] = {}
             for check in checks:
-                if check.severity == "fail" and check.product_id:
+                if not check.passed and check.product_id:
                     failed_checks_by_product.setdefault(check.product_id, []).append({
                         "check_name": check.check_name,
                         "detail": check.detail,

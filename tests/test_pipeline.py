@@ -312,3 +312,116 @@ class TestRunEvaluation:
         assert ndcg.per_query["same query [1]"] == pytest.approx(1.0)
         assert ndcg.per_query["same query [2]"] == pytest.approx(0.0)
         assert ndcg.value == pytest.approx(0.5)
+
+    def test_skip_on_check_fail_skips_failed_result_rows(self, tmp_path):
+        queries = [QueryEntry(query="nike shoes", type="broad")]
+
+        def adapter(query: str) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    product_id="SKU-1",
+                    title="Nike Air Max 90 Running Shoes Black",
+                    description="desc",
+                    category="Shoes",
+                    price=120.0,
+                    position=0,
+                ),
+                SearchResult(
+                    product_id="SKU-2",
+                    title="Nike Air Max 90 Running Shoes White",
+                    description="desc",
+                    category="Shoes",
+                    price=121.0,
+                    position=1,
+                ),
+            ]
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=10,
+        )
+        llm_client = Mock(spec=LLMClient)
+        llm_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nATTRIBUTES: n/a\nREASONING: Good match",
+            model="test",
+            input_tokens=10,
+            output_tokens=10,
+        )
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: f"Query: {q}")
+
+        judgments, checks, _ = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            skip_llm_on_fail=True,
+        )
+
+        assert any(c.check_name == "duplicate" and not c.passed for c in checks)
+        assert llm_client.complete.call_count == 1
+
+        skipped = [j for j in judgments if j.metadata.get("skipped")]
+        assert len(skipped) == 1
+        assert skipped[0].product.product_id == "SKU-1"
+        assert skipped[0].score == 0
+        assert skipped[0].reasoning.startswith("Skipped:")
+
+    def test_skip_on_check_fail_false_keeps_llm_calls(self, tmp_path):
+        queries = [QueryEntry(query="nike shoes", type="broad")]
+
+        def adapter(query: str) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    product_id="SKU-1",
+                    title="Nike Air Max 90 Running Shoes Black",
+                    description="desc",
+                    category="Shoes",
+                    price=120.0,
+                    position=0,
+                ),
+                SearchResult(
+                    product_id="SKU-2",
+                    title="Nike Air Max 90 Running Shoes White",
+                    description="desc",
+                    category="Shoes",
+                    price=121.0,
+                    position=1,
+                ),
+            ]
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=10,
+        )
+        llm_client = Mock(spec=LLMClient)
+        llm_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nATTRIBUTES: n/a\nREASONING: Good match",
+            model="test",
+            input_tokens=10,
+            output_tokens=10,
+        )
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: f"Query: {q}")
+
+        judgments, checks, _ = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            skip_llm_on_fail=False,
+        )
+
+        assert any(c.check_name == "duplicate" and not c.passed for c in checks)
+        assert llm_client.complete.call_count == 2
+        assert all(not j.metadata.get("skipped") for j in judgments)
