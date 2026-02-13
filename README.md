@@ -8,7 +8,7 @@ veritail takes a set of search queries, runs them against your search implementa
 
 1. **LLM-based relevance judgments** — Each query-product pair is scored 0-3 by Claude or GPT models using a structured rubric
 2. **Deterministic quality checks** — Category alignment, text overlap, duplicate detection, price outlier detection, and attribute matching
-3. **IR metrics** — NDCG@K, MRR, MAP, and Precision@K computed from the LLM scores
+3. **IR metrics** — NDCG@K, MRR, MAP, Precision@K, and Attribute Match Rate@K computed from the LLM scores
 
 You can evaluate a single search configuration or compare two configurations side-by-side to detect regressions and improvements. Results are stored locally or in [Langfuse](https://langfuse.com) for experiment tracking and human annotation.
 
@@ -80,7 +80,7 @@ veritail run \
   --open
 ```
 
-This produces a terminal report with IR metrics, check summaries, and the worst-performing queries. The `--open` flag also generates an HTML report and opens it in your browser with per-query judgment drill-downs, metric tooltips, and check failure details.
+This produces a terminal report with IR metrics and check summaries, and writes an HTML report and `metrics.json` to the output directory. The `--open` flag opens the HTML report in your browser. The HTML report includes per-query judgment drill-downs, metric tooltips, and check failure details.
 
 ### 4. Compare two configurations
 
@@ -109,26 +109,9 @@ Run a single or dual-configuration evaluation.
 | `--backend` | `file` | Storage backend (`file` or `langfuse`) |
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
 | `--top-k` | `10` | Number of results to evaluate per query |
-| `--open` | off | Generate an HTML report and open it in the browser |
+| `--open` | off | Open the HTML report in the browser when complete |
 | `--skip-on-check-fail` | off | Skip LLM judgment when a deterministic check fails (default: always run LLM) |
-
-### `veritail report`
-
-Generate a report from existing evaluation results.
-
-```bash
-# Single experiment report
-veritail report --experiment baseline
-
-# Comparison report
-veritail report --experiment v2 --baseline v1
-
-# HTML output
-veritail report --experiment baseline --output report.html
-
-# Open HTML report in browser
-veritail report --experiment baseline --open
-```
+| `--context` | *(none)* | Business context for the LLM judge (e.g. `'B2B industrial kitchen equipment supplier'`) |
 
 ## Relevance scoring
 
@@ -141,7 +124,7 @@ The default ecommerce rubric scores each query-product pair on a 0-3 scale:
 | 1 | Marginally relevant | Tangentially related; unlikely to be purchased |
 | 0 | Irrelevant | No meaningful connection to the query |
 
-Evaluation criteria (in order of importance): explicit intent match, implicit intent match, category alignment, attribute matching, commercial viability.
+Evaluation criteria (in order of importance): explicit intent match, implicit intent match (informed by `--context` when provided), category alignment, attribute matching, commercial viability.
 
 ## Deterministic checks
 
@@ -173,12 +156,13 @@ All metrics are computed from the 0-3 LLM relevance scores:
 | MRR | Mean Reciprocal Rank (relevance threshold: 2) |
 | MAP | Mean Average Precision (relevance threshold: 2) |
 | P@5, P@10 | Precision at K (relevance threshold: 2) |
+| Attribute Match@5, @10 | Fraction of results where LLM-judged attributes match the query (queries without attribute constraints are excluded) |
 
 Metrics are reported as aggregates, per-query breakdowns, and by query type. The HTML report includes info tooltips explaining each metric.
 
 ## HTML report
 
-Use `--open` with `veritail run` or `veritail report` to generate a standalone HTML report that includes:
+`veritail run` always writes a standalone HTML report to the output directory. Use `--open` to also open it in the browser. The report includes:
 
 - IR metrics table with tooltip descriptions
 - Deterministic check pass/fail summary
@@ -214,7 +198,8 @@ eval-results/
   baseline/
     config.json
     judgments.jsonl
-    deterministic.jsonl
+    metrics.json
+    report.html
 ```
 
 ### Langfuse backend
