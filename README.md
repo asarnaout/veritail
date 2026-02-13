@@ -78,6 +78,10 @@ veritail run \
   --open
 ```
 
+<p align="center">
+  <img src="assets/report-1.png" alt="IR metrics and deterministic checks" width="720">
+</p>
+
 If you omit `--config-name`, veritail auto-generates one from adapter filename + UTC timestamp.
 
 Outputs are written under:
@@ -85,10 +89,6 @@ Outputs are written under:
 ```text
 eval-results/<generated-or-custom-config-name>/
 ```
-
-<p align="center">
-  <img src="assets/report-1.png" alt="IR metrics and deterministic checks" width="720">
-</p>
 
 ### 5. Compare two search configurations
 
