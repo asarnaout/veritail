@@ -120,8 +120,8 @@
         <tbody>
             {% for name, counts in check_summary.items() | sort %}
             <tr>
-                <td>{{ name }}</td>
-                <td class="positive">{{ counts.passed }}</td>
+                <td>{{ counts.display_name }}</td>
+                <td class="{% if counts.passed_is_na %}neutral{% else %}positive{% endif %}">{{ counts.passed_display }}</td>
                 <td class="{% if counts.failed > 0 %}negative{% else %}neutral{% endif %}">{{ counts.failed }}</td>
             </tr>
             {% endfor %}

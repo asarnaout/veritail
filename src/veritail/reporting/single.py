@@ -35,6 +35,38 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
     ),
 }
 
+FAILURE_ONLY_CHECKS: set[str] = {"duplicate"}
+CHECK_DISPLAY_NAMES: dict[str, str] = {
+    "duplicate": "duplicate (flagged pairs)",
+}
+
+
+def _summarize_checks(checks: list[CheckResult]) -> dict[str, dict[str, object]]:
+    """Build a display-ready check summary for reports."""
+    summary: dict[str, dict[str, object]] = {}
+    for c in checks:
+        if c.check_name not in summary:
+            summary[c.check_name] = {
+                "display_name": CHECK_DISPLAY_NAMES.get(c.check_name, c.check_name),
+                "passed": 0,
+                "failed": 0,
+                "passed_display": "0",
+                "passed_is_na": False,
+            }
+
+        if c.passed:
+            summary[c.check_name]["passed"] = int(summary[c.check_name]["passed"]) + 1
+        else:
+            summary[c.check_name]["failed"] = int(summary[c.check_name]["failed"]) + 1
+
+    for check_name, counts in summary.items():
+        passed = int(counts["passed"])
+        is_failure_only = check_name in FAILURE_ONLY_CHECKS and passed == 0
+        counts["passed_is_na"] = is_failure_only
+        counts["passed_display"] = "n/a" if is_failure_only else str(passed)
+
+    return summary
+
 
 def generate_single_report(
     metrics: list[MetricResult],
@@ -108,17 +140,14 @@ def _generate_terminal(
     check_table.add_column("Passed", justify="right", style="green")
     check_table.add_column("Failed", justify="right", style="red")
 
-    check_summary: dict[str, dict[str, int]] = {}
-    for c in checks:
-        if c.check_name not in check_summary:
-            check_summary[c.check_name] = {"passed": 0, "failed": 0}
-        if c.passed:
-            check_summary[c.check_name]["passed"] += 1
-        else:
-            check_summary[c.check_name]["failed"] += 1
+    check_summary = _summarize_checks(checks)
 
-    for name, counts in sorted(check_summary.items()):
-        check_table.add_row(name, str(counts["passed"]), str(counts["failed"]))
+    for _, counts in sorted(check_summary.items()):
+        check_table.add_row(
+            str(counts["display_name"]),
+            str(counts["passed_display"]),
+            str(counts["failed"]),
+        )
 
     console.print(check_table)
 
@@ -151,14 +180,7 @@ def _generate_html(
     template = _JINJA_ENV.from_string(template_str)
 
     # Build check summary
-    check_summary: dict[str, dict[str, int]] = {}
-    for c in checks:
-        if c.check_name not in check_summary:
-            check_summary[c.check_name] = {"passed": 0, "failed": 0}
-        if c.passed:
-            check_summary[c.check_name]["passed"] += 1
-        else:
-            check_summary[c.check_name]["failed"] += 1
+    check_summary = _summarize_checks(checks)
 
     # Worst queries
     ndcg = next((m for m in metrics if m.metric_name == "ndcg@10"), None)

@@ -56,7 +56,7 @@ You MUST respond in exactly this format:
 
 SCORE: <score>
 ATTRIBUTES: <verdict>
-REASONING: <your chain-of-thought explanation>
+REASONING: <your concise justification in 1-3 sentences>
 
 Where <score> is a single digit 0, 1, 2, or 3.
 Where <verdict> is one of:
@@ -64,8 +64,8 @@ Where <verdict> is one of:
 - partial — some but not all query-specified attributes are satisfied
 - mismatch — the product contradicts one or more query-specified attributes
 - n/a — the query does not specify any filterable attributes
-Where <reasoning> is a clear explanation of why you assigned that score, \
-referencing the specific criteria above.
+Where <reasoning> is a brief explanation of why you assigned that score, \
+grounded in the criteria above. Do not include chain-of-thought.
 """
 
 

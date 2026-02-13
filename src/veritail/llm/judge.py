@@ -59,7 +59,7 @@ class RelevanceJudge:
         Expected format:
             SCORE: <0-3>
             ATTRIBUTES: <match|partial|mismatch|n/a>
-            REASONING: <text>
+            REASONING: <brief justification text>
         """
         # Extract score
         score_match = re.search(r"(?i)SCORE\s*[:=]\s*(\d)", response_text)

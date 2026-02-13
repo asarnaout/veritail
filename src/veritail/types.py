@@ -39,7 +39,7 @@ class JudgmentRecord:
     query: str
     product: SearchResult
     score: int  # 0-3 relevance scale
-    reasoning: str  # LLM chain-of-thought
+    reasoning: str  # brief LLM justification
     model: str  # e.g. "claude-sonnet-4-5"
     experiment: str  # config name
     attribute_verdict: str = "n/a"  # match | partial | mismatch | n/a

@@ -41,6 +41,20 @@ class TestGenerateSingleReport:
         assert "zero_results" in report
         assert "category_alignment" in report
 
+    def test_duplicate_check_displays_as_failure_only_in_terminal(self):
+        checks = [
+            CheckResult(
+                check_name="duplicate",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Near-duplicate titles",
+            ),
+        ]
+        report = generate_single_report(_make_metrics(), checks)
+        assert "duplicate (flagged pairs)" in report
+        assert "n/a" in report
+
     def test_terminal_report_worst_queries(self):
         report = generate_single_report(_make_metrics(), _make_checks())
         assert "laptop" in report  # lower NDCG query
@@ -50,6 +64,21 @@ class TestGenerateSingleReport:
         assert "<html" in report
         assert "ndcg@10" in report
         assert "0.8500" in report
+
+    def test_duplicate_check_displays_as_failure_only_in_html(self):
+        checks = [
+            CheckResult(
+                check_name="duplicate",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Near-duplicate titles",
+            ),
+        ]
+        report = generate_single_report(_make_metrics(), checks, format="html")
+        assert "duplicate (flagged pairs)" in report
+        assert ">n/a<" in report
+        assert ">1<" in report
 
     def test_html_escapes_untrusted_judgment_content(self):
         judgment = JudgmentRecord(
