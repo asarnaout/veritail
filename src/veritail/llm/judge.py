@@ -62,7 +62,7 @@ class RelevanceJudge:
             REASONING: <text>
         """
         # Extract score
-        score_match = re.search(r"SCORE:\s*(\d)", response_text)
+        score_match = re.search(r"(?i)SCORE\s*[:=]\s*(\d)", response_text)
         if not score_match:
             raise ValueError(
                 f"Could not parse score from LLM response. "
