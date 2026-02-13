@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
 from pathlib import Path
 
 import click
@@ -43,7 +45,7 @@ def main() -> None:
 @click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
 @click.option("--top-k", default=10, type=int, help="Number of results to retrieve per query")
 @click.option("--open", "open_browser", is_flag=True, default=False,
-              help="Generate an HTML report and open it in the browser when complete.")
+              help="Open the HTML report in the browser when complete.")
 @click.option("--skip-on-check-fail/--no-skip-on-check-fail", default=False,
               help="Skip LLM judgment when a deterministic check fails (default: always run LLM).")
 @click.option("--context", default=None, type=str,
@@ -107,11 +109,21 @@ def run(
         report = generate_single_report(metrics, checks)
         console.print(report)
 
+        exp_dir = Path(output_dir) / config_names[0]
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        metrics_path = exp_dir / "metrics.json"
+        metrics_path.write_text(
+            json.dumps([asdict(m) for m in metrics], indent=2, default=str),
+            encoding="utf-8",
+        )
+
+        html = generate_single_report(metrics, checks, judgments=judgments, format="html")
+        html_path = exp_dir / "report.html"
+        html_path.write_text(html, encoding="utf-8")
+        console.print(f"[dim]HTML report -> {html_path}[/dim]")
+
         if open_browser:
-            html = generate_single_report(metrics, checks, judgments=judgments, format="html")
-            html_path = Path(output_dir) / config_names[0] / "report.html"
-            html_path.write_text(html, encoding="utf-8")
-            console.print(f"[dim]HTML report ->{html_path}[/dim]")
             import webbrowser
             webbrowser.open(html_path.resolve().as_uri())
 
@@ -155,115 +167,29 @@ def run(
         )
         console.print(report)
 
-        if open_browser:
-            html = generate_comparison_report(
-                metrics_a, metrics_b,
-                comparison_checks,
-                config_names[0], config_names[1],
-                format="html",
+        for cfg_name, cfg_metrics in [(config_names[0], metrics_a), (config_names[1], metrics_b)]:
+            exp_dir = Path(output_dir) / cfg_name
+            exp_dir.mkdir(parents=True, exist_ok=True)
+            metrics_path = exp_dir / "metrics.json"
+            metrics_path.write_text(
+                json.dumps([asdict(m) for m in cfg_metrics], indent=2, default=str),
+                encoding="utf-8",
             )
-            html_path = Path(output_dir) / f"{config_names[0]}_vs_{config_names[1]}" / "report.html"
-            html_path.parent.mkdir(parents=True, exist_ok=True)
-            html_path.write_text(html, encoding="utf-8")
-            console.print(f"[dim]HTML report ->{html_path}[/dim]")
+
+        html = generate_comparison_report(
+            metrics_a, metrics_b,
+            comparison_checks,
+            config_names[0], config_names[1],
+            format="html",
+        )
+        html_path = Path(output_dir) / f"{config_names[0]}_vs_{config_names[1]}" / "report.html"
+        html_path.parent.mkdir(parents=True, exist_ok=True)
+        html_path.write_text(html, encoding="utf-8")
+        console.print(f"[dim]HTML report -> {html_path}[/dim]")
+
+        if open_browser:
             import webbrowser
             webbrowser.open(html_path.resolve().as_uri())
-
-
-@main.command()
-@click.option("--experiment", required=True, help="Experiment name")
-@click.option("--baseline", default=None, help="Baseline experiment name (for comparison)")
-@click.option("--output", "output_path", default=None, type=click.Path(), help="Output file path (HTML)")
-@click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]))
-@click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
-@click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
-@click.option("--open", "open_browser", is_flag=True, default=False,
-              help="Open the HTML report in the browser when complete.")
-def report(
-    experiment: str,
-    baseline: str | None,
-    output_path: str | None,
-    backend_type: str,
-    output_dir: str,
-    backend_url: str | None,
-    open_browser: bool,
-) -> None:
-    """Generate report from existing evaluation results."""
-    backend_kwargs: dict = {}
-    if backend_type == "file":
-        backend_kwargs["output_dir"] = output_dir
-    elif backend_type == "langfuse" and backend_url:
-        backend_kwargs["url"] = backend_url
-
-    backend = create_backend(backend_type, **backend_kwargs)
-
-    judgments = backend.get_judgments(experiment)
-    if not judgments:
-        console.print(f"[red]No judgments found for experiment '{experiment}'")
-        raise SystemExit(1)
-
-    from collections import defaultdict
-    from veritail.metrics.ir import compute_all_metrics
-
-    judgments_by_query: dict[str, list] = defaultdict(list)
-    for j in judgments:
-        judgments_by_query[j.query].append(j)
-
-    from veritail.types import QueryEntry
-    query_entries = [
-        QueryEntry(
-            query=q,
-            type=next((j.query_type for j in jlist if j.query_type), None),
-        )
-        for q, jlist in judgments_by_query.items()
-    ]
-    metrics = compute_all_metrics(judgments_by_query, query_entries)
-
-    needs_html = open_browser or (output_path is not None and output_path.endswith(".html"))
-    output_format = "html" if needs_html else "terminal"
-
-    if baseline:
-        baseline_judgments = backend.get_judgments(baseline)
-        if not baseline_judgments:
-            console.print(f"[red]No judgments found for baseline '{baseline}'")
-            raise SystemExit(1)
-
-        baseline_by_query: dict[str, list] = defaultdict(list)
-        for j in baseline_judgments:
-            baseline_by_query[j.query].append(j)
-
-        baseline_entries = [
-            QueryEntry(
-                query=q,
-                type=next((j.query_type for j in jlist if j.query_type), None),
-            )
-            for q, jlist in baseline_by_query.items()
-        ]
-        baseline_metrics = compute_all_metrics(baseline_by_query, baseline_entries)
-
-        report_str = generate_comparison_report(
-            baseline_metrics, metrics, [], baseline, experiment, format=output_format,
-        )
-    else:
-        report_str = generate_single_report(
-            metrics, [], format=output_format,
-            judgments=judgments if output_format == "html" else None,
-        )
-
-    if output_path:
-        Path(output_path).write_text(report_str, encoding="utf-8")
-        console.print(f"Report written to {output_path}")
-        if open_browser:
-            import webbrowser
-            webbrowser.open(Path(output_path).resolve().as_uri())
-    elif open_browser:
-        html_path = Path(output_dir) / experiment / "report.html"
-        html_path.write_text(report_str, encoding="utf-8")
-        console.print(f"[dim]HTML report ->{html_path}[/dim]")
-        import webbrowser
-        webbrowser.open(html_path.resolve().as_uri())
-    else:
-        console.print(report_str)
 
 
 if __name__ == "__main__":

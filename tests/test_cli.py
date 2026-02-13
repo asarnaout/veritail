@@ -22,12 +22,6 @@ class TestCLI:
         assert "--adapter" in result.output
         assert "--config-name" in result.output
 
-    def test_report_help(self):
-        runner = CliRunner()
-        result = runner.invoke(main, ["report", "--help"])
-        assert result.exit_code == 0
-        assert "--experiment" in result.output
-
     def test_run_mismatched_adapters_and_configs(self, tmp_path):
         queries_file = tmp_path / "queries.csv"
         queries_file.write_text("query\nshoes\n")

@@ -16,10 +16,10 @@ class FileBackend(EvalBackend):
 
     Output structure:
         {output_dir}/{experiment}/
-            judgments.jsonl      - All LLM judgments
-            deterministic.jsonl  - Deterministic check results
-            config.json          - Experiment configuration
-            metrics.json         - Computed IR metrics
+            judgments.jsonl  - All LLM judgments
+            config.json      - Experiment configuration
+            metrics.json     - Computed IR metrics (written by CLI)
+            report.html      - HTML report (written by CLI)
     """
 
     def __init__(self, output_dir: str = "./eval-results") -> None:
