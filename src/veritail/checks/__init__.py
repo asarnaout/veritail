@@ -6,6 +6,7 @@ from veritail.checks.query_level import check_result_count, check_zero_results
 from veritail.checks.result_level import (
     check_category_alignment,
     check_duplicates,
+    check_out_of_stock_prominence,
     check_price_outliers,
     check_text_overlap,
     check_title_length,
@@ -31,6 +32,7 @@ def run_all_checks(
         checks.extend(check_price_outliers(query.query, results))
         checks.extend(check_duplicates(query.query, results))
         checks.extend(check_title_length(query.query, results))
+        checks.extend(check_out_of_stock_prominence(query.query, results))
 
     return checks
 
@@ -43,5 +45,6 @@ __all__ = [
     "check_price_outliers",
     "check_duplicates",
     "check_title_length",
+    "check_out_of_stock_prominence",
     "run_all_checks",
 ]

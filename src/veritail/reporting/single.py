@@ -43,6 +43,7 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
     "price_outlier": "Flags results with prices far outside the result set's normal range using the IQR method",
     "duplicate": "Detects near-duplicate products in results based on title similarity",
     "title_length": "Flags titles that are unusually long (> 120 chars, possible SEO stuffing) or short (< 10 chars, possibly malformed)",
+    "out_of_stock_prominence": "Flags out-of-stock products ranked too high (position 1 = fail, positions 2-5 = warning)",
 }
 
 FAILURE_ONLY_CHECKS: set[str] = {"duplicate"}

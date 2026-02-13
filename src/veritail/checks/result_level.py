@@ -269,3 +269,75 @@ def check_title_length(
             )
 
     return checks
+
+
+def check_out_of_stock_prominence(
+    query: str,
+    results: list[SearchResult],
+) -> list[CheckResult]:
+    """Flag out-of-stock products that appear too high in ranking.
+
+    Rules:
+    - position 0 and out-of-stock -> fail severity
+    - positions 1-4 and out-of-stock -> warning severity
+    """
+    checks: list[CheckResult] = []
+
+    for result in results:
+        if result.in_stock:
+            checks.append(
+                CheckResult(
+                    check_name="out_of_stock_prominence",
+                    query=query,
+                    product_id=result.product_id,
+                    passed=True,
+                    detail="In stock",
+                    severity="info",
+                )
+            )
+            continue
+
+        if result.position == 0:
+            checks.append(
+                CheckResult(
+                    check_name="out_of_stock_prominence",
+                    query=query,
+                    product_id=result.product_id,
+                    passed=False,
+                    detail=(
+                        "Out-of-stock product appears at position 1 "
+                        "(top result)"
+                    ),
+                    severity="fail",
+                )
+            )
+        elif 1 <= result.position <= 4:
+            checks.append(
+                CheckResult(
+                    check_name="out_of_stock_prominence",
+                    query=query,
+                    product_id=result.product_id,
+                    passed=False,
+                    detail=(
+                        "Out-of-stock product appears in top 5 "
+                        f"(position {result.position + 1})"
+                    ),
+                    severity="warning",
+                )
+            )
+        else:
+            checks.append(
+                CheckResult(
+                    check_name="out_of_stock_prominence",
+                    query=query,
+                    product_id=result.product_id,
+                    passed=True,
+                    detail=(
+                        "Out-of-stock product appears below top 5 "
+                        f"(position {result.position + 1})"
+                    ),
+                    severity="info",
+                )
+            )
+
+    return checks

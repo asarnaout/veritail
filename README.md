@@ -140,6 +140,7 @@ Default rubric criteria:
 - text overlap (Jaccard)
 - price outlier detection (IQR)
 - near-duplicate detection (title similarity threshold)
+- out-of-stock prominence (position 1 = fail, positions 2-5 = warning)
 
 **Comparison-level** (dual-config only)
 - result overlap (Jaccard)

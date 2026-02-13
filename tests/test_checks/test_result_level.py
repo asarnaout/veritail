@@ -3,6 +3,7 @@
 from veritail.checks.result_level import (
     check_category_alignment,
     check_duplicates,
+    check_out_of_stock_prominence,
     check_price_outliers,
     check_text_overlap,
     check_title_length,
@@ -200,3 +201,50 @@ class TestTitleLength:
         assert len(checks) == 1
         assert not checks[0].passed
         assert "> 40" in checks[0].detail
+
+
+class TestOutOfStockProminence:
+    def test_position_1_out_of_stock_is_fail(self):
+        results = [_make_result("SKU-1", title="Product A", position=0)]
+        results[0].in_stock = False
+
+        checks = check_out_of_stock_prominence("shoes", results)
+
+        assert len(checks) == 1
+        assert checks[0].check_name == "out_of_stock_prominence"
+        assert not checks[0].passed
+        assert checks[0].severity == "fail"
+
+    def test_positions_2_to_5_out_of_stock_are_warning(self):
+        results = [
+            _make_result(f"SKU-{i}", title=f"Product {i}", position=i)
+            for i in range(1, 5)
+        ]
+        for result in results:
+            result.in_stock = False
+
+        checks = check_out_of_stock_prominence("shoes", results)
+
+        assert len(checks) == 4
+        assert all(not c.passed for c in checks)
+        assert all(c.severity == "warning" for c in checks)
+
+    def test_out_of_stock_below_top_5_passes(self):
+        results = [_make_result("SKU-7", title="Product 7", position=6)]
+        results[0].in_stock = False
+
+        checks = check_out_of_stock_prominence("shoes", results)
+
+        assert len(checks) == 1
+        assert checks[0].passed
+        assert checks[0].severity == "info"
+
+    def test_in_stock_passes(self):
+        results = [_make_result("SKU-1", title="Product A", position=0)]
+        results[0].in_stock = True
+
+        checks = check_out_of_stock_prominence("shoes", results)
+
+        assert len(checks) == 1
+        assert checks[0].passed
+        assert checks[0].severity == "info"
