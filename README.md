@@ -7,7 +7,7 @@ Ecommerce search relevance evaluation tool. Evaluate and compare the quality of 
 veritail takes a set of search queries, runs them against your search implementation, and evaluates result quality through three complementary approaches:
 
 1. **LLM-based relevance judgments** — Each query-product pair is scored 0-3 by Claude or GPT models using a structured rubric
-2. **Deterministic quality checks** — Category alignment, text overlap, duplicate detection, price outlier detection, and attribute matching
+2. **Deterministic quality checks** — Category alignment, text overlap, duplicate detection, and price outlier detection
 3. **IR metrics** — NDCG@K, MRR, MAP, Precision@K, and Attribute Match Rate@K computed from the LLM scores
 
 You can evaluate a single search configuration or compare two configurations side-by-side to detect regressions and improvements. Results are stored locally or in [Langfuse](https://langfuse.com) for experiment tracking and human annotation.
@@ -199,7 +199,6 @@ These checks run alongside LLM judgments. By default the LLM always runs, but yo
 
 **Result-level:**
 - Category alignment against expected/majority category
-- Attribute matching (e.g., color extracted from query)
 - Text overlap (Jaccard similarity between query and title)
 - Price outlier detection (IQR method)
 - Near-duplicate detection (title similarity > 0.85)
