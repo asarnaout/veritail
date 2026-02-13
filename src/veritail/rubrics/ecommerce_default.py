@@ -76,6 +76,11 @@ def format_user_prompt(query: str, result: SearchResult) -> str:
         attrs_lines = [f"  - {k}: {v}" for k, v in result.attributes.items()]
         attrs_str = "\n".join(attrs_lines)
 
+    metadata_str = ""
+    if result.metadata:
+        meta_lines = [f"  - {k}: {v}" for k, v in result.metadata.items()]
+        metadata_str = "\n".join(meta_lines)
+
     return f"""\
 ## Search Query
 {query}
@@ -87,6 +92,7 @@ def format_user_prompt(query: str, result: SearchResult) -> str:
 - **Price**: ${result.price:.2f}
 - **In Stock**: {"Yes" if result.in_stock else "No"}
 - **Position in Results**: {result.position + 1}
-{f"- **Attributes**:{chr(10)}{attrs_str}" if attrs_str else ""}
+{f"- **Attributes**:{chr(10)}{attrs_str}" if attrs_str else ""}\
+{f"{chr(10)}- **Metadata**:{chr(10)}{metadata_str}" if metadata_str else ""}
 
 Please evaluate the relevance of this product to the search query."""
