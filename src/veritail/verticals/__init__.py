@@ -8,122 +8,122 @@ FOODSERVICE = """\
 ## Vertical: Foodservice
 
 You are evaluating search results for a foodservice equipment and supplies site. \
-Shoppers are restaurant owners, caterers, institutional kitchen managers, and \
-food-truck operators buying commercial-grade products for professional use.
+Think like a kitchen operator or purchasing manager who cares about uptime, safety, \
+compliance, and operational fit in a commercial environment.
 
 ### Scoring considerations
 
-- **Pack size and unit relevance**: Foodservice buyers purchase in bulk. A single \
-retail-size item when commercial cases or bulk packs are expected should score lower. \
-Conversely, a bulk pack of a relevant item is a strong signal.
-- **Commercial-grade expectations**: Results should be commercial/NSF-rated equipment \
-unless the query specifically targets consumer-grade. A residential blender returned \
-for "commercial blender" is a poor match.
-- **Food-safety certifications**: Products requiring food contact (pans, prep surfaces, \
-gloves, utensils) should carry NSF, UL-certified, or FDA-compliant designations when \
-applicable. Absence of expected certification is a negative signal.
-- **Foodservice brand interpretation**: Brands like Cambro, Vollrath, True, Beverage Air, \
-and Avantco are foodservice-specific. Their presence is a positive relevance signal. \
-Consumer brands (KitchenAid, Cuisinart) may indicate a residential product.
-- **Cross-category intent**: Queries like "gloves" mean food-safe disposable gloves \
-(vinyl, nitrile), not medical exam gloves or winter gloves. "Wrap" means plastic food \
-wrap or foil, not gift wrap. "Thermometer" means a food probe thermometer, not a \
-medical or ambient thermometer. Interpret ambiguous terms through foodservice context.
-- **Equipment specifications**: Voltage (120V vs 208-240V), gas type (natural vs LP), \
-and plug configuration matter for commercial kitchens. A mismatch on these specs for \
-equipment queries is a significant negative signal."""
+- **Use a hard-constraint-first hierarchy**: When explicit constraints are present \
+(capacity, dimensions, voltage, gas type, connection, material, certification, \
+pack size), treat mismatches as major relevance penalties even if category is close.
+- **Commercial-duty expectation**: Default to commercial-grade intent unless the query \
+explicitly signals residential/home use. Consumer-grade products are weaker matches for \
+commercial intent.
+- **Food safety and compliance**: For food-contact items, relevant safety/compliance \
+signals (for example NSF/FDA claims) materially increase relevance. For powered \
+equipment, appropriate commercial safety marks (for example UL/ETL where relevant) \
+should be treated as positive trust signals.
+- **Unit economics and pack size**: Foodservice buyers often purchase in case packs or \
+bulk formats. Retail-size units may be weak matches when query intent implies commercial \
+volume or refill cycles.
+- **Primary item vs accessory**: If the query asks for the main product ("prep table", \
+"stand mixer", "steam table pan"), accessories and replacement parts should score lower \
+unless the query explicitly asks for them.
+- **Operational workflow fit**: Prioritize products that match realistic service workflow \
+constraints (durability, cleaning/sanitation needs, throughput, holding temperature, \
+storage format, service style).
+- **Ambiguous term disambiguation in foodservice context**: \
+  "gloves" -> food-safe disposable gloves, \
+  "wrap" -> food wrap/foil, \
+  "thermometer" -> food probe thermometer, \
+  "pan" -> foodservice pan/cookware (not unrelated categories).
+- **Brand as signal, not rule**: Foodservice-native brands can be positive signals, \
+but do not over-rely on brand alone when specs and use-case fit are better indicators."""
 
 INDUSTRIAL = """\
 ## Vertical: Industrial
 
-You are evaluating search results for an industrial supply site. Shoppers are \
-maintenance technicians, procurement specialists, and facility managers buying \
-MRO (maintenance, repair, and operations) supplies, safety equipment, and \
-industrial components.
+You are evaluating search results for an industrial supply site. Think like a \
+maintenance technician or procurement specialist whose priorities are exact fit, \
+safety, compliance, and minimizing downtime.
 
 ### Scoring considerations
 
-- **Precise specification matching**: Industrial buyers search by exact specs \
-(thread size, voltage, material grade, tensile strength). A product that matches \
-the category but not the spec (e.g., 1/2"-13 bolt when 1/2"-20 was queried) is \
-a poor match despite surface similarity.
-- **Compliance and standards codes**: Queries referencing ANSI, ASTM, NFPA, or \
-MIL-SPEC standards require products that meet those standards. A product without \
-the referenced certification should score low.
-- **Compatibility requirements**: Fasteners, fittings, and replacement parts must \
-be compatible with the referenced system. Metric vs imperial, pipe thread vs \
-machine thread, and flare vs compression fittings are not interchangeable.
-- **PPE certification**: Safety products must carry appropriate certifications \
-(ANSI Z87.1 for eye protection, ANSI/ISEA 105 for cut resistance, NFPA 70E for \
-arc flash). Uncertified alternatives are not acceptable substitutes.
-- **Material grade significance**: In industrial contexts, "stainless steel" is \
-not generic — 304 vs 316 vs 410 matters. Similarly, Grade 5 vs Grade 8 bolts \
-serve different load requirements. When a specific grade is queried, only that \
-grade is a strong match.
-- **Cross-category intent**: "Tape" means industrial adhesive tape (duct, \
-electrical, masking), not office tape. "Markers" means industrial paint markers, \
-not writing instruments. "Gloves" means work gloves (leather, cut-resistant, \
-chemical-resistant), not disposable exam gloves."""
+- **Exact replacement mindset**: In industrial contexts, "close enough" is often wrong. \
+Exact spec fit is the default expectation.
+- **Use hard constraints first**: Thread pitch, dimensions, voltage, pressure rating, \
+temperature rating, material grade, and tolerance class are hard requirements when \
+specified. Near matches should be scored down.
+- **Part number and fitment are high-priority evidence**: Exact MPN/OEM or clear fitment \
+compatibility is a strong relevance signal. Near-miss part numbers are usually incorrect.
+- **Standards and certification requirements**: If the query references ANSI/ASTM/NFPA/ \
+MIL-SPEC/OSHA-related criteria, treat compliance as mandatory unless explicitly optional.
+- **System compatibility details matter**: Metric vs imperial, NPT vs BSP, flare vs \
+compression, voltage/phase, and connector standards are non-interchangeable in many \
+industrial applications.
+- **Material/environment suitability**: Match material and coating to environment needs \
+(corrosion, chemical exposure, heat, load class). 304 vs 316 or Grade 5 vs Grade 8 are \
+meaningful distinctions, not minor variants.
+- **Kit/assembly vs component intent**: If query asks for a kit or assembly, single \
+components are weaker matches unless clearly sold/positioned as a complete equivalent.
+- **PPE and safety gear strictness**: For PPE queries, required certifications and \
+protection ratings should be treated as hard constraints, not optional nice-to-haves."""
 
 ELECTRONICS = """\
 ## Vertical: Electronics
 
-You are evaluating search results for a consumer electronics or computer \
-components site. Shoppers range from everyday consumers to IT professionals \
-and enthusiasts buying devices, accessories, and components.
+You are evaluating search results for a consumer electronics or computer components \
+site. Think like a buyer optimizing for compatibility, performance-per-dollar, and \
+avoiding return-causing mismatches.
 
 ### Scoring considerations
 
-- **Compatibility as hard constraint**: Electronics accessories and components \
-must be compatible with the referenced device, platform, or standard. A USB-A \
-cable returned for a "USB-C cable" query is irrelevant regardless of other \
-attributes. A DDR4 RAM module for a "DDR5" query is a mismatch.
-- **Model and generation specificity**: Queries referencing a specific model \
-(e.g., "iPhone 15 case", "RTX 4090") require exact model matches. A case for \
-iPhone 14 or a listing for RTX 4080 is not a strong match even though the \
-category is correct.
-- **Recency expectations**: For fast-moving categories (phones, GPUs, laptops), \
-previous-generation products returned for generic queries (e.g., "best laptop") \
-should score lower unless explicitly searching for older models.
-- **Spec-driven queries**: When queries include specs (wattage, capacity, speed \
-class, resolution), those specs are hard requirements. A "1TB NVMe SSD" query \
-should not return 500GB drives. A "4K monitor" query should not return 1080p \
-displays.
-- **Brand and ecosystem**: Some queries imply ecosystem constraints. "AirPods \
-case" means Apple AirPods, not generic earbuds. "Surface keyboard" means \
-Microsoft Surface-compatible. Ecosystem context should inform relevance.
-- **Accessory vs primary product**: A query for "laptop charger" wants the \
-charger, not a laptop that comes with one. A query for "monitor" wants the \
-display, not a monitor arm or cable."""
+- **Compatibility is the primary gate**: Wrong platform/device compatibility should \
+heavily penalize relevance even when the product is in the right category.
+- **Connector and interface precision**: USB-C vs USB-A, Lightning vs USB-C, \
+SODIMM vs DIMM, PCIe generation, M.2 NVMe vs M.2 SATA, and socket/chipset support are \
+hard constraints when implied or specified.
+- **Model-generation specificity**: Query mentions of exact models or generations \
+("iPhone 15", "RTX 4090", "Wi-Fi 6E") require exact alignment. Adjacent generations are \
+usually weaker matches unless query intent is broad.
+- **Spec-driven intent**: Capacity, speed class, wattage, refresh rate, resolution, \
+latency, and codec support should be treated as explicit requirements when present.
+- **Condition and market constraints**: If query implies new/refurbished, unlocked/ \
+carrier-locked, region compatibility, or warranty expectations, mismatches should score lower.
+- **Primary product vs accessory disambiguation**: If query asks for a primary device, \
+accessories should score lower, and vice versa ("laptop charger" should not return laptops).
+- **Ecosystem constraints**: Some queries imply platform ecosystem intent (Apple, Surface, \
+PlayStation, etc.). Treat ecosystem compatibility as material to relevance.
+- **Recency and value intent**: For queries like "latest" or "best", older-generation \
+products should generally score lower unless the query explicitly signals budget or \
+previous-generation intent."""
 
 FASHION = """\
 ## Vertical: Fashion
 
-You are evaluating search results for a fashion or apparel site. Shoppers are \
-consumers buying clothing, footwear, and accessories for personal use.
+You are evaluating search results for a fashion/apparel site. Think like a shopper and \
+merchant who care about fit confidence, style intent, and reducing return risk.
 
 ### Scoring considerations
 
-- **Gender targeting**: Fashion queries often imply or state a gender. "Men's \
-running shoes" must return men's products. Unisex items are acceptable when the \
-query does not specify gender. Returning women's products for a men's query (or \
-vice versa) is a strong negative signal.
-- **Occasion and style context**: "Dress shoes" implies formal; "casual sneakers" \
-implies everyday wear. A hiking boot for "dress shoes" is irrelevant despite being \
-footwear. A cocktail dress for "casual dress" is a weak match.
-- **Size system awareness**: Queries may reference specific size systems (US, EU, \
-UK) or size categories (plus size, petite, big & tall). Results should be available \
-in the relevant size system or category when specified.
-- **Brand and price tier**: Fashion shoppers are often brand- and tier-conscious. \
-A query for "designer handbag" expects luxury brands, not mass-market alternatives. \
-"Affordable running shoes" should not return $300 premium models.
-- **Material and fabric requirements**: When a query specifies material ("silk \
-blouse", "leather jacket", "cotton t-shirt"), the product must match that material. \
-Faux leather for "leather jacket" is a weaker match. Polyester for "cotton t-shirt" \
-is irrelevant.
-- **Seasonal and trend relevance**: "Winter coat" should not return lightweight \
-spring jackets. "Swimsuit" should return swimwear, not cover-ups or beach towels. \
-Interpret seasonal terms through their standard fashion meaning."""
+- **Fit and size are core relevance drivers**: When size system or fit profile is \
+specified (US/EU/UK, petite, plus, big & tall, slim/relaxed), mismatches should be \
+penalized strongly.
+- **Gender/fit-profile alignment**: If query specifies men's/women's/kids' intent, \
+results should align. Unisex can be acceptable when query does not explicitly constrain this.
+- **Occasion/style intent**: Match use-case semantics (formal, casual, athletic, \
+workwear, evening, streetwear). Category similarity alone is insufficient.
+- **Color/material/pattern constraints**: If query specifies color, fabric, pattern, \
+or texture, treat those as explicit constraints. Contradictory attributes are strong negatives.
+- **Season and climate appropriateness**: Winter, summer, rain, and performance-weather \
+intent should align with fabric weight and garment construction.
+- **Brand and price-tier intent**: Queries with luxury/designer/affordable cues should \
+reflect expected brand and price positioning.
+- **Primary garment vs accessory intent**: If query asks for a primary item ("dress", \
+"jacket", "boots"), accessories should score lower unless explicitly requested.
+- **Composition transparency as quality signal**: Clear fabric composition and care/performance \
+attributes (for example waterproof, stretch, breathable) should improve confidence when \
+they directly match query intent."""
 
 _BUILTIN_VERTICALS: dict[str, str] = {
     "foodservice": FOODSERVICE,
