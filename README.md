@@ -30,7 +30,19 @@ With Langfuse support:
 pip install veritail[langfuse]
 ```
 
-### 2. Create a query set
+### 2. Bootstrap starter files (recommended)
+
+```bash
+veritail init
+```
+
+This generates:
+- `adapter.py` with a real HTTP request skeleton (endpoint, auth header, timeout, JSON parsing, mapping to `SearchResult`)
+- `queries.csv` with all four query types (`broad`, `navigational`, `long_tail`, `attribute`)
+
+By default, existing files are not overwritten. Use `--force` to overwrite.
+
+### 3. Create a query set (manual option)
 
 ```csv
 query,type,category
@@ -41,7 +53,7 @@ nike air max 90,navigational,Shoes
 
 `type` and `category` are optional, but they improve analysis quality.
 
-### 3. Create an adapter
+### 4. Create an adapter (manual option)
 
 ```python
 # my_adapter.py
@@ -65,7 +77,7 @@ def search(query: str) -> list[SearchResult]:
     ]
 ```
 
-### 4. Run evaluation
+### 5. Run evaluation
 
 ```bash
 export ANTHROPIC_API_KEY=sk-...
@@ -90,7 +102,7 @@ Outputs are written under:
 eval-results/<generated-or-custom-config-name>/
 ```
 
-### 5. Compare two search configurations
+### 6. Compare two search configurations
 
 ```bash
 veritail run \
@@ -165,6 +177,17 @@ Run a single or dual-configuration evaluation.
 | `--vertical` | *(none)* | Built-in vertical (`foodservice`, `industrial`, `electronics`, `fashion`) or path to text file |
 
 If `--config-name` is provided, pass one name per adapter.
+
+### `veritail init`
+
+Scaffold starter files for a new project.
+
+| Option | Default | Description |
+|---|---|---|
+| `--dir` | `.` | Target directory for generated files |
+| `--adapter-name` | `adapter.py` | Adapter filename (must end with `.py`) |
+| `--queries-name` | `queries.csv` | Query set filename (must end with `.csv`) |
+| `--force` | off | Overwrite existing files |
 
 ## Vertical Guidance
 

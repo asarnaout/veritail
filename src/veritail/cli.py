@@ -20,6 +20,11 @@ from veritail.queries import load_queries
 from veritail.reporting.comparison import generate_comparison_report
 from veritail.reporting.single import generate_single_report
 from veritail.rubrics import load_rubric
+from veritail.scaffold import (
+    DEFAULT_ADAPTER_FILENAME,
+    DEFAULT_QUERIES_FILENAME,
+    scaffold_project,
+)
 from veritail.types import ExperimentConfig
 
 console = Console()
@@ -55,6 +60,60 @@ def _generate_config_names(adapters: tuple[str, ...]) -> tuple[str, ...]:
 def main() -> None:
     """veritail: Ecommerce search relevance evaluation tool."""
     pass
+
+
+@main.command()
+@click.option(
+    "--dir",
+    "target_dir",
+    default=".",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory where starter files should be created.",
+)
+@click.option(
+    "--adapter-name",
+    default=DEFAULT_ADAPTER_FILENAME,
+    show_default=True,
+    help="Filename for the generated adapter module.",
+)
+@click.option(
+    "--queries-name",
+    default=DEFAULT_QUERIES_FILENAME,
+    show_default=True,
+    help="Filename for the generated query CSV.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing files if they already exist.",
+)
+def init(
+    target_dir: Path,
+    adapter_name: str,
+    queries_name: str,
+    force: bool,
+) -> None:
+    """Scaffold starter adapter and query files."""
+    try:
+        adapter_path, queries_path = scaffold_project(
+            target_dir=target_dir,
+            adapter_name=adapter_name,
+            queries_name=queries_name,
+            force=force,
+        )
+    except FileExistsError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+
+    console.print(f"[green]Created[/green] {adapter_path}")
+    console.print(f"[green]Created[/green] {queries_path}")
+    console.print("\n[dim]Next step:[/dim]")
+    console.print(
+        f"[dim]  veritail run --queries {queries_path.name} "
+        f"--adapter {adapter_path.name}[/dim]"
+    )
 
 
 @main.command()
