@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -27,6 +29,27 @@ console = Console()
 load_dotenv(verbose=False, override=False)
 
 
+def _slugify_name(raw: str) -> str:
+    """Create a filesystem-safe slug for generated config names."""
+    slug = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")
+    return slug or "config"
+
+
+def _generate_config_names(adapters: tuple[str, ...]) -> tuple[str, ...]:
+    """Generate readable, unique config names from adapter paths."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    seen: dict[str, int] = {}
+    generated: list[str] = []
+
+    for adapter in adapters:
+        base = _slugify_name(Path(adapter).stem)
+        seen[base] = seen.get(base, 0) + 1
+        suffix = f"-{seen[base]}" if seen[base] > 1 else ""
+        generated.append(f"{base}{suffix}-{timestamp}")
+
+    return tuple(generated)
+
+
 @click.group()
 @click.version_option(package_name="veritail")
 def main() -> None:
@@ -37,7 +60,15 @@ def main() -> None:
 @main.command()
 @click.option("--queries", required=True, type=click.Path(exists=True), help="Path to query set (CSV or JSON)")
 @click.option("--adapter", "adapters", required=True, multiple=True, type=click.Path(exists=True), help="Path to search adapter module(s)")
-@click.option("--config-name", "config_names", required=True, multiple=True, help="Name for each configuration")
+@click.option(
+    "--config-name",
+    "config_names",
+    multiple=True,
+    help=(
+        "Optional name for each configuration. "
+        "Provide one per adapter, or omit to auto-generate names."
+    ),
+)
 @click.option("--llm-model", default="claude-sonnet-4-5", help="LLM model to use for judgments")
 @click.option("--rubric", default="ecommerce-default", help="Rubric name or path to custom rubric module")
 @click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]), help="Evaluation backend")
@@ -68,14 +99,22 @@ def run(
     vertical: str | None,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
-    if len(adapters) != len(config_names):
+    if config_names and len(adapters) != len(config_names):
         raise click.UsageError(
-            f"Each --adapter must have a matching --config-name. "
-            f"Got {len(adapters)} adapter(s) and {len(config_names)} config name(s)."
+            "Each --adapter must have a matching --config-name when names are provided. "
+            f"Got {len(adapters)} adapter(s) and {len(config_names)} config name(s). "
+            "Or omit --config-name to auto-generate names."
         )
 
     if len(adapters) > 2:
         raise click.UsageError("At most 2 adapter/config-name pairs are supported.")
+
+    if not config_names:
+        config_names = _generate_config_names(adapters)
+        console.print(
+            "[dim]No --config-name provided. Using generated names: "
+            f"{', '.join(config_names)}[/dim]",
+        )
 
     query_entries = load_queries(queries)
     console.print(f"Loaded {len(query_entries)} queries from {queries}")

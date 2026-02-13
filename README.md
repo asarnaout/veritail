@@ -103,7 +103,7 @@ Run a single or dual-configuration evaluation.
 |---|---|---|
 | `--queries` | *(required)* | Path to query set (CSV or JSON) |
 | `--adapter` | *(required)* | Path to search adapter module (up to 2) |
-| `--config-name` | *(required)* | Name for each configuration (up to 2) |
+| `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated from adapter filename + UTC timestamp |
 | `--llm-model` | `claude-sonnet-4-5` | LLM model for relevance judgments |
 | `--rubric` | `ecommerce-default` | Rubric name or path to custom rubric module |
 | `--backend` | `file` | Storage backend (`file` or `langfuse`) |
@@ -113,6 +113,8 @@ Run a single or dual-configuration evaluation.
 | `--skip-on-check-fail` | off | Skip LLM judgment when a deterministic check fails (default: always run LLM) |
 | `--context` | *(none)* | Business context for the LLM judge (e.g. `'B2B industrial kitchen equipment supplier'`) |
 | `--vertical` | *(none)* | Domain-specific scoring guidance (built-in: `foodservice`, `industrial`, `electronics`, `fashion`, case-insensitive; or path to a text file) |
+
+If you provide `--config-name`, pass one for each `--adapter`. Otherwise omit it and veritail will generate names automatically.
 
 ## Vertical context
 
