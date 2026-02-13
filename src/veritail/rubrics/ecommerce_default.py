@@ -34,9 +34,11 @@ Consider these factors in order of importance:
 1. **Explicit intent match**: Does the product match what the query literally asks for? \
 If the query says "red running shoes", the product should be red running shoes.
 
-2. **Implicit intent match**: Does the product match what the shopper probably means? \
-For example, "running shoes" implies current/in-season, adult shoes, actual running \
-shoes (not fashion sneakers marketed as running-inspired).
+2. **Implicit intent match**: Does the product match what the shopper probably means, \
+given the business context above (if provided)? When a business context is provided, \
+interpret the query from the perspective of that business's typical customer — not a \
+generic consumer. For example, on a foodservice supply site "latex free gloves" means \
+food-safe latex-free gloves, not medical exam gloves.
 
 3. **Category alignment**: Is the product in the right product category? \
 A "laptop stand" query should return laptop stands, not laptops or standing desks.
