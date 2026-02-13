@@ -132,12 +132,6 @@ def compute_all_metrics(
 
     Returns aggregate metrics, per-query breakdowns, and by-query-type breakdowns.
     """
-    # Build query type lookup
-    query_types: dict[str, str] = {}
-    for q in queries:
-        if q.type:
-            query_types[q.query] = q.type
-
     metrics_config = [
         ("ndcg@5", lambda j: ndcg_at_k(j, k=5)),
         ("ndcg@10", lambda j: ndcg_at_k(j, k=10)),
@@ -153,13 +147,13 @@ def compute_all_metrics(
         per_query: dict[str, float] = {}
         by_type: dict[str, list[float]] = defaultdict(list)
 
-        for query_str, query_judgments in judgments_by_query.items():
+        for q in queries:
+            query_judgments = judgments_by_query.get(q.query, [])
             value = metric_fn(query_judgments)
-            per_query[query_str] = value
+            per_query[q.query] = value
 
-            qtype = query_types.get(query_str)
-            if qtype:
-                by_type[qtype].append(value)
+            if q.type:
+                by_type[q.type].append(value)
 
         # Aggregate: mean across queries
         all_values = list(per_query.values())
@@ -184,14 +178,14 @@ def compute_all_metrics(
         per_query: dict[str, float] = {}
         by_type: dict[str, list[float]] = defaultdict(list)
 
-        for query_str, query_judgments in judgments_by_query.items():
+        for q in queries:
+            query_judgments = judgments_by_query.get(q.query, [])
             value = attribute_match_rate_at_k(query_judgments, k=k_val)
             if value is None:
                 continue  # skip queries with no attribute constraints
-            per_query[query_str] = value
-            qtype = query_types.get(query_str)
-            if qtype:
-                by_type[qtype].append(value)
+            per_query[q.query] = value
+            if q.type:
+                by_type[q.type].append(value)
 
         all_values = list(per_query.values())
         aggregate = sum(all_values) / len(all_values) if all_values else 0.0

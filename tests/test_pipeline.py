@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from unittest.mock import Mock
 
 from veritail.backends.file import FileBackend
@@ -207,3 +208,51 @@ class TestRunEvaluation:
 
         # No judgments because adapter failed
         assert len(judgments) == 0
+
+    def test_failed_query_counts_as_zero_in_metrics(self, tmp_path):
+        """Queries where the adapter fails must be included in metric aggregates as 0.0,
+        not silently dropped from the denominator."""
+        queries = [
+            QueryEntry(query="good query", type="broad"),
+            QueryEntry(query="bad query", type="broad"),
+        ]
+
+        def mixed_adapter(query: str) -> list[SearchResult]:
+            if query == "bad query":
+                raise RuntimeError("adapter error")
+            return [
+                SearchResult(
+                    product_id="SKU-1", title="Perfect Result", description="desc",
+                    category="Shoes", price=50.0, position=0,
+                )
+            ]
+
+        config = ExperimentConfig(
+            name="test-exp", adapter_path="test.py",
+            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+        )
+        # LLM always returns score 3 for the successful query
+        llm_client = Mock(spec=LLMClient)
+        llm_client.complete.return_value = LLMResponse(
+            content="SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+            model="test", input_tokens=10, output_tokens=10,
+        )
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics = run_evaluation(
+            queries, mixed_adapter, config, llm_client, rubric, backend,
+        )
+
+        ndcg = next(m for m in metrics if m.metric_name == "ndcg@10")
+
+        # Both queries must appear in per_query
+        assert "good query" in ndcg.per_query
+        assert "bad query" in ndcg.per_query
+
+        # Failed query scores 0
+        assert ndcg.per_query["bad query"] == 0.0
+
+        # Aggregate must be the mean of both (not just the good query)
+        expected_aggregate = (ndcg.per_query["good query"] + 0.0) / 2
+        assert ndcg.value == pytest.approx(expected_aggregate)
