@@ -50,6 +50,8 @@ def main() -> None:
               help="Skip LLM judgment when a deterministic check fails (default: always run LLM).")
 @click.option("--context", default=None, type=str,
               help="Business context for the LLM judge (e.g. 'B2B industrial kitchen equipment supplier').")
+@click.option("--vertical", default=None, type=str,
+              help="Vertical for domain-specific scoring guidance (built-in: foodservice, industrial, electronics, fashion; or path to a text file).")
 def run(
     queries: str,
     adapters: tuple[str, ...],
@@ -63,6 +65,7 @@ def run(
     open_browser: bool,
     skip_on_check_fail: bool,
     context: str | None,
+    vertical: str | None,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
     if len(adapters) != len(config_names):
@@ -78,6 +81,12 @@ def run(
     console.print(f"Loaded {len(query_entries)} queries from {queries}")
 
     rubric_data = load_rubric(rubric)
+
+    vertical_context: str | None = None
+    if vertical:
+        from veritail.verticals import load_vertical
+        vertical_context = load_vertical(vertical)
+
     llm_client = create_llm_client(llm_model)
 
     backend_kwargs: dict = {}
@@ -104,6 +113,7 @@ def run(
             query_entries, adapter_fn, config, llm_client, rubric_data, backend,
             skip_llm_on_fail=skip_on_check_fail,
             context=context,
+            vertical=vertical_context,
         )
 
         report = generate_single_report(metrics, checks)
@@ -158,6 +168,7 @@ def run(
             llm_client, rubric_data, backend,
             skip_llm_on_fail=skip_on_check_fail,
             context=context,
+            vertical=vertical_context,
         )
 
         report = generate_comparison_report(

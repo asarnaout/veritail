@@ -21,6 +21,7 @@ class TestCLI:
         assert "--queries" in result.output
         assert "--adapter" in result.output
         assert "--config-name" in result.output
+        assert "--vertical" in result.output
 
     def test_run_mismatched_adapters_and_configs(self, tmp_path):
         queries_file = tmp_path / "queries.csv"

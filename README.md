@@ -112,6 +112,7 @@ Run a single or dual-configuration evaluation.
 | `--open` | off | Open the HTML report in the browser when complete |
 | `--skip-on-check-fail` | off | Skip LLM judgment when a deterministic check fails (default: always run LLM) |
 | `--context` | *(none)* | Business context for the LLM judge (e.g. `'B2B industrial kitchen equipment supplier'`) |
+| `--vertical` | *(none)* | Domain-specific scoring guidance (built-in: `foodservice`, `industrial`, `electronics`, `fashion`; or path to a text file) |
 
 ## Relevance scoring
 
@@ -124,7 +125,48 @@ The default ecommerce rubric scores each query-product pair on a 0-3 scale:
 | 1 | Marginally relevant | Tangentially related; unlikely to be purchased |
 | 0 | Irrelevant | No meaningful connection to the query |
 
-Evaluation criteria (in order of importance): explicit intent match, implicit intent match (informed by `--context` when provided), category alignment, attribute matching, commercial viability.
+Evaluation criteria (in order of importance): explicit intent match, implicit intent match (informed by `--context` and `--vertical` when provided), category alignment, attribute matching, commercial viability.
+
+## Vertical context
+
+The `--vertical` flag injects domain-specific scoring guidance into the LLM judge's system prompt. This helps the judge interpret ambiguous queries and apply domain-appropriate relevance standards.
+
+### Built-in verticals
+
+| Vertical | Description |
+|---|---|
+| `foodservice` | Commercial kitchen equipment and supplies — pack size, NSF/UL certs, foodservice brand signals, cross-category intent (e.g. "gloves" = food-safe disposable) |
+| `industrial` | MRO and industrial supply — spec matching (thread, voltage, grade), compliance codes (ANSI, ASTM), PPE certification, material grades |
+| `electronics` | Consumer electronics and components — compatibility constraints, model/generation specificity, spec-driven queries, ecosystem awareness |
+| `fashion` | Apparel and accessories — gender targeting, occasion/style, size systems, brand/price tier, material requirements |
+
+### Usage
+
+```bash
+# Built-in vertical
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --config-name baseline \
+  --vertical foodservice
+
+# Custom vertical from a text file
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --config-name baseline \
+  --vertical ./my_vertical.txt
+
+# Compose vertical with business context
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --config-name baseline \
+  --vertical foodservice \
+  --context "B2B supplier specializing in BBQ restaurant equipment"
+```
+
+`--vertical` provides structural domain knowledge (what makes a result relevant in this industry), while `--context` provides specific business identity (who the customers are). They compose: context appears first in the system prompt, followed by the vertical, then the rubric.
 
 ## Deterministic checks
 

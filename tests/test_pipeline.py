@@ -109,6 +109,84 @@ class TestRunEvaluation:
         assert "running shoes" in ndcg.per_query
         assert "laptop stand" in ndcg.per_query
 
+    def test_vertical_in_system_prompt(self, tmp_path):
+        """Vertical context appears in the system prompt sent to the LLM."""
+        queries = [QueryEntry(query="steam table", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp", adapter_path="test.py",
+            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("You are an expert judge.", lambda q, r: f"Query: {q}")
+
+        vertical_text = "## Vertical: Foodservice\nFood-safety certs matter."
+
+        run_evaluation(
+            queries, adapter, config, llm_client, rubric, backend,
+            vertical=vertical_text,
+        )
+
+        # The system prompt passed to RelevanceJudge should contain the vertical
+        system_prompt_used = llm_client.complete.call_args_list[0][1].get(
+            "system_prompt"
+        ) or llm_client.complete.call_args_list[0][0][0]
+        assert "Foodservice" in system_prompt_used
+        assert "You are an expert judge." in system_prompt_used
+
+    def test_context_and_vertical_compose(self, tmp_path):
+        """Context comes before vertical, which comes before the rubric."""
+        queries = [QueryEntry(query="gloves", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp", adapter_path="test.py",
+            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("RUBRIC_START", lambda q, r: f"Query: {q}")
+
+        run_evaluation(
+            queries, adapter, config, llm_client, rubric, backend,
+            context="BBQ restaurant supplier",
+            vertical="## Vertical: Foodservice\nScoring guidance here.",
+        )
+
+        system_prompt_used = llm_client.complete.call_args_list[0][1].get(
+            "system_prompt"
+        ) or llm_client.complete.call_args_list[0][0][0]
+
+        ctx_pos = system_prompt_used.index("## Business Context")
+        vert_pos = system_prompt_used.index("## Vertical: Foodservice")
+        rubric_pos = system_prompt_used.index("RUBRIC_START")
+
+        assert ctx_pos < vert_pos < rubric_pos
+
+    def test_vertical_alone_no_business_context_header(self, tmp_path):
+        """Using vertical without context should not produce a Business Context header."""
+        queries = [QueryEntry(query="pan", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp", adapter_path="test.py",
+            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("RUBRIC", lambda q, r: f"Query: {q}")
+
+        run_evaluation(
+            queries, adapter, config, llm_client, rubric, backend,
+            vertical="## Vertical: Foodservice\nGuidance.",
+        )
+
+        system_prompt_used = llm_client.complete.call_args_list[0][1].get(
+            "system_prompt"
+        ) or llm_client.complete.call_args_list[0][0][0]
+
+        assert "## Business Context" not in system_prompt_used
+        assert "## Vertical: Foodservice" in system_prompt_used
+
     def test_adapter_error_handled(self, tmp_path):
         queries = [QueryEntry(query="error query")]
 
