@@ -84,6 +84,32 @@ class TestGenerateComparisonReport:
         assert "baseline" in report
         assert "experiment" in report
 
+    def test_html_report_includes_run_metadata_footer(self):
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            _make_comparison_checks(),
+            "baseline",
+            "experiment",
+            format="html",
+            run_metadata={
+                "generated_at_utc": "2026-02-13T12:00:00Z",
+                "llm_model": "claude-sonnet-4-5",
+                "rubric": "ecommerce-default",
+                "vertical": "industrial",
+                "top_k": 10,
+                "adapter_path_a": "adapter_a.py",
+                "adapter_path_b": "adapter_b.py",
+            },
+        )
+        assert "Timestamp (UTC)" in report
+        assert "2026-02-13T12:00:00Z" in report
+        assert "claude-sonnet-4-5" in report
+        assert "ecommerce-default" in report
+        assert "industrial" in report
+        assert "adapter_a.py" in report
+        assert "adapter_b.py" in report
+
     def test_regression_detection(self):
         metrics_a = [MetricResult(
             metric_name="ndcg@10", value=0.9,

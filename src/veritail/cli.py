@@ -55,6 +55,35 @@ def _generate_config_names(adapters: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(generated)
 
 
+def _build_run_metadata(
+    *,
+    llm_model: str,
+    rubric: str,
+    vertical: str | None,
+    top_k: int,
+    adapter_path: str | None = None,
+    adapter_path_a: str | None = None,
+    adapter_path_b: str | None = None,
+) -> dict[str, object]:
+    """Build provenance metadata for report rendering."""
+    metadata: dict[str, object] = {
+        "generated_at_utc": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
+        "llm_model": llm_model,
+        "rubric": rubric,
+        "vertical": vertical if vertical else "none",
+        "top_k": top_k,
+    }
+    if adapter_path is not None:
+        metadata["adapter_path"] = adapter_path
+    if adapter_path_a is not None:
+        metadata["adapter_path_a"] = adapter_path_a
+    if adapter_path_b is not None:
+        metadata["adapter_path_b"] = adapter_path_b
+    return metadata
+
+
 @click.group()
 @click.version_option(package_name="veritail")
 def main() -> None:
@@ -216,8 +245,17 @@ def run(
             context=context,
             vertical=vertical_context,
         )
+        run_metadata = _build_run_metadata(
+            llm_model=llm_model,
+            rubric=rubric,
+            vertical=vertical,
+            top_k=top_k,
+            adapter_path=adapters[0],
+        )
 
-        report = generate_single_report(metrics, checks)
+        report = generate_single_report(
+            metrics, checks, run_metadata=run_metadata,
+        )
         console.print(report)
 
         exp_dir = Path(output_dir) / config_names[0]
@@ -229,7 +267,13 @@ def run(
             encoding="utf-8",
         )
 
-        html = generate_single_report(metrics, checks, judgments=judgments, format="html")
+        html = generate_single_report(
+            metrics,
+            checks,
+            judgments=judgments,
+            format="html",
+            run_metadata=run_metadata,
+        )
         html_path = exp_dir / "report.html"
         html_path.write_text(html, encoding="utf-8")
         console.print(f"[dim]HTML report -> {html_path}[/dim]")
@@ -271,11 +315,20 @@ def run(
             context=context,
             vertical=vertical_context,
         )
+        run_metadata = _build_run_metadata(
+            llm_model=llm_model,
+            rubric=rubric,
+            vertical=vertical,
+            top_k=top_k,
+            adapter_path_a=adapters[0],
+            adapter_path_b=adapters[1],
+        )
 
         report = generate_comparison_report(
             metrics_a, metrics_b,
             comparison_checks,
             config_names[0], config_names[1],
+            run_metadata=run_metadata,
         )
         console.print(report)
 
@@ -293,6 +346,7 @@ def run(
             comparison_checks,
             config_names[0], config_names[1],
             format="html",
+            run_metadata=run_metadata,
         )
         html_path = Path(output_dir) / f"{config_names[0]}_vs_{config_names[1]}" / "report.html"
         html_path.parent.mkdir(parents=True, exist_ok=True)

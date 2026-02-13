@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
 from typing import Optional
@@ -84,6 +85,7 @@ def generate_single_report(
     checks: list[CheckResult],
     format: str = "terminal",
     judgments: Optional[list[JudgmentRecord]] = None,
+    run_metadata: Mapping[str, object] | None = None,
 ) -> str:
     """Generate a report for a single evaluation configuration.
 
@@ -97,7 +99,7 @@ def generate_single_report(
         Formatted report string.
     """
     if format == "html":
-        return _generate_html(metrics, checks, judgments)
+        return _generate_html(metrics, checks, judgments, run_metadata)
     return _generate_terminal(metrics, checks)
 
 
@@ -184,6 +186,7 @@ def _generate_html(
     metrics: list[MetricResult],
     checks: list[CheckResult],
     judgments: Optional[list[JudgmentRecord]] = None,
+    run_metadata: Mapping[str, object] | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     template_path = Path(__file__).parent / "templates" / "report.html"
@@ -198,6 +201,25 @@ def _generate_html(
     worst_queries = []
     if ndcg and ndcg.per_query:
         worst_queries = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:10]
+
+    metadata_rows: list[dict[str, str]] = []
+    if run_metadata:
+        key_to_label = [
+            ("generated_at_utc", "Timestamp (UTC)"),
+            ("llm_model", "Model"),
+            ("rubric", "Rubric"),
+            ("vertical", "Vertical"),
+            ("top_k", "Top-K"),
+            ("adapter_path", "Adapter Path"),
+            ("adapter_path_a", "Adapter Path (A)"),
+            ("adapter_path_b", "Adapter Path (B)"),
+        ]
+        for key, label in key_to_label:
+            if key in run_metadata:
+                metadata_rows.append({
+                    "label": label,
+                    "value": str(run_metadata[key]),
+                })
 
     # Group judgments by query for the drill-down section
     judgments_for_template: list[dict] = []
@@ -225,4 +247,5 @@ def _generate_html(
         judgments_for_template=judgments_for_template,
         metric_descriptions=METRIC_DESCRIPTIONS,
         check_descriptions=CHECK_DESCRIPTIONS,
+        run_metadata_rows=metadata_rows,
     )

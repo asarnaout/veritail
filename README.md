@@ -237,6 +237,7 @@ It includes:
 - per-query result drill-down
 - score + attribute verdict + reasoning per result
 - deterministic failure annotations
+- run metadata footer (timestamp, model, rubric, vertical, top-k, adapter path)
 
 <p align="center">
   <img src="assets/report-2.png" alt="Per-query judgment drill-down with LLM reasoning" width="720">

@@ -65,6 +65,27 @@ class TestGenerateSingleReport:
         assert "ndcg@10" in report
         assert "0.8500" in report
 
+    def test_html_report_includes_run_metadata_footer(self):
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            run_metadata={
+                "generated_at_utc": "2026-02-13T12:00:00Z",
+                "llm_model": "claude-sonnet-4-5",
+                "rubric": "ecommerce-default",
+                "vertical": "foodservice",
+                "top_k": 10,
+                "adapter_path": "adapter.py",
+            },
+        )
+        assert "Timestamp (UTC)" in report
+        assert "2026-02-13T12:00:00Z" in report
+        assert "claude-sonnet-4-5" in report
+        assert "ecommerce-default" in report
+        assert "foodservice" in report
+        assert "adapter.py" in report
+
     def test_duplicate_check_displays_as_failure_only_in_html(self):
         checks = [
             CheckResult(
@@ -114,4 +135,3 @@ class TestGenerateSingleReport:
         assert "<img src=x onerror=alert('title')>" not in report
         assert "&lt;script&gt;alert" in report
         assert "&lt;img src=x onerror=alert" in report
-
