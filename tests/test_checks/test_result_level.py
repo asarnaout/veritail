@@ -5,6 +5,7 @@ from veritail.checks.result_level import (
     check_duplicates,
     check_price_outliers,
     check_text_overlap,
+    check_title_length,
 )
 from veritail.types import QueryEntry, SearchResult
 
@@ -156,3 +157,46 @@ class TestDuplicates:
         results = [_make_result("SKU-1", title="Test Product")]
         checks = check_duplicates("shoes", results)
         assert len(checks) == 0
+
+
+class TestTitleLength:
+    def test_normal_title(self):
+        results = [_make_result(title="Nike Air Max 90 Running Shoes")]
+        checks = check_title_length("shoes", results)
+        assert len(checks) == 1
+        assert checks[0].passed
+        assert checks[0].check_name == "title_length"
+        assert checks[0].severity == "info"
+
+    def test_long_title_seo_stuffing(self):
+        long_title = "Nike Air Max 90 Running Shoes " * 5  # ~150 chars
+        results = [_make_result(title=long_title)]
+        checks = check_title_length("shoes", results)
+        assert len(checks) == 1
+        assert not checks[0].passed
+        assert checks[0].severity == "info"
+        assert ">" in checks[0].detail
+
+    def test_short_title_malformed(self):
+        results = [_make_result(title="SKU-123")]
+        checks = check_title_length("shoes", results)
+        assert len(checks) == 1
+        assert not checks[0].passed
+        assert checks[0].severity == "info"
+        assert "<" in checks[0].detail
+
+    def test_exactly_at_boundaries(self):
+        results = [
+            _make_result("SKU-1", title="A" * 10),
+            _make_result("SKU-2", title="B" * 120),
+        ]
+        checks = check_title_length("shoes", results)
+        assert len(checks) == 2
+        assert all(c.passed for c in checks)
+
+    def test_custom_thresholds(self):
+        results = [_make_result(title="A" * 50)]
+        checks = check_title_length("shoes", results, max_length=40, min_length=20)
+        assert len(checks) == 1
+        assert not checks[0].passed
+        assert "> 40" in checks[0].detail

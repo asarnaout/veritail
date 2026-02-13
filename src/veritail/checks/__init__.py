@@ -8,6 +8,7 @@ from veritail.checks.result_level import (
     check_duplicates,
     check_price_outliers,
     check_text_overlap,
+    check_title_length,
 )
 from veritail.types import CheckResult, QueryEntry, SearchResult
 
@@ -29,6 +30,7 @@ def run_all_checks(
         checks.extend(check_text_overlap(query.query, results))
         checks.extend(check_price_outliers(query.query, results))
         checks.extend(check_duplicates(query.query, results))
+        checks.extend(check_title_length(query.query, results))
 
     return checks
 
@@ -40,5 +42,6 @@ __all__ = [
     "check_text_overlap",
     "check_price_outliers",
     "check_duplicates",
+    "check_title_length",
     "run_all_checks",
 ]

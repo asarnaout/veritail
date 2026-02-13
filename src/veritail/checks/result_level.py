@@ -215,3 +215,57 @@ def check_duplicates(
                 )
 
     return checks
+
+
+def check_title_length(
+    query: str,
+    results: list[SearchResult],
+    max_length: int = 120,
+    min_length: int = 10,
+) -> list[CheckResult]:
+    """Flag titles that are too long or too short."""
+    checks: list[CheckResult] = []
+
+    for result in results:
+        length = len(result.title)
+        if length > max_length:
+            checks.append(
+                CheckResult(
+                    check_name="title_length",
+                    query=query,
+                    product_id=result.product_id,
+                    passed=False,
+                    detail=(
+                        f"Title is {length} chars "
+                        f"(> {max_length} max): '{result.title}'"
+                    ),
+                    severity="info",
+                )
+            )
+        elif length < min_length:
+            checks.append(
+                CheckResult(
+                    check_name="title_length",
+                    query=query,
+                    product_id=result.product_id,
+                    passed=False,
+                    detail=(
+                        f"Title is {length} chars "
+                        f"(< {min_length} min): '{result.title}'"
+                    ),
+                    severity="info",
+                )
+            )
+        else:
+            checks.append(
+                CheckResult(
+                    check_name="title_length",
+                    query=query,
+                    product_id=result.product_id,
+                    passed=True,
+                    detail=f"Title length {length} chars is within normal range",
+                    severity="info",
+                )
+            )
+
+    return checks
