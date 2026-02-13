@@ -108,7 +108,7 @@ Run a single or dual-configuration evaluation.
 | `--rubric` | `ecommerce-default` | Rubric name or path to custom rubric module |
 | `--backend` | `file` | Storage backend (`file` or `langfuse`) |
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
-| `--top-k` | `10` | Number of results to evaluate per query |
+| `--top-k` | `10` | Maximum number of results to evaluate per query (must be >= 1) |
 | `--open` | off | Open the HTML report in the browser when complete |
 | `--skip-on-check-fail` | off | Skip LLM judgment when a deterministic check fails (default: always run LLM) |
 | `--context` | *(none)* | Business context for the LLM judge (e.g. `'B2B industrial kitchen equipment supplier'`) |

@@ -74,7 +74,7 @@ def main() -> None:
 @click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]), help="Evaluation backend")
 @click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
 @click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
-@click.option("--top-k", default=10, type=int, help="Number of results to retrieve per query")
+@click.option("--top-k", default=10, type=int, help="Maximum number of results to evaluate per query")
 @click.option("--open", "open_browser", is_flag=True, default=False,
               help="Open the HTML report in the browser when complete.")
 @click.option("--skip-on-check-fail/--no-skip-on-check-fail", default=False,
@@ -108,6 +108,9 @@ def run(
 
     if len(adapters) > 2:
         raise click.UsageError("At most 2 adapter/config-name pairs are supported.")
+
+    if top_k < 1:
+        raise click.UsageError("--top-k must be >= 1.")
 
     if not config_names:
         config_names = _generate_config_names(adapters)

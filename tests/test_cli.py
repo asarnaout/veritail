@@ -60,6 +60,23 @@ class TestCLI:
         assert result.exit_code != 0
         assert "matching --config-name" in result.output
 
+    def test_run_rejects_top_k_less_than_one(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(main, [
+            "run",
+            "--queries", str(queries_file),
+            "--adapter", str(adapter_file),
+            "--top-k", "0",
+        ])
+        assert result.exit_code != 0
+        assert "--top-k must be >= 1." in result.output
+
     def test_run_single_config_with_file_backend(self, tmp_path, monkeypatch):
         queries_file = tmp_path / "queries.csv"
         queries_file.write_text("query\nshoes\n")
