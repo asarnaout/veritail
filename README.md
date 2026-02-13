@@ -1,18 +1,24 @@
 # veritail
 
-Ecommerce search relevance evaluation tool. Evaluate and compare the quality of your search results using LLM-based relevance judgments, deterministic quality checks, and standard information retrieval metrics.
+Evaluate ecommerce search relevance with one command.
 
-## What it does
+veritail runs three evaluation layers together:
+- LLM relevance judgments (0-3)
+- Deterministic quality checks
+- IR metrics (NDCG, MRR, MAP, Precision, attribute match)
 
-veritail takes a set of search queries, runs them against your search implementation, and evaluates result quality through three complementary approaches:
+It is built for practical search iteration: run baseline vs candidate, inspect regressions, and ship with confidence.
 
-1. **LLM-based relevance judgments** — Each query-product pair is scored 0-3 by Claude or GPT models using a structured rubric
-2. **Deterministic quality checks** — Category alignment, text overlap, duplicate detection, and price outlier detection
-3. **IR metrics** — NDCG@K, MRR, MAP, Precision@K, and Attribute Match Rate@K computed from the LLM scores
+## Why veritail
 
-You can evaluate a single search configuration or compare two configurations side-by-side to detect regressions and improvements. Results are stored locally or in [Langfuse](https://langfuse.com) for experiment tracking and human annotation.
+- **One run, full signal**: combines qualitative LLM judgments and quantitative IR metrics.
+- **Adapter-first integration**: plug in your existing search API with a small Python function.
+- **Ecommerce-aware defaults**: built-in rubric plus domain vertical guidance for foodservice, industrial, electronics, and fashion.
+- **Actionable output**: terminal summary + standalone HTML report with per-query drill-down.
 
-## Installation
+## Quick Start
+
+### 1. Install
 
 ```bash
 pip install veritail
@@ -24,11 +30,7 @@ With Langfuse support:
 pip install veritail[langfuse]
 ```
 
-## Quick start
-
-### 1. Prepare a query set
-
-Create a CSV or JSON file with your test queries:
+### 2. Create a query set
 
 ```csv
 query,type,category
@@ -37,20 +39,17 @@ wireless earbuds,broad,Electronics
 nike air max 90,navigational,Shoes
 ```
 
-Query types (`navigational`, `broad`, `long_tail`, `attribute`) are optional but enable per-type metric breakdowns.
+`type` and `category` are optional, but they improve analysis quality.
 
-### 2. Write a search adapter
-
-Create a Python file that defines a `search` function returning your results in veritail's format:
+### 3. Create an adapter
 
 ```python
 # my_adapter.py
 from veritail import SearchResult
 
-def search(query: str) -> list[SearchResult]:
-    # Call your search API here
-    results = my_search_api.query(query)
 
+def search(query: str) -> list[SearchResult]:
+    results = my_search_api.query(query)
     return [
         SearchResult(
             product_id=r["id"],
@@ -66,7 +65,7 @@ def search(query: str) -> list[SearchResult]:
     ]
 ```
 
-### 3. Run an evaluation
+### 4. Run evaluation
 
 ```bash
 export ANTHROPIC_API_KEY=sk-...
@@ -74,15 +73,24 @@ export ANTHROPIC_API_KEY=sk-...
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --config-name baseline \
   --llm-model claude-sonnet-4-5 \
   --top-k 10 \
   --open
 ```
 
-This produces a terminal report with IR metrics and check summaries, and writes an HTML report and `metrics.json` to the output directory. The `--open` flag opens the HTML report in your browser. The HTML report includes per-query judgment drill-downs, metric tooltips, and check failure details.
+If you omit `--config-name`, veritail auto-generates one from adapter filename + UTC timestamp.
 
-### 4. Compare two configurations
+Outputs are written under:
+
+```text
+eval-results/<generated-or-custom-config-name>/
+```
+
+<p align="center">
+  <img src="assets/report-1.png" alt="IR metrics and deterministic checks" width="720">
+</p>
+
+### 5. Compare two search configurations
 
 ```bash
 veritail run \
@@ -91,9 +99,51 @@ veritail run \
   --adapter adapter_v2.py --config-name v2
 ```
 
-The comparison report shows metric deltas, result overlap (Jaccard index), rank correlation (Spearman), and position shifts between configurations.
+The comparison report shows metric deltas, overlap, rank correlation, and position shifts.
 
-## CLI commands
+## Evaluation Model
+
+### LLM relevance judgments
+
+Each query-result pair gets:
+- `SCORE`: `0` to `3`
+- `ATTRIBUTES`: `match | partial | mismatch | n/a`
+- `REASONING`: concise justification
+
+Default rubric criteria:
+- explicit intent match
+- implicit intent match
+- category alignment
+- attribute matching
+- commercial viability
+
+### Deterministic checks
+
+**Query-level**
+- zero results
+- low result count warning (`< 3`)
+
+**Result-level**
+- category alignment
+- text overlap (Jaccard)
+- price outlier detection (IQR)
+- near-duplicate detection (title similarity threshold)
+
+**Comparison-level** (dual-config only)
+- result overlap (Jaccard)
+- rank correlation (Spearman)
+- position shift detection
+
+### IR metrics
+
+Computed from LLM scores:
+- `ndcg@5`, `ndcg@10`
+- `mrr`
+- `map`
+- `p@5`, `p@10`
+- `attribute_match@5`, `attribute_match@10`
+
+## CLI Reference
 
 ### `veritail run`
 
@@ -101,132 +151,78 @@ Run a single or dual-configuration evaluation.
 
 | Option | Default | Description |
 |---|---|---|
-| `--queries` | *(required)* | Path to query set (CSV or JSON) |
-| `--adapter` | *(required)* | Path to search adapter module (up to 2) |
-| `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated from adapter filename + UTC timestamp |
-| `--llm-model` | `claude-sonnet-4-5` | LLM model for relevance judgments |
-| `--rubric` | `ecommerce-default` | Rubric name or path to custom rubric module |
+| `--queries` | *(required)* | Path to query set (`.csv` or `.json`) |
+| `--adapter` | *(required)* | Path to adapter module (up to 2) |
+| `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
+| `--llm-model` | `claude-sonnet-4-5` | LLM model for judgments |
+| `--rubric` | `ecommerce-default` | Rubric name or custom rubric file path |
 | `--backend` | `file` | Storage backend (`file` or `langfuse`) |
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
-| `--top-k` | `10` | Maximum number of results to evaluate per query (must be >= 1) |
-| `--open` | off | Open the HTML report in the browser when complete |
-| `--skip-on-check-fail` | off | Skip LLM judgment when a deterministic check fails (default: always run LLM) |
-| `--context` | *(none)* | Business context for the LLM judge (e.g. `'B2B industrial kitchen equipment supplier'`) |
-| `--vertical` | *(none)* | Domain-specific scoring guidance (built-in: `foodservice`, `industrial`, `electronics`, `fashion`, case-insensitive; or path to a text file) |
+| `--top-k` | `10` | Maximum number of results to evaluate per query (must be `>= 1`) |
+| `--open` | off | Open HTML report in browser |
+| `--skip-on-check-fail` | off | Skip LLM call when a deterministic fail check is present |
+| `--context` | *(none)* | Business context string for LLM judge |
+| `--vertical` | *(none)* | Built-in vertical (`foodservice`, `industrial`, `electronics`, `fashion`) or path to text file |
 
-If you provide `--config-name`, pass one for each `--adapter`. Otherwise omit it and veritail will generate names automatically.
+If `--config-name` is provided, pass one name per adapter.
 
-## Vertical context
+## Vertical Guidance
 
-The `--vertical` flag injects domain-specific scoring guidance into the LLM judge's system prompt. This helps the judge interpret ambiguous queries and apply domain-appropriate relevance standards.
+`--vertical` injects domain-specific scoring guidance into the judge prompt.
 
-### Built-in verticals
+Built-in verticals:
 
-| Vertical | Description |
+| Vertical | Focus |
 |---|---|
-| `foodservice` | Commercial kitchen equipment and supplies — pack size, NSF/UL certs, foodservice brand signals, cross-category intent (e.g. "gloves" = food-safe disposable) |
-| `industrial` | MRO and industrial supply — spec matching (thread, voltage, grade), compliance codes (ANSI, ASTM), PPE certification, material grades |
-| `electronics` | Consumer electronics and components — compatibility constraints, model/generation specificity, spec-driven queries, ecosystem awareness |
-| `fashion` | Apparel and accessories — gender targeting, occasion/style, size systems, brand/price tier, material requirements |
+| `foodservice` | pack size, certifications, commercial-grade intent |
+| `industrial` | specs, standards/compliance, compatibility constraints |
+| `electronics` | model compatibility, generation/spec precision |
+| `fashion` | gender/style/size/material intent |
 
-### Usage
+Examples:
 
 ```bash
 # Built-in vertical
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --config-name baseline \
   --vertical foodservice
 
-# Custom vertical from a text file
+# Custom vertical text file
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --config-name baseline \
   --vertical ./my_vertical.txt
 
-# Compose vertical with business context
+# Vertical + business context
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --config-name baseline \
   --vertical foodservice \
   --context "B2B supplier specializing in BBQ restaurant equipment"
 ```
 
-`--vertical` provides structural domain knowledge (what makes a result relevant in this industry), while `--context` provides specific business identity (who the customers are). They compose: context appears first in the system prompt, followed by the vertical, then the rubric.
+## HTML Report
 
-## HTML report
+`veritail run` always writes a standalone HTML report.
 
-`veritail run` always writes a standalone HTML report to the output directory. Use `--open` to also open it in the browser. The report includes:
-
-- IR metrics table with tooltip descriptions
-- Deterministic check pass/fail summary
-- Worst-performing queries ranked by NDCG@10
-- Per-query judgment drill-down with product scores and LLM reasoning
-- Check failure annotations on products that failed deterministic checks
-- Visual indicators for skipped judgments (when using `--skip-on-check-fail`)
-
-<br>
-
-<p align="center">
-  <img src="assets/report-1.png" alt="IR metrics and deterministic checks" width="720">
-</p>
+It includes:
+- IR metric summary
+- deterministic check summary
+- worst queries by `ndcg@10`
+- per-query result drill-down
+- score + attribute verdict + reasoning per result
+- deterministic failure annotations
 
 <p align="center">
   <img src="assets/report-2.png" alt="Per-query judgment drill-down with LLM reasoning" width="720">
 </p>
 
-## Relevance scoring
+## Custom Rubrics
 
-The default ecommerce rubric scores each query-product pair on a 0-3 scale:
-
-| Score | Label | Meaning |
-|---|---|---|
-| 3 | Highly relevant | Exact match to query intent; shopper would likely purchase |
-| 2 | Relevant | Reasonable match; may not be primary intent |
-| 1 | Marginally relevant | Tangentially related; unlikely to be purchased |
-| 0 | Irrelevant | No meaningful connection to the query |
-
-Evaluation criteria (in order of importance): explicit intent match, implicit intent match (informed by `--context` and `--vertical` when provided), category alignment, attribute matching, commercial viability.
-
-## Deterministic checks
-
-These checks run alongside LLM judgments. By default the LLM always runs, but you can use `--skip-on-check-fail` to skip LLM calls for results that fail a check. Check failures are always recorded in judgment metadata and displayed in the HTML report regardless of skip behavior.
-
-**Query-level:**
-- Zero results detection
-- Low result count warning (< 3 results)
-
-**Result-level:**
-- Category alignment against expected/majority category
-- Text overlap (Jaccard similarity between query and title)
-- Price outlier detection (IQR method)
-- Near-duplicate detection (title similarity > 0.85)
-
-**Comparison checks** (dual-config only):
-- Result overlap (Jaccard index of product IDs)
-- Rank correlation (Spearman) for shared products
-- Position shift detection (moves of 3+ ranks)
-
-## IR metrics
-
-All metrics are computed from the 0-3 LLM relevance scores:
-
-| Metric | Description |
-|---|---|
-| NDCG@5, NDCG@10 | Normalized Discounted Cumulative Gain |
-| MRR | Mean Reciprocal Rank (relevance threshold: 2) |
-| MAP | Mean Average Precision (relevance threshold: 2) |
-| P@5, P@10 | Precision at K (relevance threshold: 2) |
-| Attribute Match@5, @10 | Fraction of results where LLM-judged attributes match the query (queries without attribute constraints are excluded) |
-
-Metrics are reported as aggregates, per-query breakdowns, and by query type. The HTML report includes info tooltips explaining each metric.
-
-## Custom rubrics
-
-Create a Python module with a `SYSTEM_PROMPT` string and a `format_user_prompt` function:
+Provide a Python module with:
+- `SYSTEM_PROMPT: str`
+- `format_user_prompt(query: str, result: SearchResult) -> str`
 
 ```python
 # my_rubric.py
@@ -234,21 +230,26 @@ from veritail.types import SearchResult
 
 SYSTEM_PROMPT = """You are an expert relevance judge for..."""
 
+
 def format_user_prompt(query: str, result: SearchResult) -> str:
     return f"Query: {query}\nProduct: {result.title}\n..."
 ```
 
-Then pass it with `--rubric my_rubric.py`.
+Then run with:
+
+```bash
+veritail run --queries queries.csv --adapter my_adapter.py --rubric my_rubric.py
+```
 
 ## Backends
 
 ### File backend (default)
 
-Stores results locally under `--output-dir`:
+Stores local artifacts under:
 
-```
+```text
 eval-results/
-  baseline/
+  <config-name>/
     config.json
     judgments.jsonl
     metrics.json
@@ -256,8 +257,6 @@ eval-results/
 ```
 
 ### Langfuse backend
-
-Stores results as Langfuse traces with scores for experiment tracking. Use Langfuse's built-in annotation queues and scoring UI for human review.
 
 ```bash
 pip install veritail[langfuse]
@@ -268,7 +267,6 @@ export LANGFUSE_SECRET_KEY=sk-...
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --config-name baseline \
   --backend langfuse
 ```
 
@@ -280,15 +278,10 @@ cd veritail
 pip install -e ".[dev]"
 ```
 
-Run tests:
+Run checks:
 
 ```bash
 pytest
-```
-
-Lint and type check:
-
-```bash
 ruff check src tests
 mypy src
 ```
@@ -296,7 +289,7 @@ mypy src
 ## Requirements
 
 - Python >= 3.9
-- An API key for [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
+- API key for [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
 
 ## License
 
