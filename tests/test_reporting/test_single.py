@@ -80,6 +80,11 @@ class TestGenerateSingleReport:
         assert ">n/a<" in report
         assert ">1<" in report
 
+    def test_html_check_tooltips(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        assert 'data-tip="Fails when a query returns no results at all"' in report
+        assert 'data-tip="Checks if each result' in report
+
     def test_html_escapes_untrusted_judgment_content(self):
         judgment = JudgmentRecord(
             query="<script>alert('query')</script>",

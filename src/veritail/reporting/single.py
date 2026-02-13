@@ -35,6 +35,16 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
     ),
 }
 
+CHECK_DESCRIPTIONS: dict[str, str] = {
+    "zero_results": "Fails when a query returns no results at all",
+    "result_count": "Fails when a query returns fewer results than the expected minimum (default: 3)",
+    "category_alignment": "Checks if each result's category matches the expected or majority category in the result set",
+    "text_overlap": "Measures keyword overlap between the query and each result's title, category, and description",
+    "price_outlier": "Flags results with prices far outside the result set's normal range using the IQR method",
+    "duplicate": "Detects near-duplicate products in results based on title similarity",
+    "title_length": "Flags titles that are unusually long (> 120 chars, possible SEO stuffing) or short (< 10 chars, possibly malformed)",
+}
+
 FAILURE_ONLY_CHECKS: set[str] = {"duplicate"}
 CHECK_DISPLAY_NAMES: dict[str, str] = {
     "duplicate": "duplicate (flagged pairs)",
@@ -213,4 +223,5 @@ def _generate_html(
         is_comparison=False,
         judgments_for_template=judgments_for_template,
         metric_descriptions=METRIC_DESCRIPTIONS,
+        check_descriptions=CHECK_DESCRIPTIONS,
     )

@@ -120,7 +120,12 @@
         <tbody>
             {% for name, counts in check_summary.items() | sort %}
             <tr>
-                <td>{{ counts.display_name }}</td>
+                <td>
+                  {{ counts.display_name }}
+                  {% if check_descriptions and check_descriptions.get(name) %}
+                  <span class="tip" data-tip="{{ check_descriptions[name] }}">?</span>
+                  {% endif %}
+                </td>
                 <td class="{% if counts.passed_is_na %}neutral{% else %}positive{% endif %}">{{ counts.passed_display }}</td>
                 <td class="{% if counts.failed > 0 %}negative{% else %}neutral{% endif %}">{{ counts.failed }}</td>
             </tr>
