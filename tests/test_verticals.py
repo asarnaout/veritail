@@ -34,6 +34,11 @@ class TestBuiltinVerticals:
     def test_builtin_min_length(self, name):
         assert len(load_vertical(name)) > 100
 
+    @pytest.mark.parametrize("name", ["Foodservice", "INDUSTRIAL", "Electronics", "FASHION"])
+    def test_builtin_case_insensitive(self, name):
+        result = load_vertical(name)
+        assert "## Vertical:" in result
+
     def test_registry_has_all_four(self):
         assert set(_BUILTIN_VERTICALS.keys()) == {"foodservice", "industrial", "electronics", "fashion"}
 

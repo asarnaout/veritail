@@ -112,7 +112,7 @@ Run a single or dual-configuration evaluation.
 | `--open` | off | Open the HTML report in the browser when complete |
 | `--skip-on-check-fail` | off | Skip LLM judgment when a deterministic check fails (default: always run LLM) |
 | `--context` | *(none)* | Business context for the LLM judge (e.g. `'B2B industrial kitchen equipment supplier'`) |
-| `--vertical` | *(none)* | Domain-specific scoring guidance (built-in: `foodservice`, `industrial`, `electronics`, `fashion`; or path to a text file) |
+| `--vertical` | *(none)* | Domain-specific scoring guidance (built-in: `foodservice`, `industrial`, `electronics`, `fashion`, case-insensitive; or path to a text file) |
 
 ## Relevance scoring
 

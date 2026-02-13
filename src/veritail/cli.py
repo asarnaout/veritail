@@ -51,7 +51,7 @@ def main() -> None:
 @click.option("--context", default=None, type=str,
               help="Business context for the LLM judge (e.g. 'B2B industrial kitchen equipment supplier').")
 @click.option("--vertical", default=None, type=str,
-              help="Vertical for domain-specific scoring guidance (built-in: foodservice, industrial, electronics, fashion; or path to a text file).")
+              help="Vertical for domain-specific scoring guidance (built-in: foodservice, industrial, electronics, fashion, case-insensitive; or path to a text file).")
 def run(
     queries: str,
     adapters: tuple[str, ...],

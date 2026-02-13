@@ -147,8 +147,9 @@ def load_vertical(name: str) -> str:
         FileNotFoundError: If name is not a built-in vertical and the file
             path does not exist.
     """
-    if name in _BUILTIN_VERTICALS:
-        return _BUILTIN_VERTICALS[name]
+    key = name.lower()
+    if key in _BUILTIN_VERTICALS:
+        return _BUILTIN_VERTICALS[key]
 
     path = Path(name)
     if path.is_file():
