@@ -114,19 +114,6 @@ Run a single or dual-configuration evaluation.
 | `--context` | *(none)* | Business context for the LLM judge (e.g. `'B2B industrial kitchen equipment supplier'`) |
 | `--vertical` | *(none)* | Domain-specific scoring guidance (built-in: `foodservice`, `industrial`, `electronics`, `fashion`, case-insensitive; or path to a text file) |
 
-## Relevance scoring
-
-The default ecommerce rubric scores each query-product pair on a 0-3 scale:
-
-| Score | Label | Meaning |
-|---|---|---|
-| 3 | Highly relevant | Exact match to query intent; shopper would likely purchase |
-| 2 | Relevant | Reasonable match; may not be primary intent |
-| 1 | Marginally relevant | Tangentially related; unlikely to be purchased |
-| 0 | Irrelevant | No meaningful connection to the query |
-
-Evaluation criteria (in order of importance): explicit intent match, implicit intent match (informed by `--context` and `--vertical` when provided), category alignment, attribute matching, commercial viability.
-
 ## Vertical context
 
 The `--vertical` flag injects domain-specific scoring guidance into the LLM judge's system prompt. This helps the judge interpret ambiguous queries and apply domain-appropriate relevance standards.
@@ -168,6 +155,40 @@ veritail run \
 
 `--vertical` provides structural domain knowledge (what makes a result relevant in this industry), while `--context` provides specific business identity (who the customers are). They compose: context appears first in the system prompt, followed by the vertical, then the rubric.
 
+## HTML report
+
+`veritail run` always writes a standalone HTML report to the output directory. Use `--open` to also open it in the browser. The report includes:
+
+- IR metrics table with tooltip descriptions
+- Deterministic check pass/fail summary
+- Worst-performing queries ranked by NDCG@10
+- Per-query judgment drill-down with product scores and LLM reasoning
+- Check failure annotations on products that failed deterministic checks
+- Visual indicators for skipped judgments (when using `--skip-on-check-fail`)
+
+<br>
+
+<p align="center">
+  <img src="assets/report-1.png" alt="IR metrics and deterministic checks" width="720">
+</p>
+
+<p align="center">
+  <img src="assets/report-2.png" alt="Per-query judgment drill-down with LLM reasoning" width="720">
+</p>
+
+## Relevance scoring
+
+The default ecommerce rubric scores each query-product pair on a 0-3 scale:
+
+| Score | Label | Meaning |
+|---|---|---|
+| 3 | Highly relevant | Exact match to query intent; shopper would likely purchase |
+| 2 | Relevant | Reasonable match; may not be primary intent |
+| 1 | Marginally relevant | Tangentially related; unlikely to be purchased |
+| 0 | Irrelevant | No meaningful connection to the query |
+
+Evaluation criteria (in order of importance): explicit intent match, implicit intent match (informed by `--context` and `--vertical` when provided), category alignment, attribute matching, commercial viability.
+
 ## Deterministic checks
 
 These checks run alongside LLM judgments. By default the LLM always runs, but you can use `--skip-on-check-fail` to skip LLM calls for results that fail a check. Check failures are always recorded in judgment metadata and displayed in the HTML report regardless of skip behavior.
@@ -201,17 +222,6 @@ All metrics are computed from the 0-3 LLM relevance scores:
 | Attribute Match@5, @10 | Fraction of results where LLM-judged attributes match the query (queries without attribute constraints are excluded) |
 
 Metrics are reported as aggregates, per-query breakdowns, and by query type. The HTML report includes info tooltips explaining each metric.
-
-## HTML report
-
-`veritail run` always writes a standalone HTML report to the output directory. Use `--open` to also open it in the browser. The report includes:
-
-- IR metrics table with tooltip descriptions
-- Deterministic check pass/fail summary
-- Worst-performing queries ranked by NDCG@10
-- Per-query judgment drill-down with product scores and LLM reasoning
-- Check failure annotations on products that failed deterministic checks
-- Visual indicators for skipped judgments (when using `--skip-on-check-fail`)
 
 ## Custom rubrics
 
