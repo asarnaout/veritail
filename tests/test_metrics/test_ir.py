@@ -247,3 +247,21 @@ class TestComputeAllMetrics:
         assert attr5.per_query["shoes"] == pytest.approx(0.5)
         assert attr5.per_query["laptop"] == pytest.approx(1.0)
         assert attr5.value == pytest.approx(0.75)  # mean of 0.5 and 1.0
+
+    def test_duplicate_query_text_disambiguated_by_occurrence(self):
+        queries = [
+            QueryEntry(query="shoes"),
+            QueryEntry(query="shoes"),
+        ]
+        judgments_by_query = {
+            0: [_j(3, 0, "shoes", attribute_verdict="n/a")],
+            1: [_j(0, 0, "shoes", attribute_verdict="n/a")],
+        }
+
+        results = compute_all_metrics(judgments_by_query, queries)
+        ndcg10 = next(r for r in results if r.metric_name == "ndcg@10")
+
+        assert list(ndcg10.per_query.keys()) == ["shoes [1]", "shoes [2]"]
+        assert ndcg10.per_query["shoes [1]"] == pytest.approx(1.0)
+        assert ndcg10.per_query["shoes [2]"] == pytest.approx(0.0)
+        assert ndcg10.value == pytest.approx(0.5)

@@ -74,7 +74,9 @@ def run_evaluation(
 
     all_judgments: list[JudgmentRecord] = []
     all_checks: list[CheckResult] = []
-    judgments_by_query: dict[str, list[JudgmentRecord]] = defaultdict(list)
+    # Key by query-row index instead of raw query text so duplicate query
+    # strings are evaluated as separate rows in metric aggregation.
+    judgments_by_query: dict[int, list[JudgmentRecord]] = defaultdict(list)
 
     with Progress(console=console) as progress:
         task = progress.add_task(
@@ -82,7 +84,7 @@ def run_evaluation(
             total=len(queries),
         )
 
-        for query_entry in queries:
+        for query_index, query_entry in enumerate(queries):
             # Step 1: Call adapter
             try:
                 results = adapter(query_entry.query)[:config.top_k]
@@ -157,7 +159,7 @@ def run_evaluation(
 
                 backend.log_judgment(judgment)
                 all_judgments.append(judgment)
-                judgments_by_query[query_entry.query].append(judgment)
+                judgments_by_query[query_index].append(judgment)
 
             progress.advance(task)
 

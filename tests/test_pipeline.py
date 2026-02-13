@@ -256,3 +256,59 @@ class TestRunEvaluation:
         # Aggregate must be the mean of both (not just the good query)
         expected_aggregate = (ndcg.per_query["good query"] + 0.0) / 2
         assert ndcg.value == pytest.approx(expected_aggregate)
+
+    def test_duplicate_query_rows_are_counted_separately(self, tmp_path):
+        """Duplicate query text should not collapse into one metric row."""
+        queries = [
+            QueryEntry(query="same query", type="broad"),
+            QueryEntry(query="same query", type="broad"),
+        ]
+
+        def adapter(query: str) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    product_id="SKU-1",
+                    title="Result",
+                    description="desc",
+                    category="Shoes",
+                    price=50.0,
+                    position=0,
+                )
+            ]
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+        llm_client = Mock(spec=LLMClient)
+        llm_client.complete.side_effect = [
+            LLMResponse(
+                content="SCORE: 3\nATTRIBUTES: n/a\nREASONING: Perfect",
+                model="test",
+                input_tokens=10,
+                output_tokens=10,
+            ),
+            LLMResponse(
+                content="SCORE: 0\nATTRIBUTES: n/a\nREASONING: Irrelevant",
+                model="test",
+                input_tokens=10,
+                output_tokens=10,
+            ),
+        ]
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics = run_evaluation(
+            queries, adapter, config, llm_client, rubric, backend,
+        )
+
+        assert len(judgments) == 2
+        ndcg = next(m for m in metrics if m.metric_name == "ndcg@10")
+        assert "same query [1]" in ndcg.per_query
+        assert "same query [2]" in ndcg.per_query
+        assert ndcg.per_query["same query [1]"] == pytest.approx(1.0)
+        assert ndcg.per_query["same query [2]"] == pytest.approx(0.0)
+        assert ndcg.value == pytest.approx(0.5)

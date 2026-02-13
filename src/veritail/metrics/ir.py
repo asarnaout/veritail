@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
+from collections.abc import Mapping
 
 from veritail.types import JudgmentRecord, MetricResult, QueryEntry
 
@@ -124,14 +125,45 @@ def attribute_match_rate_at_k(
     return matched / len(applicable)
 
 
+def _display_query_keys(queries: list[QueryEntry]) -> list[str]:
+    """Create stable per-row query labels, disambiguating duplicates."""
+    totals = Counter(q.query for q in queries)
+    seen: dict[str, int] = defaultdict(int)
+    keys: list[str] = []
+
+    for q in queries:
+        seen[q.query] += 1
+        occurrence = seen[q.query]
+        if totals[q.query] > 1:
+            keys.append(f"{q.query} [{occurrence}]")
+        else:
+            keys.append(q.query)
+
+    return keys
+
+
+def _query_judgments(
+    judgments_by_query: Mapping[int | str, list[JudgmentRecord]],
+    query_index: int,
+    query_text: str,
+) -> list[JudgmentRecord]:
+    """Read judgments by row index, with string-key fallback for compatibility."""
+    indexed = judgments_by_query.get(query_index)
+    if indexed is not None:
+        return indexed
+    return judgments_by_query.get(query_text, [])
+
+
 def compute_all_metrics(
-    judgments_by_query: dict[str, list[JudgmentRecord]],
+    judgments_by_query: Mapping[int | str, list[JudgmentRecord]],
     queries: list[QueryEntry],
 ) -> list[MetricResult]:
     """Compute all IR metrics across all queries.
 
     Returns aggregate metrics, per-query breakdowns, and by-query-type breakdowns.
     """
+    query_keys = _display_query_keys(queries)
+
     metrics_config = [
         ("ndcg@5", lambda j: ndcg_at_k(j, k=5)),
         ("ndcg@10", lambda j: ndcg_at_k(j, k=10)),
@@ -147,10 +179,10 @@ def compute_all_metrics(
         per_query: dict[str, float] = {}
         by_type: dict[str, list[float]] = defaultdict(list)
 
-        for q in queries:
-            query_judgments = judgments_by_query.get(q.query, [])
+        for i, q in enumerate(queries):
+            query_judgments = _query_judgments(judgments_by_query, i, q.query)
             value = metric_fn(query_judgments)
-            per_query[q.query] = value
+            per_query[query_keys[i]] = value
 
             if q.type:
                 by_type[q.type].append(value)
@@ -178,12 +210,12 @@ def compute_all_metrics(
         per_query: dict[str, float] = {}
         by_type: dict[str, list[float]] = defaultdict(list)
 
-        for q in queries:
-            query_judgments = judgments_by_query.get(q.query, [])
+        for i, q in enumerate(queries):
+            query_judgments = _query_judgments(judgments_by_query, i, q.query)
             value = attribute_match_rate_at_k(query_judgments, k=k_val)
             if value is None:
                 continue  # skip queries with no attribute constraints
-            per_query[q.query] = value
+            per_query[query_keys[i]] = value
             if q.type:
                 by_type[q.type].append(value)
 
