@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 try:
-    import langfuse
+    import langfuse  # noqa: F401
+
     HAS_LANGFUSE = True
 except ImportError:
     HAS_LANGFUSE = False
 
 from veritail.types import JudgmentRecord, SearchResult
-
 
 pytestmark = pytest.mark.skipif(
     not HAS_LANGFUSE,

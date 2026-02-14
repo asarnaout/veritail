@@ -66,7 +66,6 @@ class TestCategoryAlignment:
         assert len(checks) == 0
 
 
-
 class TestTextOverlap:
     def test_high_overlap(self):
         results = [_make_result(title="Running Shoes Nike")]
@@ -89,21 +88,37 @@ class TestTextOverlap:
         assert checks[0].passed
 
     def test_category_match_saves_title_miss(self):
-        results = [_make_result(title="Modern Leather Sofa Set", category="Living Room Seating Shoes")]
+        results = [
+            _make_result(
+                title="Modern Leather Sofa Set",
+                category="Living Room Seating Shoes",
+            )
+        ]
         checks = check_text_overlap("running shoes", results)
         assert len(checks) == 1
         assert checks[0].passed
         assert "category" in checks[0].detail
 
     def test_description_match_saves_title_miss(self):
-        results = [_make_result(title="Premium Sofa Set", description="Great for running outdoors")]
+        results = [
+            _make_result(
+                title="Premium Sofa Set",
+                description="Great for running outdoors",
+            )
+        ]
         checks = check_text_overlap("running shoes", results)
         assert len(checks) == 1
         assert checks[0].passed
         assert "description" in checks[0].detail
 
     def test_empty_fields_no_penalty(self):
-        results = [_make_result(title="Running Shoes Nike", description="", category="")]
+        results = [
+            _make_result(
+                title="Running Shoes Nike",
+                description="",
+                category="",
+            )
+        ]
         checks = check_text_overlap("running shoes", results)
         assert len(checks) == 1
         assert checks[0].passed

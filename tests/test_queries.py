@@ -11,7 +11,11 @@ from veritail.queries import load_queries
 
 def test_load_csv(tmp_path):
     csv_file = tmp_path / "queries.csv"
-    csv_file.write_text("query,type,category,frequency\nrunning shoes,broad,Shoes,1500\nred dress,attribute,Clothing,800\n")
+    csv_file.write_text(
+        "query,type,category,frequency\n"
+        "running shoes,broad,Shoes,1500\n"
+        "red dress,attribute,Clothing,800\n"
+    )
 
     entries = load_queries(str(csv_file))
     assert len(entries) == 2
@@ -60,7 +64,12 @@ def test_load_csv_empty_file(tmp_path):
 def test_load_json(tmp_path):
     json_file = tmp_path / "queries.json"
     data = [
-        {"query": "running shoes", "type": "broad", "category": "Shoes", "frequency": 1500},
+        {
+            "query": "running shoes",
+            "type": "broad",
+            "category": "Shoes",
+            "frequency": 1500,
+        },
         {"query": "red dress", "type": "attribute"},
     ]
     json_file.write_text(json.dumps(data))

@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
-from typing import Optional
 
 from jinja2 import Environment, select_autoescape
 from rich.console import Console
@@ -18,12 +17,25 @@ _JINJA_ENV = Environment(
 )
 
 METRIC_DESCRIPTIONS: dict[str, str] = {
-    "ndcg@5": "Ranking quality at top 5 — rewards placing the most relevant products highest (graded 0-3)",
-    "ndcg@10": "Ranking quality at top 10 — rewards placing the most relevant products highest (graded 0-3)",
-    "mrr": "Mean Reciprocal Rank — how high up the first relevant result appears (1.0 = first position)",
-    "map": "Mean Average Precision — overall precision across all relevant results",
-    "p@5": "Precision at 5 — fraction of top 5 results that are relevant (score >= 2)",
-    "p@10": "Precision at 10 — fraction of top 10 results that are relevant (score >= 2)",
+    "ndcg@5": (
+        "Ranking quality at top 5 — rewards placing the "
+        "most relevant products highest (graded 0-3)"
+    ),
+    "ndcg@10": (
+        "Ranking quality at top 10 — rewards placing the "
+        "most relevant products highest (graded 0-3)"
+    ),
+    "mrr": (
+        "Mean Reciprocal Rank — how high up the first "
+        "relevant result appears (1.0 = first position)"
+    ),
+    "map": ("Mean Average Precision — overall precision across all relevant results"),
+    "p@5": (
+        "Precision at 5 — fraction of top 5 results that are relevant (score >= 2)"
+    ),
+    "p@10": (
+        "Precision at 10 — fraction of top 10 results that are relevant (score >= 2)"
+    ),
     "attribute_match@5": (
         "Fraction of top-5 results where LLM-judged attributes"
         " match or partially match the query"
@@ -37,14 +49,35 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
 }
 
 CHECK_DESCRIPTIONS: dict[str, str] = {
-    "zero_results": "Fails when a query returns no results at all",
-    "result_count": "Fails when a query returns fewer results than the expected minimum (default: 3)",
-    "category_alignment": "Checks if each result's category matches the expected or majority category in the result set",
-    "text_overlap": "Measures keyword overlap between the query and each result's title, category, and description",
-    "price_outlier": "Flags results with prices far outside the result set's normal range using the IQR method",
-    "duplicate": "Detects near-duplicate products in results based on title similarity",
-    "title_length": "Flags titles that are unusually long (> 120 chars, possible SEO stuffing) or short (< 10 chars, possibly malformed)",
-    "out_of_stock_prominence": "Flags out-of-stock products ranked too high (position 1 = fail, positions 2-5 = warning)",
+    "zero_results": ("Fails when a query returns no results at all"),
+    "result_count": (
+        "Fails when a query returns fewer results than "
+        "the expected minimum (default: 3)"
+    ),
+    "category_alignment": (
+        "Checks if each result's category matches the "
+        "expected or majority category in the result set"
+    ),
+    "text_overlap": (
+        "Measures keyword overlap between the query and "
+        "each result's title, category, and description"
+    ),
+    "price_outlier": (
+        "Flags results with prices far outside the "
+        "result set's normal range using the IQR method"
+    ),
+    "duplicate": (
+        "Detects near-duplicate products in results based on title similarity"
+    ),
+    "title_length": (
+        "Flags titles that are unusually long "
+        "(> 120 chars, possible SEO stuffing) or short "
+        "(< 10 chars, possibly malformed)"
+    ),
+    "out_of_stock_prominence": (
+        "Flags out-of-stock products ranked too high "
+        "(position 1 = fail, positions 2-5 = warning)"
+    ),
 }
 
 FAILURE_ONLY_CHECKS: set[str] = {"duplicate"}
@@ -84,7 +117,7 @@ def generate_single_report(
     metrics: list[MetricResult],
     checks: list[CheckResult],
     format: str = "terminal",
-    judgments: Optional[list[JudgmentRecord]] = None,
+    judgments: list[JudgmentRecord] | None = None,
     run_metadata: Mapping[str, object] | None = None,
 ) -> str:
     """Generate a report for a single evaluation configuration.
@@ -169,7 +202,10 @@ def _generate_terminal(
     if ndcg and ndcg.per_query:
         console.print("\n")
         worst = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:10]
-        worst_table = Table(title="Worst Performing Queries (NDCG@10)", show_header=True)
+        worst_table = Table(
+            title="Worst Performing Queries (NDCG@10)",
+            show_header=True,
+        )
         worst_table.add_column("Query", style="cyan")
         worst_table.add_column("NDCG@10", justify="right")
 
@@ -185,11 +221,12 @@ def _generate_terminal(
 def _generate_html(
     metrics: list[MetricResult],
     checks: list[CheckResult],
-    judgments: Optional[list[JudgmentRecord]] = None,
+    judgments: list[JudgmentRecord] | None = None,
     run_metadata: Mapping[str, object] | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
-    template_path = Path(__file__).parent / "templates" / "report.html"
+    tmpl_dir = Path(__file__).parent / "templates"
+    template_path = tmpl_dir / "report.html"
     template_str = template_path.read_text(encoding="utf-8")
     template = _JINJA_ENV.from_string(template_str)
 
@@ -197,10 +234,16 @@ def _generate_html(
     check_summary = _summarize_checks(checks)
 
     # Worst queries
-    ndcg = next((m for m in metrics if m.metric_name == "ndcg@10"), None)
+    ndcg = next(
+        (m for m in metrics if m.metric_name == "ndcg@10"),
+        None,
+    )
     worst_queries = []
     if ndcg and ndcg.per_query:
-        worst_queries = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:10]
+        worst_queries = sorted(
+            ndcg.per_query.items(),
+            key=lambda x: x[1],
+        )[:10]
 
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
@@ -216,15 +259,18 @@ def _generate_html(
         ]
         for key, label in key_to_label:
             if key in run_metadata:
-                metadata_rows.append({
-                    "label": label,
-                    "value": str(run_metadata[key]),
-                })
+                metadata_rows.append(
+                    {
+                        "label": label,
+                        "value": str(run_metadata[key]),
+                    }
+                )
 
     # Group judgments by query for the drill-down section
     judgments_for_template: list[dict] = []
     if judgments:
         from collections import defaultdict
+
         grouped: dict[str, list[JudgmentRecord]] = defaultdict(list)
         for j in judgments:
             grouped[j.query].append(j)

@@ -52,16 +52,22 @@ def _make_comparison_checks() -> list[CheckResult]:
 class TestGenerateComparisonReport:
     def test_terminal_report_contains_both_configs(self):
         report = generate_comparison_report(
-            _make_metrics_a(), _make_metrics_b(),
-            _make_comparison_checks(), "baseline", "experiment",
+            _make_metrics_a(),
+            _make_metrics_b(),
+            _make_comparison_checks(),
+            "baseline",
+            "experiment",
         )
         assert "baseline" in report
         assert "experiment" in report
 
     def test_terminal_report_contains_deltas(self):
         report = generate_comparison_report(
-            _make_metrics_a(), _make_metrics_b(),
-            _make_comparison_checks(), "baseline", "experiment",
+            _make_metrics_a(),
+            _make_metrics_b(),
+            _make_comparison_checks(),
+            "baseline",
+            "experiment",
         )
         assert "ndcg@10" in report
         # Should show improvement
@@ -69,15 +75,21 @@ class TestGenerateComparisonReport:
 
     def test_terminal_report_contains_position_shifts(self):
         report = generate_comparison_report(
-            _make_metrics_a(), _make_metrics_b(),
-            _make_comparison_checks(), "baseline", "experiment",
+            _make_metrics_a(),
+            _make_metrics_b(),
+            _make_comparison_checks(),
+            "baseline",
+            "experiment",
         )
         assert "Position Shift" in report
 
     def test_html_report(self):
         report = generate_comparison_report(
-            _make_metrics_a(), _make_metrics_b(),
-            _make_comparison_checks(), "baseline", "experiment",
+            _make_metrics_a(),
+            _make_metrics_b(),
+            _make_comparison_checks(),
+            "baseline",
+            "experiment",
             format="html",
         )
         assert "<html" in report
@@ -111,16 +123,26 @@ class TestGenerateComparisonReport:
         assert "adapter_b.py" in report
 
     def test_regression_detection(self):
-        metrics_a = [MetricResult(
-            metric_name="ndcg@10", value=0.9,
-            per_query={"shoes": 0.9, "laptop": 0.9},
-        )]
-        metrics_b = [MetricResult(
-            metric_name="ndcg@10", value=0.7,
-            per_query={"shoes": 0.5, "laptop": 0.9},  # shoes regressed
-        )]
+        metrics_a = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.9,
+                per_query={"shoes": 0.9, "laptop": 0.9},
+            )
+        ]
+        metrics_b = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.7,
+                per_query={"shoes": 0.5, "laptop": 0.9},  # shoes regressed
+            )
+        ]
         report = generate_comparison_report(
-            metrics_a, metrics_b, [], "v1", "v2",
+            metrics_a,
+            metrics_b,
+            [],
+            "v1",
+            "v2",
         )
         assert "Regression" in report
         assert "shoes" in report

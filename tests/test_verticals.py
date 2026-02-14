@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from veritail.verticals import (
+    _BUILTIN_VERTICALS,
     AUTOMOTIVE,
     BEAUTY,
     ELECTRONICS,
@@ -14,10 +15,8 @@ from veritail.verticals import (
     INDUSTRIAL,
     MARKETPLACE,
     MEDICAL,
-    _BUILTIN_VERTICALS,
     load_vertical,
 )
-
 
 ALL_BUILTINS = [
     "automotive",
@@ -36,20 +35,23 @@ class TestBuiltinVerticals:
     @pytest.mark.parametrize("name", ALL_BUILTINS)
     def test_builtin_loads(self, name):
         result = load_vertical(name)
-        assert f"## Vertical:" in result
+        assert "## Vertical:" in result
         assert "Scoring considerations" in result
 
-    @pytest.mark.parametrize("name,constant", [
-        ("automotive", AUTOMOTIVE),
-        ("beauty", BEAUTY),
-        ("electronics", ELECTRONICS),
-        ("fashion", FASHION),
-        ("foodservice", FOODSERVICE),
-        ("groceries", GROCERIES),
-        ("industrial", INDUSTRIAL),
-        ("marketplace", MARKETPLACE),
-        ("medical", MEDICAL),
-    ])
+    @pytest.mark.parametrize(
+        "name,constant",
+        [
+            ("automotive", AUTOMOTIVE),
+            ("beauty", BEAUTY),
+            ("electronics", ELECTRONICS),
+            ("fashion", FASHION),
+            ("foodservice", FOODSERVICE),
+            ("groceries", GROCERIES),
+            ("industrial", INDUSTRIAL),
+            ("marketplace", MARKETPLACE),
+            ("medical", MEDICAL),
+        ],
+    )
     def test_builtin_returns_constant(self, name, constant):
         assert load_vertical(name) is constant
 
@@ -57,10 +59,20 @@ class TestBuiltinVerticals:
     def test_builtin_min_length(self, name):
         assert len(load_vertical(name)) > 100
 
-    @pytest.mark.parametrize("name", [
-        "Automotive", "BEAUTY", "Electronics", "FASHION", "Foodservice",
-        "GROCERIES", "Industrial", "MARKETPLACE", "Medical",
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Automotive",
+            "BEAUTY",
+            "Electronics",
+            "FASHION",
+            "Foodservice",
+            "GROCERIES",
+            "Industrial",
+            "MARKETPLACE",
+            "Medical",
+        ],
+    )
     def test_builtin_case_insensitive(self, name):
         result = load_vertical(name)
         assert "## Vertical:" in result
@@ -72,7 +84,10 @@ class TestBuiltinVerticals:
 class TestCustomVertical:
     def test_load_from_file(self, tmp_path):
         custom = tmp_path / "my_vertical.txt"
-        custom.write_text("## Vertical: Custom\nCustom scoring guidance.", encoding="utf-8")
+        custom.write_text(
+            "## Vertical: Custom\nCustom scoring guidance.",
+            encoding="utf-8",
+        )
 
         result = load_vertical(str(custom))
         assert "Custom scoring guidance" in result
@@ -91,5 +106,10 @@ class TestUnknownVertical:
             load_vertical("nonexistent")
 
     def test_error_lists_available(self):
-        with pytest.raises(FileNotFoundError, match="automotive.*beauty.*electronics.*fashion.*foodservice.*groceries.*industrial.*marketplace.*medical"):
+        pattern = (
+            "automotive.*beauty.*electronics.*fashion"
+            ".*foodservice.*groceries.*industrial"
+            ".*marketplace.*medical"
+        )
+        with pytest.raises(FileNotFoundError, match=pattern):
             load_vertical("nonexistent")

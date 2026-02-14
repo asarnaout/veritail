@@ -22,10 +22,34 @@ def _make_metrics() -> list[MetricResult]:
 
 def _make_checks() -> list[CheckResult]:
     return [
-        CheckResult(check_name="zero_results", query="shoes", product_id=None, passed=True, detail="OK"),
-        CheckResult(check_name="zero_results", query="laptop", product_id=None, passed=True, detail="OK"),
-        CheckResult(check_name="category_alignment", query="shoes", product_id="SKU-1", passed=True, detail="OK"),
-        CheckResult(check_name="category_alignment", query="shoes", product_id="SKU-2", passed=False, detail="Mismatch"),
+        CheckResult(
+            check_name="zero_results",
+            query="shoes",
+            product_id=None,
+            passed=True,
+            detail="OK",
+        ),
+        CheckResult(
+            check_name="zero_results",
+            query="laptop",
+            product_id=None,
+            passed=True,
+            detail="OK",
+        ),
+        CheckResult(
+            check_name="category_alignment",
+            query="shoes",
+            product_id="SKU-1",
+            passed=True,
+            detail="OK",
+        ),
+        CheckResult(
+            check_name="category_alignment",
+            query="shoes",
+            product_id="SKU-2",
+            passed=False,
+            detail="Mismatch",
+        ),
     ]
 
 

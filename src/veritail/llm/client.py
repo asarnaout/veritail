@@ -81,7 +81,8 @@ def create_llm_client(model: str) -> LLMClient:
     """Create an LLM client based on the model name.
 
     Models starting with 'claude' use the Anthropic API.
-    All other models use the OpenAI API (also works with OpenAI-compatible local models).
+    All other models use the OpenAI API
+    (also works with OpenAI-compatible local models).
     """
     if model.startswith("claude"):
         return AnthropicClient(model=model)

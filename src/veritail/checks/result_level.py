@@ -39,9 +39,13 @@ def check_category_alignment(
                     product_id=result.product_id,
                     passed=aligned,
                     detail=(
-                        f"Category '{result.category}' matches expected '{query.category}'"
+                        f"Category '{result.category}' "
+                        f"matches expected '{query.category}'"
                         if aligned
-                        else f"Category '{result.category}' does not match expected '{query.category}'"
+                        else (
+                            f"Category '{result.category}' does not "
+                            f"match expected '{query.category}'"
+                        )
                     ),
                     severity="info" if aligned else "warning",
                 )
@@ -68,7 +72,10 @@ def check_category_alignment(
                     detail=(
                         f"Category '{result.category}' matches majority category"
                         if aligned
-                        else f"Category '{result.category}' differs from majority category"
+                        else (
+                            f"Category '{result.category}' "
+                            "differs from majority category"
+                        )
                     ),
                     severity="info" if aligned else "warning",
                 )
@@ -128,9 +135,13 @@ def check_text_overlap(
                 product_id=result.product_id,
                 passed=passed,
                 detail=(
-                    f"Best overlap: {best_score:.2f} on {best_field} (tokens: {best_tokens})"
+                    f"Best overlap: {best_score:.2f} "
+                    f"on {best_field} (tokens: {best_tokens})"
                     if passed
-                    else f"Low overlap across all fields (best: {best_score:.2f} on {best_field})"
+                    else (
+                        f"Low overlap across all fields "
+                        f"(best: {best_score:.2f} on {best_field})"
+                    )
                 ),
                 severity="info" if passed else "warning",
             )
@@ -172,9 +183,15 @@ def check_price_outliers(
                 product_id=result.product_id,
                 passed=not is_outlier,
                 detail=(
-                    f"Price ${result.price:.2f} is within normal range (${lower_bound:.2f}-${upper_bound:.2f})"
+                    f"Price ${result.price:.2f} is within "
+                    f"normal range "
+                    f"(${lower_bound:.2f}-${upper_bound:.2f})"
                     if not is_outlier
-                    else f"Price ${result.price:.2f} is an outlier (normal range: ${lower_bound:.2f}-${upper_bound:.2f})"
+                    else (
+                        f"Price ${result.price:.2f} is an "
+                        f"outlier (normal range: "
+                        f"${lower_bound:.2f}-${upper_bound:.2f})"
+                    )
                 ),
                 severity="info" if not is_outlier else "warning",
             )
@@ -304,10 +321,7 @@ def check_out_of_stock_prominence(
                     query=query,
                     product_id=result.product_id,
                     passed=False,
-                    detail=(
-                        "Out-of-stock product appears at position 1 "
-                        "(top result)"
-                    ),
+                    detail=("Out-of-stock product appears at position 1 (top result)"),
                     severity="fail",
                 )
             )

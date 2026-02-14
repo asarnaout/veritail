@@ -50,7 +50,10 @@ class TestFileBackend:
 
     def test_log_experiment(self, tmp_path):
         backend = FileBackend(output_dir=str(tmp_path))
-        backend.log_experiment("test-exp", {"llm_model": "claude-sonnet-4-5", "top_k": 10})
+        backend.log_experiment(
+            "test-exp",
+            {"llm_model": "claude-sonnet-4-5", "top_k": 10},
+        )
 
         config_file = tmp_path / "test-exp" / "config.json"
         assert config_file.exists()
@@ -72,11 +75,17 @@ class TestFileBackend:
     def test_log_experiment_resets_existing_judgments(self, tmp_path):
         backend = FileBackend(output_dir=str(tmp_path))
 
-        backend.log_experiment("test-exp", {"llm_model": "claude-sonnet-4-5", "top_k": 10})
+        backend.log_experiment(
+            "test-exp",
+            {"llm_model": "claude-sonnet-4-5", "top_k": 10},
+        )
         backend.log_judgment(_make_judgment(product_id="SKU-001", score=3))
         assert len(backend.get_judgments("test-exp")) == 1
 
-        backend.log_experiment("test-exp", {"llm_model": "claude-sonnet-4-5", "top_k": 10})
+        backend.log_experiment(
+            "test-exp",
+            {"llm_model": "claude-sonnet-4-5", "top_k": 10},
+        )
 
         assert backend.get_judgments("test-exp") == []
 
@@ -124,6 +133,7 @@ class TestFileBackend:
 
         # Write a JSONL line without attribute_verdict (simulates old data)
         import json
+
         old_record = {
             "query": "shoes",
             "product": {

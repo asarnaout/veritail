@@ -51,7 +51,9 @@ def create_backend(backend_type: str, **kwargs: Any) -> EvalBackend:
             )
         return LangfuseBackend(**kwargs)
     else:
-        raise ValueError(f"Unknown backend type: {backend_type}. Use 'file' or 'langfuse'.")
+        raise ValueError(
+            f"Unknown backend type: {backend_type}. Use 'file' or 'langfuse'."
+        )
 
 
 __all__ = ["EvalBackend", "create_backend"]

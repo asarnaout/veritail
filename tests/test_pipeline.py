@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 from veritail.backends.file import FileBackend
 from veritail.llm.client import LLMClient, LLMResponse
@@ -13,6 +14,7 @@ from veritail.types import ExperimentConfig, QueryEntry, SearchResult
 
 def _make_mock_adapter():
     """Create a mock adapter that returns fixed results."""
+
     def adapter(query: str) -> list[SearchResult]:
         return [
             SearchResult(
@@ -26,6 +28,7 @@ def _make_mock_adapter():
             )
             for i in range(3)
         ]
+
     return adapter
 
 
@@ -34,9 +37,24 @@ def _make_mock_llm_client() -> LLMClient:
     client = Mock(spec=LLMClient)
     # Return different scores for different calls
     responses = [
-        LLMResponse(content="SCORE: 3\nATTRIBUTES: match\nREASONING: Excellent match", model="test", input_tokens=100, output_tokens=50),
-        LLMResponse(content="SCORE: 2\nATTRIBUTES: partial\nREASONING: Good match", model="test", input_tokens=100, output_tokens=50),
-        LLMResponse(content="SCORE: 1\nATTRIBUTES: mismatch\nREASONING: Marginal match", model="test", input_tokens=100, output_tokens=50),
+        LLMResponse(
+            content="SCORE: 3\nATTRIBUTES: match\nREASONING: Excellent match",
+            model="test",
+            input_tokens=100,
+            output_tokens=50,
+        ),
+        LLMResponse(
+            content="SCORE: 2\nATTRIBUTES: partial\nREASONING: Good match",
+            model="test",
+            input_tokens=100,
+            output_tokens=50,
+        ),
+        LLMResponse(
+            content="SCORE: 1\nATTRIBUTES: mismatch\nREASONING: Marginal match",
+            model="test",
+            input_tokens=100,
+            output_tokens=50,
+        ),
     ]
     client.complete.side_effect = responses * 10  # enough for multiple queries
     return client
@@ -60,7 +78,12 @@ class TestRunEvaluation:
         rubric = ("system prompt", lambda q, r: f"Query: {q}\nProduct: {r.title}")
 
         judgments, checks, metrics = run_evaluation(
-            queries, adapter, config, llm_client, rubric, backend,
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
         )
 
         # Should have 3 judgments (1 query * 3 results)
@@ -99,7 +122,12 @@ class TestRunEvaluation:
         rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics = run_evaluation(
-            queries, adapter, config, llm_client, rubric, backend,
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
         )
 
         # 2 queries * 3 results = 6 judgments
@@ -115,8 +143,11 @@ class TestRunEvaluation:
         queries = [QueryEntry(query="steam table", type="broad")]
         adapter = _make_mock_adapter()
         config = ExperimentConfig(
-            name="test-exp", adapter_path="test.py",
-            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
@@ -125,14 +156,20 @@ class TestRunEvaluation:
         vertical_text = "## Vertical: Foodservice\nFood-safety certs matter."
 
         run_evaluation(
-            queries, adapter, config, llm_client, rubric, backend,
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
             vertical=vertical_text,
         )
 
         # The system prompt passed to RelevanceJudge should contain the vertical
-        system_prompt_used = llm_client.complete.call_args_list[0][1].get(
-            "system_prompt"
-        ) or llm_client.complete.call_args_list[0][0][0]
+        system_prompt_used = (
+            llm_client.complete.call_args_list[0][1].get("system_prompt")
+            or llm_client.complete.call_args_list[0][0][0]
+        )
         assert "Foodservice" in system_prompt_used
         assert "You are an expert judge." in system_prompt_used
 
@@ -141,22 +178,31 @@ class TestRunEvaluation:
         queries = [QueryEntry(query="gloves", type="broad")]
         adapter = _make_mock_adapter()
         config = ExperimentConfig(
-            name="test-exp", adapter_path="test.py",
-            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("RUBRIC_START", lambda q, r: f"Query: {q}")
 
         run_evaluation(
-            queries, adapter, config, llm_client, rubric, backend,
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
             context="BBQ restaurant supplier",
             vertical="## Vertical: Foodservice\nScoring guidance here.",
         )
 
-        system_prompt_used = llm_client.complete.call_args_list[0][1].get(
-            "system_prompt"
-        ) or llm_client.complete.call_args_list[0][0][0]
+        system_prompt_used = (
+            llm_client.complete.call_args_list[0][1].get("system_prompt")
+            or llm_client.complete.call_args_list[0][0][0]
+        )
 
         ctx_pos = system_prompt_used.index("## Business Context")
         vert_pos = system_prompt_used.index("## Vertical: Foodservice")
@@ -165,25 +211,34 @@ class TestRunEvaluation:
         assert ctx_pos < vert_pos < rubric_pos
 
     def test_vertical_alone_no_business_context_header(self, tmp_path):
-        """Using vertical without context should not produce a Business Context header."""
+        """Vertical without context should not produce a Business Context header."""
         queries = [QueryEntry(query="pan", type="broad")]
         adapter = _make_mock_adapter()
         config = ExperimentConfig(
-            name="test-exp", adapter_path="test.py",
-            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("RUBRIC", lambda q, r: f"Query: {q}")
 
         run_evaluation(
-            queries, adapter, config, llm_client, rubric, backend,
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
             vertical="## Vertical: Foodservice\nGuidance.",
         )
 
-        system_prompt_used = llm_client.complete.call_args_list[0][1].get(
-            "system_prompt"
-        ) or llm_client.complete.call_args_list[0][0][0]
+        system_prompt_used = (
+            llm_client.complete.call_args_list[0][1].get("system_prompt")
+            or llm_client.complete.call_args_list[0][0][0]
+        )
 
         assert "## Business Context" not in system_prompt_used
         assert "## Vertical: Foodservice" in system_prompt_used
@@ -195,15 +250,22 @@ class TestRunEvaluation:
             raise RuntimeError("API down")
 
         config = ExperimentConfig(
-            name="test-exp", adapter_path="test.py",
-            llm_model="test", rubric="default",
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test",
+            rubric="default",
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("system", lambda q, r: q)
 
         judgments, checks, metrics = run_evaluation(
-            queries, failing_adapter, config, llm_client, rubric, backend,
+            queries,
+            failing_adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
         )
 
         # No judgments because adapter failed
@@ -222,26 +284,40 @@ class TestRunEvaluation:
                 raise RuntimeError("adapter error")
             return [
                 SearchResult(
-                    product_id="SKU-1", title="Perfect Result", description="desc",
-                    category="Shoes", price=50.0, position=0,
+                    product_id="SKU-1",
+                    title="Perfect Result",
+                    description="desc",
+                    category="Shoes",
+                    price=50.0,
+                    position=0,
                 )
             ]
 
         config = ExperimentConfig(
-            name="test-exp", adapter_path="test.py",
-            llm_model="test-model", rubric="ecommerce-default", top_k=3,
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
         )
         # LLM always returns score 3 for the successful query
         llm_client = Mock(spec=LLMClient)
         llm_client.complete.return_value = LLMResponse(
             content="SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
-            model="test", input_tokens=10, output_tokens=10,
+            model="test",
+            input_tokens=10,
+            output_tokens=10,
         )
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("system", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics = run_evaluation(
-            queries, mixed_adapter, config, llm_client, rubric, backend,
+            queries,
+            mixed_adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
         )
 
         ndcg = next(m for m in metrics if m.metric_name == "ndcg@10")
@@ -302,7 +378,12 @@ class TestRunEvaluation:
         rubric = ("system", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics = run_evaluation(
-            queries, adapter, config, llm_client, rubric, backend,
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
         )
 
         assert len(judgments) == 2

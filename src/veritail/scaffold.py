@@ -88,7 +88,9 @@ def search(query: str) -> list[SearchResult]:
                 product_id=product_id,
                 title=title,
                 description=str(item.get("description") or ""),
-                category=str(item.get("category") or item.get("department") or "Unknown"),
+                category=str(
+                    item.get("category") or item.get("department") or "Unknown"
+                ),
                 price=_to_float(item.get("price")),
                 position=position,
                 image_url=str(item.get("image_url")) if item.get("image_url") else None,

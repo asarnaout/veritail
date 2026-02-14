@@ -33,7 +33,10 @@ def check_result_overlap(
         query=query,
         product_id=None,
         passed=True,
-        detail=f"Result overlap: {jaccard:.2f} ({len(intersection)}/{len(union)} shared products)",
+        detail=(
+            f"Result overlap: {jaccard:.2f} "
+            f"({len(intersection)}/{len(union)} shared products)"
+        ),
         severity="info",
     )
 
@@ -62,10 +65,8 @@ def check_rank_correlation(
 
     # Spearman rank correlation
     n = len(shared)
-    d_squared_sum = sum(
-        (pos_a[pid] - pos_b[pid]) ** 2 for pid in shared
-    )
-    rho = 1 - (6 * d_squared_sum) / (n * (n ** 2 - 1))
+    d_squared_sum = sum((pos_a[pid] - pos_b[pid]) ** 2 for pid in shared)
+    rho = 1 - (6 * d_squared_sum) / (n * (n**2 - 1))
 
     return CheckResult(
         check_name="rank_correlation",
@@ -114,5 +115,8 @@ def find_position_shifts(
             )
 
     # Sort by magnitude of shift, largest first
-    shifts.sort(key=lambda c: abs(int(c.detail.split(" positions")[0].split()[-1])), reverse=True)
+    shifts.sort(
+        key=lambda c: abs(int(c.detail.split(" positions")[0].split()[-1])),
+        reverse=True,
+    )
     return shifts

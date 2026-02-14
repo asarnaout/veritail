@@ -72,8 +72,7 @@ class RelevanceJudge:
         score = int(score_match.group(1))
         if score not in (0, 1, 2, 3):
             raise ValueError(
-                f"Score must be 0, 1, 2, or 3. Got: {score}. "
-                f"Response:\n{response_text}"
+                f"Score must be 0, 1, 2, or 3. Got: {score}. Response:\n{response_text}"
             )
 
         # Extract attribute verdict (default to "n/a" for custom rubrics)
@@ -81,17 +80,13 @@ class RelevanceJudge:
             r"(?i)ATTRIBUTES\s*[:=]\s*(\w[\w/ ]*?)(?:\n|$)",
             response_text,
         )
-        attribute_verdict = (
-            attr_match.group(1).strip().lower() if attr_match else "n/a"
-        )
+        attribute_verdict = attr_match.group(1).strip().lower() if attr_match else "n/a"
 
         # Extract reasoning
         reasoning_match = re.search(
             r"(?is)REASONING\s*[:=]\s*(.*)",
             response_text,
         )
-        reasoning = (
-            reasoning_match.group(1).strip() if reasoning_match else ""
-        )
+        reasoning = reasoning_match.group(1).strip() if reasoning_match else ""
 
         return score, attribute_verdict, reasoning

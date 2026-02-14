@@ -18,7 +18,8 @@ class TestAnthropicClient:
         mock_response.content = [MagicMock(text="SCORE: 2\nREASONING: Good match")]
         mock_response.usage.input_tokens = 100
         mock_response.usage.output_tokens = 50
-        mock_anthropic_cls.return_value.messages.create.return_value = mock_response
+        mock_client = mock_anthropic_cls.return_value
+        mock_client.messages.create.return_value = mock_response
 
         client = AnthropicClient(model="claude-sonnet-4-5")
         result = client.complete("system prompt", "user prompt")
@@ -40,7 +41,8 @@ class TestOpenAIClient:
         mock_response = MagicMock()
         mock_response.choices = [mock_choice]
         mock_response.usage = mock_usage
-        mock_openai_cls.return_value.chat.completions.create.return_value = mock_response
+        mock_client = mock_openai_cls.return_value
+        mock_client.chat.completions.create.return_value = mock_response
 
         client = OpenAIClient(model="gpt-4o")
         result = client.complete("system prompt", "user prompt")

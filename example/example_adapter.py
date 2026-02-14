@@ -52,17 +52,19 @@ def search(query: str) -> list[SearchResult]:
     # Convert to SearchResult objects
     results = []
     for i, product in enumerate(mock_products):
-        results.append(SearchResult(
-            product_id=product["product_id"],
-            title=product["title"],
-            description=product["description"],
-            category=product["category"],
-            price=product["price"],
-            position=i,
-            image_url=None,
-            attributes=product["attributes"],
-            in_stock=product["in_stock"],
-            metadata=product.get("metadata", {}),
-        ))
+        results.append(
+            SearchResult(
+                product_id=product["product_id"],
+                title=product["title"],
+                description=product["description"],
+                category=product["category"],
+                price=product["price"],
+                position=i,
+                image_url=None,
+                attributes=product["attributes"],
+                in_stock=product["in_stock"],
+                metadata=product.get("metadata", {}),
+            )
+        )
 
     return results

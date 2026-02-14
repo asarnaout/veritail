@@ -215,3 +215,6 @@ eval-results/
 
 # Local example overrides
 example.local/
+
+# Claude Code
+CLAUDE.md

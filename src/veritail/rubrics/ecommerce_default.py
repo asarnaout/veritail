@@ -31,8 +31,8 @@ A shopper would never expect to see this product for this search.
 
 Consider these factors in order of importance:
 
-1. **Explicit intent match**: Does the product match what the query literally asks for? \
-If the query says "red running shoes", the product should be red running shoes.
+1. **Explicit intent match**: Does the product match what the query literally asks \
+for? If the query says "red running shoes", the product should be red running shoes.
 
 2. **Implicit intent match**: Does the product match what the shopper probably means, \
 given the business context above (if provided)? When a business context is provided, \
@@ -60,7 +60,8 @@ REASONING: <your concise justification in 1-3 sentences>
 
 Where <score> is a single digit 0, 1, 2, or 3.
 Where <verdict> is one of:
-- match — all query-specified attributes (color, size, brand, material, etc.) are satisfied by the product
+- match — all query-specified attributes (color, size, brand, material, \
+etc.) are satisfied by the product
 - partial — some but not all query-specified attributes are satisfied
 - mismatch — the product contradicts one or more query-specified attributes
 - n/a — the query does not specify any filterable attributes

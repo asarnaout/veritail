@@ -76,4 +76,3 @@ class FileBackend(EvalBackend):
                 judgments.append(JudgmentRecord(product=product, **data))
 
         return judgments
-

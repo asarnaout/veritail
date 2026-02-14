@@ -5,12 +5,11 @@ from __future__ import annotations
 import importlib.util
 from collections.abc import Callable
 from pathlib import Path
-from typing import Tuple
 
 from veritail.types import SearchResult
 
 
-def load_rubric(name: str) -> Tuple[str, Callable[[str, SearchResult], str]]:
+def load_rubric(name: str) -> tuple[str, Callable[[str, SearchResult], str]]:
     """Load a rubric by name or file path.
 
     Returns a tuple of (system_prompt, format_user_prompt_function).
@@ -28,17 +27,22 @@ def load_rubric(name: str) -> Tuple[str, Callable[[str, SearchResult], str]]:
             SYSTEM_PROMPT,
             format_user_prompt,
         )
+
         return SYSTEM_PROMPT, format_user_prompt
 
     # Treat as a file path to a custom rubric
     file_path = Path(name)
     if not file_path.exists():
         raise FileNotFoundError(
-            f"Rubric '{name}' is not a built-in rubric and file not found. "
-            f"Available built-in rubrics: ecommerce-default"
+            f"Rubric '{name}' is not a built-in rubric "
+            "and file not found. "
+            "Available built-in rubrics: ecommerce-default"
         )
 
-    spec = importlib.util.spec_from_file_location("custom_rubric", file_path)
+    spec = importlib.util.spec_from_file_location(
+        "custom_rubric",
+        file_path,
+    )
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load rubric from: {name}")
 

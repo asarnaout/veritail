@@ -48,7 +48,10 @@ def check_result_count(
             query=query,
             product_id=None,
             passed=False,
-            detail=f"Query '{query}' returned only {count} result(s) (expected >= {min_expected})",
+            detail=(
+                f"Query '{query}' returned only {count} result(s) "
+                f"(expected >= {min_expected})"
+            ),
             severity="warning",
         )
     return CheckResult(

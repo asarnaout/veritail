@@ -19,7 +19,9 @@ def load_adapter(path: str) -> Callable[[str], list[SearchResult]]:
     if not file_path.exists():
         raise FileNotFoundError(f"Adapter file not found: {path}")
     if not file_path.suffix == ".py":
-        raise ValueError(f"Adapter must be a Python file (.py), got: {file_path.suffix}")
+        raise ValueError(
+            f"Adapter must be a Python file (.py), got: {file_path.suffix}"
+        )
 
     spec = importlib.util.spec_from_file_location("adapter_module", file_path)
     if spec is None or spec.loader is None:

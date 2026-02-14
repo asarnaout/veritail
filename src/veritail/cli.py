@@ -67,9 +67,7 @@ def _build_run_metadata(
 ) -> dict[str, object]:
     """Build provenance metadata for report rendering."""
     metadata: dict[str, object] = {
-        "generated_at_utc": datetime.now(timezone.utc).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        ),
+        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "llm_model": llm_model,
         "rubric": rubric,
         "vertical": vertical if vertical else "none",
@@ -146,8 +144,20 @@ def init(
 
 
 @main.command()
-@click.option("--queries", required=True, type=click.Path(exists=True), help="Path to query set (CSV or JSON)")
-@click.option("--adapter", "adapters", required=True, multiple=True, type=click.Path(exists=True), help="Path to search adapter module(s)")
+@click.option(
+    "--queries",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to query set (CSV or JSON)",
+)
+@click.option(
+    "--adapter",
+    "adapters",
+    required=True,
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Path to search adapter module(s)",
+)
 @click.option(
     "--config-name",
     "config_names",
@@ -157,20 +167,75 @@ def init(
         "Provide one per adapter, or omit to auto-generate names."
     ),
 )
-@click.option("--llm-model", default="claude-sonnet-4-5", help="LLM model to use for judgments")
-@click.option("--rubric", default="ecommerce-default", help="Rubric name or path to custom rubric module")
-@click.option("--backend", "backend_type", default="file", type=click.Choice(["file", "langfuse"]), help="Evaluation backend")
-@click.option("--output-dir", default="./eval-results", help="Output directory (file backend)")
-@click.option("--backend-url", default=None, help="Backend URL (langfuse backend)")
-@click.option("--top-k", default=10, type=int, help="Maximum number of results to evaluate per query")
-@click.option("--open", "open_browser", is_flag=True, default=False,
-              help="Open the HTML report in the browser when complete.")
-@click.option("--skip-on-check-fail/--no-skip-on-check-fail", default=False,
-              help="Skip LLM judgment for a result when any deterministic check fails for that result (default: always run LLM).")
-@click.option("--context", default=None, type=str,
-              help="Business context for the LLM judge (e.g. 'B2B industrial kitchen equipment supplier').")
-@click.option("--vertical", default=None, type=str,
-              help="Vertical for domain-specific scoring guidance (built-in: foodservice, industrial, electronics, fashion, marketplace, case-insensitive; or path to a text file).")
+@click.option(
+    "--llm-model",
+    default="claude-sonnet-4-5",
+    help="LLM model to use for judgments",
+)
+@click.option(
+    "--rubric",
+    default="ecommerce-default",
+    help="Rubric name or path to custom rubric module",
+)
+@click.option(
+    "--backend",
+    "backend_type",
+    default="file",
+    type=click.Choice(["file", "langfuse"]),
+    help="Evaluation backend",
+)
+@click.option(
+    "--output-dir",
+    default="./eval-results",
+    help="Output directory (file backend)",
+)
+@click.option(
+    "--backend-url",
+    default=None,
+    help="Backend URL (langfuse backend)",
+)
+@click.option(
+    "--top-k",
+    default=10,
+    type=int,
+    help="Max results to evaluate per query",
+)
+@click.option(
+    "--open",
+    "open_browser",
+    is_flag=True,
+    default=False,
+    help="Open the HTML report in the browser when complete.",
+)
+@click.option(
+    "--skip-on-check-fail/--no-skip-on-check-fail",
+    default=False,
+    help=(
+        "Skip LLM judgment for a result when any "
+        "deterministic check fails for that result "
+        "(default: always run LLM)."
+    ),
+)
+@click.option(
+    "--context",
+    default=None,
+    type=str,
+    help=(
+        "Business context for the LLM judge "
+        "(e.g. 'B2B industrial kitchen equipment supplier')."
+    ),
+)
+@click.option(
+    "--vertical",
+    default=None,
+    type=str,
+    help=(
+        "Vertical for domain-specific scoring guidance "
+        "(built-in: foodservice, industrial, electronics, "
+        "fashion, marketplace, case-insensitive; "
+        "or path to a text file)."
+    ),
+)
 def run(
     queries: str,
     adapters: tuple[str, ...],
@@ -189,8 +254,10 @@ def run(
     """Run evaluation (single or dual configuration)."""
     if config_names and len(adapters) != len(config_names):
         raise click.UsageError(
-            "Each --adapter must have a matching --config-name when names are provided. "
-            f"Got {len(adapters)} adapter(s) and {len(config_names)} config name(s). "
+            "Each --adapter must have a matching "
+            "--config-name when names are provided. "
+            f"Got {len(adapters)} adapter(s) and "
+            f"{len(config_names)} config name(s). "
             "Or omit --config-name to auto-generate names."
         )
 
@@ -215,6 +282,7 @@ def run(
     vertical_context: str | None = None
     if vertical:
         from veritail.verticals import load_vertical
+
         vertical_context = load_vertical(vertical)
 
     llm_client = create_llm_client(llm_model)
@@ -240,7 +308,12 @@ def run(
         adapter_fn = load_adapter(adapters[0])
 
         judgments, checks, metrics = run_evaluation(
-            query_entries, adapter_fn, config, llm_client, rubric_data, backend,
+            query_entries,
+            adapter_fn,
+            config,
+            llm_client,
+            rubric_data,
+            backend,
             skip_llm_on_fail=skip_on_check_fail,
             context=context,
             vertical=vertical_context,
@@ -254,7 +327,9 @@ def run(
         )
 
         report = generate_single_report(
-            metrics, checks, run_metadata=run_metadata,
+            metrics,
+            checks,
+            run_metadata=run_metadata,
         )
         console.print(report)
 
@@ -263,7 +338,11 @@ def run(
 
         metrics_path = exp_dir / "metrics.json"
         metrics_path.write_text(
-            json.dumps([asdict(m) for m in metrics], indent=2, default=str),
+            json.dumps(
+                [asdict(m) for m in metrics],
+                indent=2,
+                default=str,
+            ),
             encoding="utf-8",
         )
 
@@ -280,6 +359,7 @@ def run(
 
         if open_browser:
             import webbrowser
+
             webbrowser.open(html_path.resolve().as_uri())
 
     else:
@@ -302,15 +382,22 @@ def run(
         adapter_b = load_adapter(adapters[1])
 
         (
-            judgments_a, judgments_b,
-            checks_a, checks_b,
-            metrics_a, metrics_b,
+            judgments_a,
+            judgments_b,
+            checks_a,
+            checks_b,
+            metrics_a,
+            metrics_b,
             comparison_checks,
         ) = run_dual_evaluation(
             query_entries,
-            adapter_a, config_a,
-            adapter_b, config_b,
-            llm_client, rubric_data, backend,
+            adapter_a,
+            config_a,
+            adapter_b,
+            config_b,
+            llm_client,
+            rubric_data,
+            backend,
             skip_llm_on_fail=skip_on_check_fail,
             context=context,
             vertical=vertical_context,
@@ -325,36 +412,50 @@ def run(
         )
 
         report = generate_comparison_report(
-            metrics_a, metrics_b,
+            metrics_a,
+            metrics_b,
             comparison_checks,
-            config_names[0], config_names[1],
+            config_names[0],
+            config_names[1],
             run_metadata=run_metadata,
         )
         console.print(report)
 
-        for cfg_name, cfg_metrics in [(config_names[0], metrics_a), (config_names[1], metrics_b)]:
+        configs_and_metrics = [
+            (config_names[0], metrics_a),
+            (config_names[1], metrics_b),
+        ]
+        for cfg_name, cfg_metrics in configs_and_metrics:
             exp_dir = Path(output_dir) / cfg_name
             exp_dir.mkdir(parents=True, exist_ok=True)
             metrics_path = exp_dir / "metrics.json"
             metrics_path.write_text(
-                json.dumps([asdict(m) for m in cfg_metrics], indent=2, default=str),
+                json.dumps(
+                    [asdict(m) for m in cfg_metrics],
+                    indent=2,
+                    default=str,
+                ),
                 encoding="utf-8",
             )
 
         html = generate_comparison_report(
-            metrics_a, metrics_b,
+            metrics_a,
+            metrics_b,
             comparison_checks,
-            config_names[0], config_names[1],
+            config_names[0],
+            config_names[1],
             format="html",
             run_metadata=run_metadata,
         )
-        html_path = Path(output_dir) / f"{config_names[0]}_vs_{config_names[1]}" / "report.html"
+        cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
+        html_path = Path(output_dir) / cmp_dir / "report.html"
         html_path.parent.mkdir(parents=True, exist_ok=True)
         html_path.write_text(html, encoding="utf-8")
         console.print(f"[dim]HTML report -> {html_path}[/dim]")
 
         if open_browser:
             import webbrowser
+
             webbrowser.open(html_path.resolve().as_uri())
 
 

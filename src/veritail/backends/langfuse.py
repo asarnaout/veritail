@@ -92,7 +92,9 @@ class LangfuseBackend(EvalBackend):
 
         traces = self._client.fetch_traces(tags=[experiment])
         for trace in traces.data:
-            if not trace.metadata or trace.metadata.get("type") == "experiment_registration":
+            if not trace.metadata:
+                continue
+            if trace.metadata.get("type") == "experiment_registration":
                 continue
 
             # Find the relevance score
@@ -130,4 +132,3 @@ class LangfuseBackend(EvalBackend):
             )
 
         return judgments
-

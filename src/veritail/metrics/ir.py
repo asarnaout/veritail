@@ -24,15 +24,14 @@ def ndcg_at_k(judgments: list[JudgmentRecord], k: int = 10) -> float:
 
     # DCG
     dcg = sum(
-        (2 ** score - 1) / math.log2(i + 2)  # i+2 because log2(1) = 0
+        (2**score - 1) / math.log2(i + 2)  # i+2 because log2(1) = 0
         for i, score in enumerate(scores)
     )
 
     # Ideal DCG: best k scores from ALL judged results, not just the top-k slice
     ideal_scores = sorted((j.score for j in judgments), reverse=True)[:k]
     idcg = sum(
-        (2 ** score - 1) / math.log2(i + 2)
-        for i, score in enumerate(ideal_scores)
+        (2**score - 1) / math.log2(i + 2) for i, score in enumerate(ideal_scores)
     )
 
     if idcg == 0:
@@ -119,9 +118,7 @@ def attribute_match_rate_at_k(
     applicable = [j for j in top_k if j.attribute_verdict != "n/a"]
     if not applicable:
         return None
-    matched = sum(
-        1 for j in applicable if j.attribute_verdict in ("match", "partial")
-    )
+    matched = sum(1 for j in applicable if j.attribute_verdict in ("match", "partial"))
     return matched / len(applicable)
 
 
@@ -192,9 +189,7 @@ def compute_all_metrics(
         aggregate = sum(all_values) / len(all_values) if all_values else 0.0
 
         # Average by type
-        by_query_type = {
-            t: sum(vals) / len(vals) for t, vals in by_type.items()
-        }
+        by_query_type = {t: sum(vals) / len(vals) for t, vals in by_type.items()}
 
         results.append(
             MetricResult(
@@ -222,9 +217,7 @@ def compute_all_metrics(
         all_values = list(per_query.values())
         aggregate = sum(all_values) / len(all_values) if all_values else 0.0
 
-        by_query_type = {
-            t: sum(vals) / len(vals) for t, vals in by_type.items()
-        }
+        by_query_type = {t: sum(vals) / len(vals) for t, vals in by_type.items()}
 
         results.append(
             MetricResult(

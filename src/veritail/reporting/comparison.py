@@ -48,7 +48,13 @@ def generate_comparison_report(
             config_b,
             run_metadata=run_metadata,
         )
-    return _generate_terminal(metrics_a, metrics_b, comparison_checks, config_a, config_b)
+    return _generate_terminal(
+        metrics_a,
+        metrics_b,
+        comparison_checks,
+        config_a,
+        config_b,
+    )
 
 
 def _generate_terminal(
@@ -61,7 +67,9 @@ def _generate_terminal(
     """Generate a rich-formatted terminal comparison report."""
     console = Console(file=StringIO(), force_terminal=True, width=120)
 
-    console.print(f"\n[bold]Search Evaluation Comparison: '{config_a}' vs '{config_b}'[/bold]\n")
+    console.print(
+        f"\n[bold]Search Evaluation Comparison: '{config_a}' vs '{config_b}'[/bold]\n"
+    )
 
     # Side-by-side metrics
     table = Table(title="Metrics Comparison", show_header=True)
@@ -88,7 +96,13 @@ def _generate_terminal(
                 delta_str = f"[red]{delta_str}[/red]"
                 pct_str = f"[red]{pct_str}[/red]"
 
-            table.add_row(m_a.metric_name, f"{m_a.value:.4f}", f"{m_b.value:.4f}", delta_str, pct_str)
+            table.add_row(
+                m_a.metric_name,
+                f"{m_a.value:.4f}",
+                f"{m_b.value:.4f}",
+                delta_str,
+                pct_str,
+            )
 
     console.print(table)
 
@@ -117,15 +131,18 @@ def _generate_terminal(
                         delta_str = f"[green]{delta_str}[/green]"
                     elif delta < 0:
                         delta_str = f"[red]{delta_str}[/red]"
-                    type_table.add_row(m_a.metric_name, f"{va:.4f}", f"{vb:.4f}", delta_str)
+                    type_table.add_row(
+                        m_a.metric_name,
+                        f"{va:.4f}",
+                        f"{vb:.4f}",
+                        delta_str,
+                    )
 
             console.print(type_table)
 
     # Comparison checks summary
     overlap_checks = [c for c in comparison_checks if c.check_name == "result_overlap"]
     shift_checks = [c for c in comparison_checks if c.check_name == "position_shift"]
-    rank_checks = [c for c in comparison_checks if c.check_name == "rank_correlation"]
-
     if overlap_checks:
         console.print("\n[bold]Result Set Overlap[/bold]")
         for c in overlap_checks[:5]:
@@ -137,8 +154,14 @@ def _generate_terminal(
             console.print(f"  {c.query}: {c.detail}")
 
     # Regression detection
-    ndcg_a = next((m for m in metrics_a if m.metric_name == "ndcg@10"), None)
-    ndcg_b = next((m for m in metrics_b if m.metric_name == "ndcg@10"), None)
+    ndcg_a = next(
+        (m for m in metrics_a if m.metric_name == "ndcg@10"),
+        None,
+    )
+    ndcg_b = next(
+        (m for m in metrics_b if m.metric_name == "ndcg@10"),
+        None,
+    )
 
     if ndcg_a and ndcg_b and ndcg_a.per_query and ndcg_b.per_query:
         regressions = []
@@ -146,11 +169,21 @@ def _generate_terminal(
             if query in ndcg_b.per_query:
                 delta = ndcg_b.per_query[query] - ndcg_a.per_query[query]
                 if delta < -0.1:
-                    regressions.append((query, ndcg_a.per_query[query], ndcg_b.per_query[query], delta))
+                    regressions.append(
+                        (
+                            query,
+                            ndcg_a.per_query[query],
+                            ndcg_b.per_query[query],
+                            delta,
+                        )
+                    )
 
         if regressions:
             console.print("\n")
-            reg_table = Table(title="Regressions (NDCG@10 drop > 0.1)", show_header=True)
+            reg_table = Table(
+                title="Regressions (NDCG@10 drop > 0.1)",
+                show_header=True,
+            )
             reg_table.add_column("Query", style="cyan")
             reg_table.add_column(config_a, justify="right")
             reg_table.add_column(config_b, justify="right")
@@ -158,7 +191,12 @@ def _generate_terminal(
 
             regressions.sort(key=lambda x: x[3])
             for query, va, vb, delta in regressions[:10]:
-                reg_table.add_row(query, f"{va:.4f}", f"{vb:.4f}", f"{delta:+.4f}")
+                reg_table.add_row(
+                    query,
+                    f"{va:.4f}",
+                    f"{vb:.4f}",
+                    f"{delta:+.4f}",
+                )
 
             console.print(reg_table)
 
@@ -175,7 +213,8 @@ def _generate_html(
     run_metadata: Mapping[str, object] | None = None,
 ) -> str:
     """Generate an HTML comparison report."""
-    template_path = Path(__file__).parent / "templates" / "report.html"
+    tmpl_dir = Path(__file__).parent / "templates"
+    template_path = tmpl_dir / "report.html"
     template_str = template_path.read_text(encoding="utf-8")
     template = _JINJA_ENV.from_string(template_str)
 
@@ -186,13 +225,15 @@ def _generate_html(
         if m_b:
             delta = m_b.value - m_a.value
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
-            comparison_data.append({
-                "name": m_a.metric_name,
-                "value_a": m_a.value,
-                "value_b": m_b.value,
-                "delta": delta,
-                "pct_change": pct,
-            })
+            comparison_data.append(
+                {
+                    "name": m_a.metric_name,
+                    "value_a": m_a.value,
+                    "value_b": m_b.value,
+                    "delta": delta,
+                    "pct_change": pct,
+                }
+            )
 
     shift_checks = [c for c in comparison_checks if c.check_name == "position_shift"]
 
@@ -210,10 +251,12 @@ def _generate_html(
         ]
         for key, label in key_to_label:
             if key in run_metadata:
-                metadata_rows.append({
-                    "label": label,
-                    "value": str(run_metadata[key]),
-                })
+                metadata_rows.append(
+                    {
+                        "label": label,
+                        "value": str(run_metadata[key]),
+                    }
+                )
 
     return template.render(
         is_comparison=True,
