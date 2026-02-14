@@ -86,9 +86,11 @@ CHECK_DISPLAY_NAMES: dict[str, str] = {
 }
 
 
-def _summarize_checks(checks: list[CheckResult]) -> dict[str, dict[str, object]]:
+def _summarize_checks(
+    checks: list[CheckResult],
+) -> dict[str, dict[str, str | int | bool]]:
     """Build a display-ready check summary for reports."""
-    summary: dict[str, dict[str, object]] = {}
+    summary: dict[str, dict[str, str | int | bool]] = {}
     for c in checks:
         if c.check_name not in summary:
             summary[c.check_name] = {
@@ -214,8 +216,8 @@ def _generate_terminal(
 
         console.print(worst_table)
 
-    output = console.file.getvalue()
-    return output
+    assert isinstance(console.file, StringIO)
+    return console.file.getvalue()
 
 
 def _generate_html(
@@ -267,7 +269,7 @@ def _generate_html(
                 )
 
     # Group judgments by query for the drill-down section
-    judgments_for_template: list[dict] = []
+    judgments_for_template: list[dict[str, object]] = []
     if judgments:
         from collections import defaultdict
 

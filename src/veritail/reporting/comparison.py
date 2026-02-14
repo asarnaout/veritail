@@ -200,8 +200,8 @@ def _generate_terminal(
 
             console.print(reg_table)
 
-    output = console.file.getvalue()
-    return output
+    assert isinstance(console.file, StringIO)
+    return console.file.getvalue()
 
 
 def _generate_html(

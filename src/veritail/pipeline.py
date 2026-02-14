@@ -83,7 +83,7 @@ def run_evaluation(
     all_checks: list[CheckResult] = []
     # Key by query-row index instead of raw query text so duplicate query
     # strings are evaluated as separate rows in metric aggregation.
-    judgments_by_query: dict[int, list[JudgmentRecord]] = defaultdict(list)
+    judgments_by_query: dict[int | str, list[JudgmentRecord]] = defaultdict(list)
 
     with Progress(console=console) as progress:
         task = progress.add_task(
@@ -107,7 +107,7 @@ def run_evaluation(
             # Build failed-checks info per product.
             # A "failed check" is any deterministic check with passed=False
             # attached to a specific product row.
-            failed_checks_by_product: dict[str, list[dict]] = {}
+            failed_checks_by_product: dict[str, list[dict[str, str]]] = {}
             for check in checks:
                 if not check.passed and check.product_id:
                     pid = check.product_id

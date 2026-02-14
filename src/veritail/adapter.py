@@ -40,4 +40,5 @@ def load_adapter(path: str) -> Callable[[str], list[SearchResult]]:
     if not callable(search_fn):
         raise TypeError(f"'search' in '{path}' is not callable")
 
-    return search_fn
+    result: Callable[[str], list[SearchResult]] = search_fn
+    return result

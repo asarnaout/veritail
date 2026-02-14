@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from veritail.types import JudgmentRecord, MetricResult, QueryEntry
 
@@ -37,7 +37,7 @@ def ndcg_at_k(judgments: list[JudgmentRecord], k: int = 10) -> float:
     if idcg == 0:
         return 0.0
 
-    return dcg / idcg
+    return float(dcg / idcg)
 
 
 def mrr(judgments: list[JudgmentRecord], relevance_threshold: int = 2) -> float:
@@ -161,7 +161,7 @@ def compute_all_metrics(
     """
     query_keys = _display_query_keys(queries)
 
-    metrics_config = [
+    metrics_config: list[tuple[str, Callable[[list[JudgmentRecord]], float]]] = [
         ("ndcg@5", lambda j: ndcg_at_k(j, k=5)),
         ("ndcg@10", lambda j: ndcg_at_k(j, k=10)),
         ("mrr", lambda j: mrr(j)),
@@ -202,28 +202,28 @@ def compute_all_metrics(
 
     # Attribute match rate — computed separately because n/a queries are excluded
     for k_val, metric_name in [(5, "attribute_match@5"), (10, "attribute_match@10")]:
-        per_query: dict[str, float] = {}
-        by_type: dict[str, list[float]] = defaultdict(list)
+        attr_per_query: dict[str, float] = {}
+        attr_by_type: dict[str, list[float]] = defaultdict(list)
 
         for i, q in enumerate(queries):
             query_judgments = _query_judgments(judgments_by_query, i, q.query)
-            value = attribute_match_rate_at_k(query_judgments, k=k_val)
-            if value is None:
+            attr_value = attribute_match_rate_at_k(query_judgments, k=k_val)
+            if attr_value is None:
                 continue  # skip queries with no attribute constraints
-            per_query[query_keys[i]] = value
+            attr_per_query[query_keys[i]] = attr_value
             if q.type:
-                by_type[q.type].append(value)
+                attr_by_type[q.type].append(attr_value)
 
-        all_values = list(per_query.values())
+        all_values = list(attr_per_query.values())
         aggregate = sum(all_values) / len(all_values) if all_values else 0.0
 
-        by_query_type = {t: sum(vals) / len(vals) for t, vals in by_type.items()}
+        by_query_type = {t: sum(vals) / len(vals) for t, vals in attr_by_type.items()}
 
         results.append(
             MetricResult(
                 metric_name=metric_name,
                 value=aggregate,
-                per_query=per_query,
+                per_query=attr_per_query,
                 by_query_type=by_query_type,
             )
         )

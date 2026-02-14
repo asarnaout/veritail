@@ -42,7 +42,7 @@ class AnthropicClient(LLMClient):
             messages=[{"role": "user", "content": user_prompt}],
         )
         return LLMResponse(
-            content=response.content[0].text,
+            content=response.content[0].text,  # type: ignore[union-attr]
             model=self._model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,

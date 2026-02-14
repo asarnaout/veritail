@@ -287,7 +287,7 @@ def run(
 
     llm_client = create_llm_client(llm_model)
 
-    backend_kwargs: dict = {}
+    backend_kwargs: dict[str, str] = {}
     if backend_type == "file":
         backend_kwargs["output_dir"] = output_dir
     elif backend_type == "langfuse":

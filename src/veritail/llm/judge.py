@@ -53,7 +53,7 @@ class RelevanceJudge:
         )
 
     @staticmethod
-    def _parse_response(response_text: str) -> tuple:
+    def _parse_response(response_text: str) -> tuple[int, str, str]:
         """Parse the LLM response to extract score, attribute verdict, and reasoning.
 
         Expected format:

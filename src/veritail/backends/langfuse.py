@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langfuse import Langfuse
+from langfuse import Langfuse  # type: ignore[import-not-found]
 
 from veritail.backends import EvalBackend
 from veritail.types import JudgmentRecord, SearchResult
