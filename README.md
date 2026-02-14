@@ -179,7 +179,7 @@ Run a single or dual-configuration evaluation.
 | `--open` | off | Open HTML report in browser |
 | `--skip-on-check-fail` | off | Skip LLM call when a deterministic fail check is present |
 | `--context` | *(none)* | Business context string for LLM judge |
-| `--vertical` | *(none)* | Built-in vertical (`foodservice`, `industrial`, `electronics`, `fashion`, `marketplace`) or path to text file |
+| `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `groceries`, `industrial`, `marketplace`, `medical`) or path to text file |
 
 If `--config-name` is provided, pass one name per adapter.
 
@@ -202,11 +202,15 @@ Built-in verticals:
 
 | Vertical | Focus |
 |---|---|
-| `foodservice` | pack size, certifications, commercial-grade intent |
-| `industrial` | specs, standards/compliance, compatibility constraints |
+| `automotive` | YMM fitment, part number precision, OEM/aftermarket/reman, emissions compliance |
+| `beauty` | skin type/concern, ingredient inclusion/exclusion, shade matching, hair texture |
 | `electronics` | model compatibility, generation/spec precision |
 | `fashion` | gender/style/size/material intent |
+| `foodservice` | pack size, certifications, commercial-grade intent |
+| `groceries` | dietary/allergen compliance, organic certification, brand fidelity, pack size |
+| `industrial` | specs, standards/compliance, compatibility constraints |
 | `marketplace` | offer quality, seller trust, fulfillment, and pricing competitiveness |
+| `medical` | sterility, sizing precision, device compatibility, regulatory classification |
 
 Examples:
 
