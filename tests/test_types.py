@@ -19,7 +19,6 @@ def test_search_result_defaults():
         price=9.99,
         position=0,
     )
-    assert result.image_url is None
     assert result.attributes == {}
     assert result.in_stock is True
     assert result.metadata == {}
@@ -33,7 +32,6 @@ def test_search_result_full():
         category="Test > Sub",
         price=9.99,
         position=0,
-        image_url="https://example.com/img.jpg",
         attributes={"color": "red"},
         in_stock=False,
         metadata={"highlights": ["On sale"], "source": "api-v2"},

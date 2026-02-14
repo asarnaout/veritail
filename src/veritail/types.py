@@ -16,7 +16,6 @@ class SearchResult:
     category: str
     price: float
     position: int
-    image_url: str | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
     in_stock: bool = True
     metadata: dict[str, Any] = field(default_factory=dict)

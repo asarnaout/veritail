@@ -93,7 +93,6 @@ def search(query: str) -> list[SearchResult]:
                 ),
                 price=_to_float(item.get("price")),
                 position=position,
-                image_url=str(item.get("image_url")) if item.get("image_url") else None,
                 attributes=attributes,
                 in_stock=bool(item.get("in_stock", True)),
             )

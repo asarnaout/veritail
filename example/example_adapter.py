@@ -60,7 +60,6 @@ def search(query: str) -> list[SearchResult]:
                 category=product["category"],
                 price=product["price"],
                 position=i,
-                image_url=None,
                 attributes=product["attributes"],
                 in_stock=product["in_stock"],
                 metadata=product.get("metadata", {}),
