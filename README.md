@@ -328,6 +328,10 @@ mypy src
 - Python >= 3.9
 - API key for [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
 
+## Disclaimer
+
+veritail uses large language models to generate relevance judgments. LLM outputs can be inaccurate, inconsistent, or misleading. All scores, reasoning, and reports produced by this tool should be reviewed by a qualified human before informing production decisions. veritail is an evaluation aid, not a substitute for human judgment. The authors are not liable for any decisions made based on its output.
+
 ## License
 
 MIT
