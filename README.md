@@ -7,7 +7,8 @@ veritail runs three evaluation layers together:
 - Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
 - IR metrics (NDCG, MRR, MAP, Precision, attribute match)
 
-It is built for practical search iteration: run baseline vs candidate, inspect regressions, and ship with confidence.
+It includes built-in ecommerce verticals (foodservice, industrial, electronics, fashion, marketplace, and more) for domain-aware LLM judging, and supports custom vertical context and rubrics.
+Built for rapid search iteration: compare baseline vs candidate, inspect regressions, and decide from per-query evidence.
 
 ## Preview
 
