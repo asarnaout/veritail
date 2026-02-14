@@ -9,13 +9,14 @@ from veritail.verticals import (
     FASHION,
     FOODSERVICE,
     INDUSTRIAL,
+    MARKETPLACE,
     _BUILTIN_VERTICALS,
     load_vertical,
 )
 
 
 class TestBuiltinVerticals:
-    @pytest.mark.parametrize("name", ["foodservice", "industrial", "electronics", "fashion"])
+    @pytest.mark.parametrize("name", ["foodservice", "industrial", "electronics", "fashion", "marketplace"])
     def test_builtin_loads(self, name):
         result = load_vertical(name)
         assert f"## Vertical:" in result
@@ -26,21 +27,22 @@ class TestBuiltinVerticals:
         ("industrial", INDUSTRIAL),
         ("electronics", ELECTRONICS),
         ("fashion", FASHION),
+        ("marketplace", MARKETPLACE),
     ])
     def test_builtin_returns_constant(self, name, constant):
         assert load_vertical(name) is constant
 
-    @pytest.mark.parametrize("name", ["foodservice", "industrial", "electronics", "fashion"])
+    @pytest.mark.parametrize("name", ["foodservice", "industrial", "electronics", "fashion", "marketplace"])
     def test_builtin_min_length(self, name):
         assert len(load_vertical(name)) > 100
 
-    @pytest.mark.parametrize("name", ["Foodservice", "INDUSTRIAL", "Electronics", "FASHION"])
+    @pytest.mark.parametrize("name", ["Foodservice", "INDUSTRIAL", "Electronics", "FASHION", "Marketplace"])
     def test_builtin_case_insensitive(self, name):
         result = load_vertical(name)
         assert "## Vertical:" in result
 
-    def test_registry_has_all_four(self):
-        assert set(_BUILTIN_VERTICALS.keys()) == {"foodservice", "industrial", "electronics", "fashion"}
+    def test_registry_has_all_five(self):
+        assert set(_BUILTIN_VERTICALS.keys()) == {"foodservice", "industrial", "electronics", "fashion", "marketplace"}
 
 
 class TestCustomVertical:
@@ -65,5 +67,5 @@ class TestUnknownVertical:
             load_vertical("nonexistent")
 
     def test_error_lists_available(self):
-        with pytest.raises(FileNotFoundError, match="electronics.*fashion.*foodservice.*industrial"):
+        with pytest.raises(FileNotFoundError, match="electronics.*fashion.*foodservice.*industrial.*marketplace"):
             load_vertical("nonexistent")
