@@ -113,6 +113,27 @@ class TestRelevanceJudge:
         assert judgment.attribute_verdict == "match"
         assert judgment.reasoning == ""
 
+    def test_judge_attributes_label_case_insensitive(self):
+        client = _make_mock_client(
+            "SCORE: 2\nattributes: mismatch\nREASONING: Attribute mismatch."
+        )
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        judgment = judge.judge("shoes", _make_result())
+        assert judgment.score == 2
+        assert judgment.attribute_verdict == "mismatch"
+
+    def test_judge_reasoning_label_case_insensitive(self):
+        client = _make_mock_client(
+            "SCORE: 2\nATTRIBUTES: match\nReasoning: Mixed-case label works."
+        )
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        judgment = judge.judge("shoes", _make_result())
+        assert judgment.score == 2
+        assert judgment.attribute_verdict == "match"
+        assert judgment.reasoning == "Mixed-case label works."
+
     def test_judge_metadata_includes_tokens(self):
         client = _make_mock_client(
             "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect match."

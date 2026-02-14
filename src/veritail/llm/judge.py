@@ -78,7 +78,8 @@ class RelevanceJudge:
 
         # Extract attribute verdict (default to "n/a" for custom rubrics)
         attr_match = re.search(
-            r"ATTRIBUTES:\s*(\w[\w/ ]*?)(?:\n|$)", response_text
+            r"(?i)ATTRIBUTES\s*[:=]\s*(\w[\w/ ]*?)(?:\n|$)",
+            response_text,
         )
         attribute_verdict = (
             attr_match.group(1).strip().lower() if attr_match else "n/a"
@@ -86,7 +87,8 @@ class RelevanceJudge:
 
         # Extract reasoning
         reasoning_match = re.search(
-            r"REASONING:\s*(.*)", response_text, re.DOTALL
+            r"(?is)REASONING\s*[:=]\s*(.*)",
+            response_text,
         )
         reasoning = (
             reasoning_match.group(1).strip() if reasoning_match else ""
