@@ -13,7 +13,7 @@ It is built for practical search iteration: run baseline vs candidate, inspect r
 
 - **One run, full signal**: combines qualitative LLM judgments and quantitative IR metrics.
 - **Adapter-first integration**: plug in your existing search API with a small Python function.
-- **Ecommerce-aware defaults**: built-in rubric plus domain vertical guidance for foodservice, industrial, electronics, and fashion.
+- **Ecommerce-aware defaults**: built-in rubric plus domain vertical guidance for foodservice, industrial, electronics, fashion, and marketplace.
 - **Actionable output**: terminal summary + standalone HTML report with per-query drill-down.
 
 ## Quick Start
@@ -175,7 +175,7 @@ Run a single or dual-configuration evaluation.
 | `--open` | off | Open HTML report in browser |
 | `--skip-on-check-fail` | off | Skip LLM call when a deterministic fail check is present |
 | `--context` | *(none)* | Business context string for LLM judge |
-| `--vertical` | *(none)* | Built-in vertical (`foodservice`, `industrial`, `electronics`, `fashion`) or path to text file |
+| `--vertical` | *(none)* | Built-in vertical (`foodservice`, `industrial`, `electronics`, `fashion`, `marketplace`) or path to text file |
 
 If `--config-name` is provided, pass one name per adapter.
 
@@ -202,6 +202,7 @@ Built-in verticals:
 | `industrial` | specs, standards/compliance, compatibility constraints |
 | `electronics` | model compatibility, generation/spec precision |
 | `fashion` | gender/style/size/material intent |
+| `marketplace` | offer quality, seller trust, fulfillment, and pricing competitiveness |
 
 Examples:
 
