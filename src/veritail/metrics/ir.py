@@ -28,8 +28,8 @@ def ndcg_at_k(judgments: list[JudgmentRecord], k: int = 10) -> float:
         for i, score in enumerate(scores)
     )
 
-    # Ideal DCG (sort by score descending)
-    ideal_scores = sorted(scores, reverse=True)
+    # Ideal DCG: best k scores from ALL judged results, not just the top-k slice
+    ideal_scores = sorted((j.score for j in judgments), reverse=True)[:k]
     idcg = sum(
         (2 ** score - 1) / math.log2(i + 2)
         for i, score in enumerate(ideal_scores)

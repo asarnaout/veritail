@@ -66,6 +66,17 @@ class TestNDCG:
         result = ndcg_at_k(judgments, k=10)
         assert result == pytest.approx(1.0)  # Still perfect if ideal
 
+    def test_idcg_uses_all_judged_results(self):
+        # Relevant items buried below rank k should lower NDCG@k.
+        # Positions 0-1: irrelevant, positions 2-3: highly relevant.
+        judgments = [_j(0, 0), _j(0, 1), _j(3, 2), _j(3, 3)]
+        result = ndcg_at_k(judgments, k=2)
+        # DCG@2 = (2^0-1)/log2(2) + (2^0-1)/log2(3) = 0
+        # IDCG@2 uses best 2 scores from ALL 4 judged: [3, 3]
+        #       = (2^3-1)/log2(2) + (2^3-1)/log2(3) = 7 + 4.416 = 11.416
+        # NDCG = 0 / 11.416 = 0.0
+        assert result == pytest.approx(0.0)
+
     def test_specific_value(self):
         # Position 0: score=3, Position 1: score=0, Position 2: score=2
         judgments = [_j(3, 0), _j(0, 1), _j(2, 2)]
