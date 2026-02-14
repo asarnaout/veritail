@@ -98,8 +98,6 @@ veritail run \
   --open
 ```
 
-If you omit `--config-name`, veritail auto-generates one from adapter filename + UTC timestamp.
-
 Outputs are written under:
 
 ```text
@@ -116,6 +114,49 @@ veritail run \
 ```
 
 The comparison report shows metric deltas, overlap, rank correlation, and position shifts.
+
+## Vertical Guidance
+
+`--vertical` injects domain-specific scoring guidance into the judge prompt. Each vertical teaches the LLM judge what matters most in a particular ecommerce domain — the hard constraints, industry jargon, certification requirements, and category-specific nuances that generic relevance scoring would miss.
+
+Choose the vertical that best matches the ecommerce site you are evaluating.
+
+| Vertical | Description | Example retailers |
+|---|---|---|
+| `automotive` | Aftermarket, OEM, and remanufactured parts for cars, trucks, and light vehicles | RockAuto, AutoZone, FCP Euro |
+| `beauty` | Skincare, cosmetics, haircare, fragrance, and body care | Sephora, Ulta Beauty, Dermstore |
+| `electronics` | Consumer electronics and computer components | Best Buy, Newegg, B&H Photo |
+| `fashion` | Clothing, shoes, and accessories | Nordstrom, ASOS, Zappos |
+| `foodservice` | Commercial kitchen equipment and supplies for restaurants, cafeterias, and catering | WebstaurantStore, Katom, TigerChef |
+| `groceries` | Online grocery retail covering food, beverages, and household essentials | Instacart, Amazon Fresh, FreshDirect |
+| `industrial` | Industrial supply and MRO (Maintenance, Repair, and Operations) | Grainger, McMaster-Carr, Fastenal |
+| `marketplace` | Multi-seller marketplace platforms | Amazon, eBay, Etsy |
+| `medical` | Medical and surgical supplies for hospitals, clinics, and home health | Henry Schein, Medline, McKesson |
+
+You can also provide a custom vertical as a plain text file with `--vertical ./my_vertical.txt`. Use the built-in verticals in `src/veritail/verticals/` as templates.
+
+Examples:
+
+```bash
+# Built-in vertical
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --vertical foodservice
+
+# Custom vertical text file
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --vertical ./my_vertical.txt
+
+# Vertical + business context
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --vertical foodservice \
+  --context "B2B supplier specializing in BBQ restaurant equipment"
+```
 
 ## Evaluation Model
 
@@ -193,47 +234,6 @@ Scaffold starter files for a new project.
 | `--adapter-name` | `adapter.py` | Adapter filename (must end with `.py`) |
 | `--queries-name` | `queries.csv` | Query set filename (must end with `.csv`) |
 | `--force` | off | Overwrite existing files |
-
-## Vertical Guidance
-
-`--vertical` injects domain-specific scoring guidance into the judge prompt.
-
-Built-in verticals:
-
-| Vertical | Focus |
-|---|---|
-| `automotive` | YMM fitment, part number precision, OEM/aftermarket/reman, emissions compliance |
-| `beauty` | skin type/concern, ingredient inclusion/exclusion, shade matching, hair texture |
-| `electronics` | model compatibility, generation/spec precision |
-| `fashion` | gender/style/size/material intent |
-| `foodservice` | pack size, certifications, commercial-grade intent |
-| `groceries` | dietary/allergen compliance, organic certification, brand fidelity, pack size |
-| `industrial` | specs, standards/compliance, compatibility constraints |
-| `marketplace` | offer quality, seller trust, fulfillment, and pricing competitiveness |
-| `medical` | sterility, sizing precision, device compatibility, regulatory classification |
-
-Examples:
-
-```bash
-# Built-in vertical
-veritail run \
-  --queries queries.csv \
-  --adapter my_adapter.py \
-  --vertical foodservice
-
-# Custom vertical text file
-veritail run \
-  --queries queries.csv \
-  --adapter my_adapter.py \
-  --vertical ./my_vertical.txt
-
-# Vertical + business context
-veritail run \
-  --queries queries.csv \
-  --adapter my_adapter.py \
-  --vertical foodservice \
-  --context "B2B supplier specializing in BBQ restaurant equipment"
-```
 
 ## HTML Report
 
