@@ -4,17 +4,24 @@ Evaluate ecommerce search relevance with one command.
 
 veritail runs three evaluation layers together:
 - LLM relevance judgments (0-3)
-- Deterministic quality checks
+- Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
 - IR metrics (NDCG, MRR, MAP, Precision, attribute match)
 
 It is built for practical search iteration: run baseline vs candidate, inspect regressions, and ship with confidence.
 
-## Why veritail
+## Preview
 
-- **One run, full signal**: combines qualitative LLM judgments and quantitative IR metrics.
-- **Adapter-first integration**: plug in your existing search API with a small Python function.
-- **Ecommerce-aware defaults**: built-in rubric plus domain vertical guidance for foodservice, industrial, electronics, fashion, and marketplace.
-- **Actionable output**: terminal summary + standalone HTML report with per-query drill-down.
+Example output from a real run:
+
+<p align="center">
+  <img src="assets/report-1.png" alt="IR metrics and deterministic checks overview" width="900">
+</p>
+<p align="center">
+  <em>Overview report: IR metrics, deterministic checks, and worst-performing queries.</em>
+</p>
+<p align="center">
+  <em>See the detailed per-query drill-down screenshot in the <a href="#html-report">HTML Report</a> section below.</em>
+</p>
 
 ## Quick Start
 
@@ -89,10 +96,6 @@ veritail run \
   --top-k 10 \
   --open
 ```
-
-<p align="center">
-  <img src="assets/report-1.png" alt="IR metrics and deterministic checks" width="720">
-</p>
 
 If you omit `--config-name`, veritail auto-generates one from adapter filename + UTC timestamp.
 
@@ -241,7 +244,10 @@ It includes:
 - run metadata footer (timestamp, model, rubric, vertical, top-k, adapter path)
 
 <p align="center">
-  <img src="assets/report-2.png" alt="Per-query judgment drill-down with LLM reasoning" width="720">
+  <img src="assets/report-2.png" alt="Per-query judgment drill-down with LLM reasoning" width="900">
+</p>
+<p align="center">
+  <em>Drill-down report: per-query product scores, attribute verdicts, and LLM reasoning.</em>
 </p>
 
 ## Custom Rubrics
