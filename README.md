@@ -7,7 +7,7 @@ veritail runs three evaluation layers together:
 - Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
 - IR metrics (NDCG, MRR, MAP, Precision, attribute match)
 
-It includes built-in ecommerce verticals (foodservice, industrial, electronics, fashion, marketplace, and more) for domain-aware LLM judging, and supports custom vertical context and rubrics.
+It includes 14 built-in ecommerce verticals (automotive, beauty, electronics, fashion, foodservice, furniture, groceries, home improvement, industrial, marketplace, medical, office supplies, pet supplies, and sporting goods) for domain-aware LLM judging, and supports custom vertical context and rubrics.
 Built for rapid search iteration: compare baseline vs candidate, inspect regressions, and decide from per-query evidence.
 
 ## Preview
@@ -130,10 +130,15 @@ Choose the vertical that best matches the ecommerce site you are evaluating.
 | `electronics` | Consumer electronics and computer components | Best Buy, Newegg, B&H Photo |
 | `fashion` | Clothing, shoes, and accessories | Nordstrom, ASOS, Zappos |
 | `foodservice` | Commercial kitchen equipment and supplies for restaurants, cafeterias, and catering | WebstaurantStore, Katom, TigerChef |
+| `furniture` | Furniture and home furnishings for residential, commercial, and contract use | Wayfair, Pottery Barn, IKEA |
 | `groceries` | Online grocery retail covering food, beverages, and household essentials | Instacart, Amazon Fresh, FreshDirect |
+| `home-improvement` | Building materials, hardware, plumbing, electrical, and tools for contractors and DIY | Home Depot, Lowe's, Menards |
 | `industrial` | Industrial supply and MRO (Maintenance, Repair, and Operations) | Grainger, McMaster-Carr, Fastenal |
 | `marketplace` | Multi-seller marketplace platforms | Amazon, eBay, Etsy |
 | `medical` | Medical and surgical supplies for hospitals, clinics, and home health | Henry Schein, Medline, McKesson |
+| `office-supplies` | Office products, ink/toner, paper, and workspace equipment | Staples, Office Depot, W.B. Mason |
+| `pet-supplies` | Pet food, treats, toys, health products, and habitat equipment across all species | Chewy, PetSmart, Petco |
+| `sporting-goods` | Athletic equipment, apparel, and accessories across all sports and outdoor activities | Dick's Sporting Goods, REI, Academy Sports |
 
 You can also provide a custom vertical as a plain text file with `--vertical ./my_vertical.txt`. Use the built-in verticals in `src/veritail/verticals/` as templates.
 
@@ -222,7 +227,7 @@ Run a single or dual-configuration evaluation.
 | `--open` | off | Open HTML report in browser |
 | `--skip-on-check-fail` | off | Skip LLM call when a deterministic fail check is present |
 | `--context` | *(none)* | Business context string for LLM judge |
-| `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `groceries`, `industrial`, `marketplace`, `medical`) or path to text file |
+| `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 
 If `--config-name` is provided, pass one name per adapter.
 
