@@ -28,7 +28,6 @@ class QueryEntry:
     query: str
     type: str | None = None  # navigational | broad | long_tail | attribute
     category: str | None = None  # expected product category
-    frequency: int | None = None  # search volume
 
 
 @dataclass

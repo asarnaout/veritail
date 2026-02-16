@@ -12,9 +12,7 @@ from veritail.queries import load_queries
 def test_load_csv(tmp_path):
     csv_file = tmp_path / "queries.csv"
     csv_file.write_text(
-        "query,type,category,frequency\n"
-        "running shoes,broad,Shoes,1500\n"
-        "red dress,attribute,Clothing,800\n"
+        "query,type,category\nrunning shoes,broad,Shoes\nred dress,attribute,Clothing\n"
     )
 
     entries = load_queries(str(csv_file))
@@ -22,7 +20,6 @@ def test_load_csv(tmp_path):
     assert entries[0].query == "running shoes"
     assert entries[0].type == "broad"
     assert entries[0].category == "Shoes"
-    assert entries[0].frequency == 1500
     assert entries[1].query == "red dress"
 
 
@@ -34,7 +31,6 @@ def test_load_csv_minimal(tmp_path):
     assert len(entries) == 2
     assert entries[0].type is None
     assert entries[0].category is None
-    assert entries[0].frequency is None
 
 
 def test_load_csv_skips_empty_queries(tmp_path):
@@ -68,7 +64,6 @@ def test_load_json(tmp_path):
             "query": "running shoes",
             "type": "broad",
             "category": "Shoes",
-            "frequency": 1500,
         },
         {"query": "red dress", "type": "attribute"},
     ]
@@ -77,7 +72,7 @@ def test_load_json(tmp_path):
     entries = load_queries(str(json_file))
     assert len(entries) == 2
     assert entries[0].query == "running shoes"
-    assert entries[0].frequency == 1500
+    assert entries[0].category == "Shoes"
     assert entries[1].category is None
 
 

@@ -46,7 +46,6 @@ def test_query_entry_defaults():
     entry = QueryEntry(query="running shoes")
     assert entry.type is None
     assert entry.category is None
-    assert entry.frequency is None
 
 
 def test_query_entry_full():
@@ -54,11 +53,10 @@ def test_query_entry_full():
         query="running shoes",
         type="broad",
         category="Shoes > Running",
-        frequency=1500,
     )
     assert entry.query == "running shoes"
     assert entry.type == "broad"
-    assert entry.frequency == 1500
+    assert entry.category == "Shoes > Running"
 
 
 def test_judgment_record(sample_search_result):

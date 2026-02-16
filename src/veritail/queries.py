@@ -13,7 +13,7 @@ def load_queries(path: str) -> list[QueryEntry]:
     """Load a query set from a CSV or JSON file.
 
     CSV files must have a 'query' column.
-    Optional columns: 'type', 'category', 'frequency'.
+    Optional columns: 'type', 'category'.
     JSON files must be a list of objects with a 'query' key
     and optional keys above.
     """
@@ -46,11 +46,6 @@ def _load_csv(path: Path) -> list[QueryEntry]:
                     query=query,
                     type=row.get("type", "").strip() or None,
                     category=row.get("category", "").strip() or None,
-                    frequency=(
-                        int(row["frequency"])
-                        if row.get("frequency", "").strip()
-                        else None
-                    ),
                 )
             )
     if not entries:
@@ -78,11 +73,6 @@ def _load_json(path: Path) -> list[QueryEntry]:
                 query=query,
                 type=item.get("type"),
                 category=item.get("category"),
-                frequency=(
-                    int(item["frequency"])
-                    if item.get("frequency") is not None
-                    else None
-                ),
             )
         )
     if not entries:
