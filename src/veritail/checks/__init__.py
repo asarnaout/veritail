@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from veritail.checks.query_level import check_result_count, check_zero_results
 from veritail.checks.result_level import (
     check_category_alignment,
@@ -17,6 +19,9 @@ from veritail.types import CheckResult, QueryEntry, SearchResult
 def run_all_checks(
     query: QueryEntry,
     results: list[SearchResult],
+    custom_checks: (
+        list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
+    ) = None,
 ) -> list[CheckResult]:
     """Run all applicable deterministic checks for a query and its results."""
     checks: list[CheckResult] = []
@@ -33,6 +38,11 @@ def run_all_checks(
         checks.extend(check_duplicates(query.query, results))
         checks.extend(check_title_length(query.query, results))
         checks.extend(check_out_of_stock_prominence(query.query, results))
+
+    # Custom checks run outside the `if results:` gate
+    if custom_checks:
+        for check_fn in custom_checks:
+            checks.extend(check_fn(query, results))
 
     return checks
 

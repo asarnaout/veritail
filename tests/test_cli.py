@@ -282,6 +282,80 @@ class TestCLI:
         assert (experiment_dirs[0] / "metrics.json").exists()
         assert (experiment_dirs[0] / "report.html").exists()
 
+    def test_run_help_shows_checks_option(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--help"])
+        assert result.exit_code == 0
+        assert "--checks" in result.output
+
+    def test_run_with_custom_checks(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        check_file = tmp_path / "my_checks.py"
+        check_file.write_text(
+            "from veritail.types import CheckResult, QueryEntry, SearchResult\n"
+            "\n"
+            "def check_custom(\n"
+            "    query: QueryEntry, results: list[SearchResult]\n"
+            ") -> list[CheckResult]:\n"
+            "    return [CheckResult(\n"
+            "        check_name='custom',\n"
+            "        query=query.query,\n"
+            "        product_id=None,\n"
+            "        passed=True,\n"
+            "        detail='ok',\n"
+            "    )]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "test-model",
+                    "--checks",
+                    str(check_file),
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "Loaded 1 custom check(s)" in result.output
+
     def test_version(self):
         runner = CliRunner()
         result = runner.invoke(main, ["--version"])

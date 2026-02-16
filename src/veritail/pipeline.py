@@ -40,6 +40,9 @@ def run_evaluation(
     skip_llm_on_fail: bool = False,
     context: str | None = None,
     vertical: str | None = None,
+    custom_checks: (
+        list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
+    ) = None,
 ) -> tuple[list[JudgmentRecord], list[CheckResult], list[MetricResult]]:
     """Run a full evaluation pipeline for a single configuration.
 
@@ -101,7 +104,7 @@ def run_evaluation(
                 continue
 
             # Step 2: Run deterministic checks
-            checks = run_all_checks(query_entry, results)
+            checks = run_all_checks(query_entry, results, custom_checks=custom_checks)
             all_checks.extend(checks)
 
             # Build failed-checks info per product.
@@ -204,6 +207,9 @@ def run_dual_evaluation(
     skip_llm_on_fail: bool = False,
     context: str | None = None,
     vertical: str | None = None,
+    custom_checks: (
+        list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
+    ) = None,
 ) -> tuple[
     list[JudgmentRecord],
     list[JudgmentRecord],
@@ -235,6 +241,7 @@ def run_dual_evaluation(
         skip_llm_on_fail=skip_llm_on_fail,
         context=context,
         vertical=vertical,
+        custom_checks=custom_checks,
     )
 
     # Run evaluation for config B
@@ -248,6 +255,7 @@ def run_dual_evaluation(
         skip_llm_on_fail=skip_llm_on_fail,
         context=context,
         vertical=vertical,
+        custom_checks=custom_checks,
     )
 
     # Run comparison checks

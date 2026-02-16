@@ -228,6 +228,7 @@ Run a single or dual-configuration evaluation.
 | `--skip-on-check-fail` | off | Skip LLM call when a deterministic fail check is present |
 | `--context` | *(none)* | Business context string for LLM judge |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
+| `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
 
 If `--config-name` is provided, pass one name per adapter.
 
@@ -284,6 +285,53 @@ Then run with:
 ```bash
 veritail run --queries queries.csv --adapter my_adapter.py --rubric my_rubric.py
 ```
+
+## Custom Checks
+
+Add domain-specific deterministic checks without modifying veritail itself. A check module is a Python file containing one or more `check_*` functions:
+
+```python
+# my_checks.py
+from veritail.types import CheckResult, QueryEntry, SearchResult
+
+
+def check_species_mismatch(
+    query: QueryEntry, results: list[SearchResult]
+) -> list[CheckResult]:
+    """Flag cross-species results in pet supply searches."""
+    checks = []
+    for r in results:
+        species = r.attributes.get("species")
+        if species and species.lower() not in query.query.lower():
+            checks.append(
+                CheckResult(
+                    check_name="species_mismatch",
+                    query=query.query,
+                    product_id=r.product_id,
+                    passed=False,
+                    detail=f"Query mentions no '{species}' but result is for {species}",
+                )
+            )
+    return checks
+```
+
+Each `check_*` function must:
+- Accept `(QueryEntry, list[SearchResult])`
+- Return `list[CheckResult]`
+
+Non-callable names starting with `check_` (e.g., `check_threshold = 0.5`) are skipped. Helper functions without the `check_` prefix are ignored.
+
+Run with one or more `--checks` flags:
+
+```bash
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --checks my_checks.py \
+  --checks more_checks.py
+```
+
+Custom check results appear alongside built-in checks in reports and participate in `--skip-on-check-fail` when they set `passed=False` with a `product_id`.
 
 ## Backends
 

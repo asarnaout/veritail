@@ -14,6 +14,7 @@ from rich.console import Console
 
 from veritail.adapter import load_adapter
 from veritail.backends import create_backend
+from veritail.checks.custom import CustomCheckFn, load_checks
 from veritail.llm.client import create_llm_client
 from veritail.pipeline import run_dual_evaluation, run_evaluation
 from veritail.queries import load_queries
@@ -231,10 +232,19 @@ def init(
     type=str,
     help=(
         "Vertical for domain-specific scoring guidance "
-        "(built-in: foodservice, industrial, electronics, "
-        "fashion, marketplace, case-insensitive; "
+        "(built-in: automotive, beauty, electronics, fashion, "
+        "foodservice, furniture, groceries, home-improvement, "
+        "industrial, marketplace, medical, office-supplies, "
+        "pet-supplies, sporting-goods, case-insensitive; "
         "or path to a text file)."
     ),
+)
+@click.option(
+    "--checks",
+    "check_modules",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Path to custom check module(s) with check_* functions.",
 )
 def run(
     queries: str,
@@ -250,6 +260,7 @@ def run(
     skip_on_check_fail: bool,
     context: str | None,
     vertical: str | None,
+    check_modules: tuple[str, ...],
 ) -> None:
     """Run evaluation (single or dual configuration)."""
     if config_names and len(adapters) != len(config_names):
@@ -285,6 +296,16 @@ def run(
 
         vertical_context = load_vertical(vertical)
 
+    custom_check_fns: list[CustomCheckFn] | None = None
+    if check_modules:
+        custom_check_fns = []
+        for check_path in check_modules:
+            loaded = load_checks(check_path)
+            custom_check_fns.extend(loaded)
+            console.print(
+                f"[dim]Loaded {len(loaded)} custom check(s) from {check_path}[/dim]"
+            )
+
     llm_client = create_llm_client(llm_model)
 
     backend_kwargs: dict[str, str] = {}
@@ -317,6 +338,7 @@ def run(
             skip_llm_on_fail=skip_on_check_fail,
             context=context,
             vertical=vertical_context,
+            custom_checks=custom_check_fns,
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,
@@ -401,6 +423,7 @@ def run(
             skip_llm_on_fail=skip_on_check_fail,
             context=context,
             vertical=vertical_context,
+            custom_checks=custom_check_fns,
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,

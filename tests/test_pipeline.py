@@ -9,7 +9,7 @@ import pytest
 from veritail.backends.file import FileBackend
 from veritail.llm.client import LLMClient, LLMResponse
 from veritail.pipeline import run_evaluation
-from veritail.types import ExperimentConfig, QueryEntry, SearchResult
+from veritail.types import CheckResult, ExperimentConfig, QueryEntry, SearchResult
 
 
 def _make_mock_adapter():
@@ -452,6 +452,118 @@ class TestRunEvaluation:
         assert skipped[0].product.product_id == "SKU-1"
         assert skipped[0].score == 0
         assert skipped[0].reasoning.startswith("Skipped:")
+
+    def test_custom_checks_are_included(self, tmp_path):
+        """Custom check results appear alongside built-in checks."""
+        queries = [QueryEntry(query="running shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        def custom_check(query, results):
+            return [
+                CheckResult(
+                    check_name="custom_always_fail",
+                    query=query.query,
+                    product_id=None,
+                    passed=False,
+                    detail="Custom check failed",
+                )
+            ]
+
+        judgments, checks, metrics = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            custom_checks=[custom_check],
+        )
+
+        custom = [c for c in checks if c.check_name == "custom_always_fail"]
+        assert len(custom) == 1
+        assert not custom[0].passed
+        # Built-in checks should still be present
+        builtin = [c for c in checks if c.check_name != "custom_always_fail"]
+        assert len(builtin) > 0
+
+    def test_custom_checks_participate_in_skip_on_fail(self, tmp_path):
+        """Custom checks with passed=False + product_id trigger LLM skipping."""
+        queries = [QueryEntry(query="running shoes", type="broad")]
+
+        def adapter(query: str) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    product_id="SKU-1",
+                    title="Nike Air Max 90 Running Shoes",
+                    description="Lightweight running shoe for everyday training",
+                    category="Shoes > Running",
+                    price=120.0,
+                    position=0,
+                ),
+                SearchResult(
+                    product_id="SKU-2",
+                    title="Adidas Ultraboost Trail Hiking Boots",
+                    description="Durable outdoor hiking boots with Gore-Tex",
+                    category="Shoes > Hiking",
+                    price=180.0,
+                    position=1,
+                ),
+            ]
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=10,
+        )
+        llm_client = Mock(spec=LLMClient)
+        llm_client.complete.return_value = LLMResponse(
+            content="SCORE: 3\nATTRIBUTES: match\nREASONING: Great",
+            model="test",
+            input_tokens=10,
+            output_tokens=10,
+        )
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: f"Query: {q}")
+
+        def custom_check(query, results):
+            return [
+                CheckResult(
+                    check_name="custom_fail",
+                    query=query.query,
+                    product_id="SKU-2",
+                    passed=False,
+                    detail="Custom fail on SKU-2",
+                )
+            ]
+
+        judgments, checks, _ = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            skip_llm_on_fail=True,
+            custom_checks=[custom_check],
+        )
+
+        # SKU-2 should be skipped, only SKU-1 gets LLM call
+        assert llm_client.complete.call_count == 1
+        skipped = [j for j in judgments if j.metadata.get("skipped")]
+        assert len(skipped) == 1
+        assert skipped[0].product.product_id == "SKU-2"
 
     def test_skip_on_check_fail_false_keeps_llm_calls(self, tmp_path):
         queries = [QueryEntry(query="nike shoes", type="broad")]
