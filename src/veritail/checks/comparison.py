@@ -90,7 +90,7 @@ def find_position_shifts(
 
     shared = set(pos_a.keys()) & set(pos_b.keys())
 
-    shifts: list[CheckResult] = []
+    shifts: list[tuple[int, CheckResult]] = []
     for pid in shared:
         shift = pos_b[pid] - pos_a[pid]
         if abs(shift) >= min_shift:
@@ -101,22 +101,22 @@ def find_position_shifts(
                 pid,
             )
             shifts.append(
-                CheckResult(
-                    check_name="position_shift",
-                    query=query,
-                    product_id=pid,
-                    passed=True,
-                    detail=(
-                        f"'{title}' {direction} {abs(shift)} positions "
-                        f"(#{pos_a[pid] + 1} -> #{pos_b[pid] + 1})"
+                (
+                    abs(shift),
+                    CheckResult(
+                        check_name="position_shift",
+                        query=query,
+                        product_id=pid,
+                        passed=True,
+                        detail=(
+                            f"'{title}' {direction} {abs(shift)} positions "
+                            f"(#{pos_a[pid] + 1} -> #{pos_b[pid] + 1})"
+                        ),
+                        severity="info",
                     ),
-                    severity="info",
                 )
             )
 
     # Sort by magnitude of shift, largest first
-    shifts.sort(
-        key=lambda c: abs(int(c.detail.split(" positions")[0].split()[-1])),
-        reverse=True,
-    )
-    return shifts
+    shifts.sort(key=lambda pair: pair[0], reverse=True)
+    return [check for _, check in shifts]
