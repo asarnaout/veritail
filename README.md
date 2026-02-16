@@ -98,7 +98,7 @@ veritail run \
   --open
 ```
 
-**Cost note:** Each query-result pair requires one LLM API call. A run with 50 queries and `--top-k 10` makes ~500 calls. With `claude-sonnet-4-5`, this typically costs a few dollars. Larger query sets or more expensive models will cost more. Use `--top-k` to control results per query.
+**Cost note:** Each query-result pair requires one LLM API call. A run with 50 queries and `--top-k 10` makes ~500 calls. With `claude-sonnet-4-5`, this typically costs a few dollars. Larger query sets or more expensive models will cost more. Use `--top-k` to control results per query. Prompt caching is supported — the shared system prompt is reused across all calls, reducing input token costs on providers that support it.
 
 Outputs are written under:
 
