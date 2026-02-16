@@ -209,15 +209,6 @@ def init(
     help="Open the HTML report in the browser when complete.",
 )
 @click.option(
-    "--skip-on-check-fail/--no-skip-on-check-fail",
-    default=False,
-    help=(
-        "Skip LLM judgment for a result when any "
-        "deterministic check fails for that result "
-        "(default: always run LLM)."
-    ),
-)
-@click.option(
     "--context",
     default=None,
     type=str,
@@ -257,7 +248,6 @@ def run(
     backend_url: str | None,
     top_k: int,
     open_browser: bool,
-    skip_on_check_fail: bool,
     context: str | None,
     vertical: str | None,
     check_modules: tuple[str, ...],
@@ -335,7 +325,6 @@ def run(
             llm_client,
             rubric_data,
             backend,
-            skip_llm_on_fail=skip_on_check_fail,
             context=context,
             vertical=vertical_context,
             custom_checks=custom_check_fns,
@@ -420,7 +409,6 @@ def run(
             llm_client,
             rubric_data,
             backend,
-            skip_llm_on_fail=skip_on_check_fail,
             context=context,
             vertical=vertical_context,
             custom_checks=custom_check_fns,

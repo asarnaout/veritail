@@ -225,7 +225,6 @@ Run a single or dual-configuration evaluation.
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
 | `--top-k` | `10` | Maximum number of results to evaluate per query (must be `>= 1`) |
 | `--open` | off | Open HTML report in browser |
-| `--skip-on-check-fail` | off | Skip LLM call when a deterministic fail check is present |
 | `--context` | *(none)* | Business context string for LLM judge |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
@@ -331,7 +330,7 @@ veritail run \
   --checks more_checks.py
 ```
 
-Custom check results appear alongside built-in checks in reports and participate in `--skip-on-check-fail` when they set `passed=False` with a `product_id`.
+Custom check results appear alongside built-in checks in reports.
 
 ## Backends
 

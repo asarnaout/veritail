@@ -37,7 +37,6 @@ def run_evaluation(
     llm_client: LLMClient,
     rubric: tuple[str, Callable[[str, SearchResult], str]],
     backend: EvalBackend,
-    skip_llm_on_fail: bool = False,
     context: str | None = None,
     vertical: str | None = None,
     custom_checks: (
@@ -124,11 +123,6 @@ def run_evaluation(
                         }
                     )
 
-            # Build the skip set (only when skip_llm_on_fail=True)
-            failed_product_ids: set[str] = set()
-            if skip_llm_on_fail:
-                failed_product_ids = set(failed_checks_by_product.keys())
-
             # Step 3: LLM judgment for each result
             for result in results:
                 product_failed_checks = failed_checks_by_product.get(
@@ -136,52 +130,31 @@ def run_evaluation(
                     [],
                 )
 
-                if result.product_id in failed_product_ids:
-                    # Skip LLM — build a descriptive reasoning string
-                    reasons = "; ".join(
-                        f"[{fc['check_name']}] {fc['detail']}"
-                        for fc in product_failed_checks
+                try:
+                    judgment = judge.judge(
+                        query_entry.query,
+                        result,
+                        query_type=query_entry.type,
+                    )
+                except Exception as e:
+                    console.print(
+                        f"[red]LLM error for '{query_entry.query}' / "
+                        f"'{result.product_id}': {e}"
                     )
                     judgment = JudgmentRecord(
                         query=query_entry.query,
                         product=result,
                         score=0,
-                        reasoning=f"Skipped: {reasons}",
+                        reasoning=f"Error: {e}",
                         attribute_verdict="n/a",
                         model=config.llm_model,
                         experiment=config.name,
                         query_type=query_entry.type,
-                        metadata={
-                            "skipped": True,
-                            "failed_checks": product_failed_checks,
-                        },
+                        metadata={"error": str(e)},
                     )
-                else:
-                    try:
-                        judgment = judge.judge(
-                            query_entry.query,
-                            result,
-                            query_type=query_entry.type,
-                        )
-                    except Exception as e:
-                        console.print(
-                            f"[red]LLM error for '{query_entry.query}' / "
-                            f"'{result.product_id}': {e}"
-                        )
-                        judgment = JudgmentRecord(
-                            query=query_entry.query,
-                            product=result,
-                            score=0,
-                            reasoning=f"Error: {e}",
-                            attribute_verdict="n/a",
-                            model=config.llm_model,
-                            experiment=config.name,
-                            query_type=query_entry.type,
-                            metadata={"error": str(e)},
-                        )
-                    # Annotate with check failures even when LLM ran
-                    if product_failed_checks:
-                        judgment.metadata["failed_checks"] = product_failed_checks
+                # Annotate with check failures
+                if product_failed_checks:
+                    judgment.metadata["failed_checks"] = product_failed_checks
 
                 backend.log_judgment(judgment)
                 all_judgments.append(judgment)
@@ -204,7 +177,6 @@ def run_dual_evaluation(
     llm_client: LLMClient,
     rubric: tuple[str, Callable[[str, SearchResult], str]],
     backend: EvalBackend,
-    skip_llm_on_fail: bool = False,
     context: str | None = None,
     vertical: str | None = None,
     custom_checks: (
@@ -238,7 +210,6 @@ def run_dual_evaluation(
         llm_client,
         rubric,
         backend,
-        skip_llm_on_fail=skip_llm_on_fail,
         context=context,
         vertical=vertical,
         custom_checks=custom_checks,
@@ -252,7 +223,6 @@ def run_dual_evaluation(
         llm_client,
         rubric,
         backend,
-        skip_llm_on_fail=skip_llm_on_fail,
         context=context,
         vertical=vertical,
         custom_checks=custom_checks,
