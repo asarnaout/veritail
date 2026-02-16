@@ -61,6 +61,16 @@ def test_log_judgment(mock_langfuse_cls):
     assert score_call.kwargs["value"] == 3
     assert score_call.kwargs["name"] == "relevance"
 
+    # Verify full product data is stored in trace metadata
+    trace_call = mock_client.trace.call_args
+    product_data = trace_call.kwargs["metadata"]["product"]
+    assert product_data["product_id"] == "SKU-001"
+    assert product_data["title"] == "Nike Running Shoes"
+    assert product_data["description"] == "Classic shoes"
+    assert product_data["category"] == "Shoes"
+    assert product_data["price"] == 129.99
+    assert product_data["position"] == 0
+
 
 @patch("langfuse.Langfuse")
 def test_log_experiment(mock_langfuse_cls):

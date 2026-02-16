@@ -41,14 +41,28 @@ class LangfuseBackend(EvalBackend):
 
     def log_judgment(self, judgment: JudgmentRecord) -> None:
         """Store a judgment as a Langfuse trace with a generation span and score."""
+        product = judgment.product
+        product_data: dict[str, Any] = {
+            "product_id": product.product_id,
+            "title": product.title,
+            "description": product.description,
+            "category": product.category,
+            "price": product.price,
+            "position": product.position,
+            "in_stock": product.in_stock,
+            "attributes": product.attributes,
+            "metadata": product.metadata,
+        }
+
         trace = self._client.trace(
             name="veritail-judgment",
             metadata={
                 "experiment": judgment.experiment,
                 "query": judgment.query,
-                "product_id": judgment.product.product_id,
-                "product_title": judgment.product.title,
+                "product": product_data,
                 "attribute_verdict": judgment.attribute_verdict,
+                "model": judgment.model,
+                "query_type": judgment.query_type,
             },
             tags=[judgment.experiment],
         )
@@ -58,12 +72,7 @@ class LangfuseBackend(EvalBackend):
             model=judgment.model,
             metadata={
                 "query": judgment.query,
-                "product": {
-                    "product_id": judgment.product.product_id,
-                    "title": judgment.product.title,
-                    "category": judgment.product.category,
-                    "price": judgment.product.price,
-                },
+                "product": product_data,
             },
             output=judgment.reasoning,
             usage={
@@ -110,13 +119,17 @@ class LangfuseBackend(EvalBackend):
             if relevance_score is None:
                 continue
 
+            product_data = trace.metadata.get("product", {})
             product = SearchResult(
-                product_id=trace.metadata.get("product_id", ""),
-                title=trace.metadata.get("product_title", ""),
-                description="",
-                category="",
-                price=0.0,
-                position=0,
+                product_id=product_data.get("product_id", ""),
+                title=product_data.get("title", ""),
+                description=product_data.get("description", ""),
+                category=product_data.get("category", ""),
+                price=float(product_data.get("price", 0.0)),
+                position=int(product_data.get("position", 0)),
+                in_stock=bool(product_data.get("in_stock", True)),
+                attributes=product_data.get("attributes", {}),
+                metadata=product_data.get("metadata", {}),
             )
 
             judgments.append(
@@ -126,8 +139,9 @@ class LangfuseBackend(EvalBackend):
                     score=relevance_score,
                     reasoning=reasoning,
                     attribute_verdict=trace.metadata.get("attribute_verdict", "n/a"),
-                    model="",
+                    model=trace.metadata.get("model", ""),
                     experiment=experiment,
+                    query_type=trace.metadata.get("query_type"),
                 )
             )
 
