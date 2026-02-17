@@ -264,7 +264,8 @@ def generate_queries_cmd(
 @main.command()
 @click.option(
     "--queries",
-    required=True,
+    required=False,
+    default=None,
     type=click.Path(exists=True),
     help="Path to query set (CSV or JSON)",
 )
@@ -362,7 +363,7 @@ def generate_queries_cmd(
     help="Randomly sample N queries from the query set for a faster evaluation.",
 )
 def run(
-    queries: str,
+    queries: str | None,
     adapters: tuple[str, ...],
     config_names: tuple[str, ...],
     llm_model: str,
@@ -378,6 +379,15 @@ def run(
     sample: int | None,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
+    if not queries:
+        raise click.UsageError(
+            "--queries is required.\n\n"
+            "To generate a starter query set:\n"
+            "  veritail generate-queries --vertical <vertical> --output queries.csv\n\n"
+            "Then run:\n"
+            "  veritail run --queries queries.csv --adapter <your_adapter.py>"
+        )
+
     if config_names and len(adapters) != len(config_names):
         raise click.UsageError(
             "Each --adapter must have a matching "
