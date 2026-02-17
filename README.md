@@ -559,7 +559,7 @@ For reliable metrics that can inform production search decisions, we recommend f
 
 - Python >= 3.9
 - One of:
-  - API key for [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
+  - API key for [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or [Google Gemini](https://ai.google.dev/)
   - A running OpenAI-compatible local model server (see [Local models](#local-models-via-openai-compatible-servers) above)
 
 ## Disclaimer
