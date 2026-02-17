@@ -6,6 +6,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+try:
+    from google import genai  # noqa: F401
+
+    HAS_GENAI = True
+except ImportError:
+    HAS_GENAI = False
+
 from veritail.llm.client import (
     AnthropicClient,
     OpenAIClient,
@@ -182,6 +189,107 @@ class TestOpenAIClientBaseUrl:
         assert result.model == "llama3.1:8b"
 
 
+@pytest.mark.skipif(not HAS_GENAI, reason="google-genai not installed")
+class TestGeminiClient:
+    @patch("google.genai.Client")
+    def test_complete(self, mock_genai_client_cls):
+        from veritail.llm.client import GeminiClient
+
+        mock_response = MagicMock()
+        mock_response.text = "SCORE: 2\nREASONING: Relevant"
+        mock_usage = MagicMock()
+        mock_usage.prompt_token_count = 150
+        mock_usage.candidates_token_count = 60
+        mock_response.usage_metadata = mock_usage
+
+        mock_client = mock_genai_client_cls.return_value
+        mock_client.models.generate_content.return_value = mock_response
+
+        client = GeminiClient(model="gemini-2.5-flash")
+        result = client.complete("system prompt", "user prompt")
+
+        assert result.content == "SCORE: 2\nREASONING: Relevant"
+        assert result.model == "gemini-2.5-flash"
+        assert result.input_tokens == 150
+        assert result.output_tokens == 60
+
+        # Verify generate_content was called with correct args
+        call_kwargs = mock_client.models.generate_content.call_args
+        assert call_kwargs.kwargs["model"] == "gemini-2.5-flash"
+        assert call_kwargs.kwargs["contents"] == "user prompt"
+
+    @patch("google.genai.Client")
+    def test_complete_handles_none_text(self, mock_genai_client_cls):
+        """response.text can be None when blocked by safety filters."""
+        from veritail.llm.client import GeminiClient
+
+        mock_response = MagicMock()
+        mock_response.text = None
+        mock_response.usage_metadata = None
+
+        mock_client = mock_genai_client_cls.return_value
+        mock_client.models.generate_content.return_value = mock_response
+
+        client = GeminiClient(model="gemini-2.5-flash")
+        result = client.complete("system", "user")
+
+        assert result.content == ""
+        assert result.input_tokens == 0
+        assert result.output_tokens == 0
+
+    @patch("google.genai.Client")
+    def test_preflight_check_success(self, mock_genai_client_cls):
+        from veritail.llm.client import GeminiClient
+
+        client = GeminiClient(model="gemini-2.5-flash")
+        client.preflight_check()
+        mock_genai_client_cls.return_value.models.get.assert_called_once_with(
+            model="gemini-2.5-flash",
+        )
+
+    @patch("google.genai.Client")
+    def test_preflight_check_bad_key(self, mock_genai_client_cls):
+        from veritail.llm.client import GeminiClient
+
+        mock_genai_client_cls.return_value.models.get.side_effect = Exception(
+            "API key not valid. Please pass a valid API key. [401]"
+        )
+        client = GeminiClient(model="gemini-2.5-flash")
+        with pytest.raises(RuntimeError, match="Gemini API key is invalid"):
+            client.preflight_check()
+
+    @patch("google.genai.Client")
+    def test_preflight_check_bad_model(self, mock_genai_client_cls):
+        from veritail.llm.client import GeminiClient
+
+        mock_genai_client_cls.return_value.models.get.side_effect = Exception(
+            "models/gemini-nonexistent is not found [404]"
+        )
+        client = GeminiClient(model="gemini-nonexistent")
+        with pytest.raises(RuntimeError, match="not found on Gemini"):
+            client.preflight_check()
+
+    @patch("google.genai.Client")
+    def test_preflight_check_generic_error(self, mock_genai_client_cls):
+        from veritail.llm.client import GeminiClient
+
+        mock_genai_client_cls.return_value.models.get.side_effect = Exception(
+            "network timeout"
+        )
+        client = GeminiClient(model="gemini-2.5-flash")
+        with pytest.raises(RuntimeError, match="preflight check failed"):
+            client.preflight_check()
+
+
+@pytest.mark.skipif(HAS_GENAI, reason="google-genai is installed")
+def test_gemini_import_error_without_package():
+    """GeminiClient raises helpful ImportError when google-genai is missing."""
+    from veritail.llm.client import GeminiClient
+
+    with pytest.raises(ImportError, match="pip install veritail\\[gemini\\]"):
+        GeminiClient(model="gemini-2.5-flash")
+
+
 class TestCreateLLMClient:
     @patch("anthropic.Anthropic")
     def test_claude_model(self, mock_anthropic_cls):
@@ -221,3 +329,23 @@ class TestCreateLLMClient:
             base_url="http://localhost:11434/v1",
         )
         assert isinstance(client, AnthropicClient)
+
+    @pytest.mark.skipif(not HAS_GENAI, reason="google-genai not installed")
+    @patch("google.genai.Client")
+    def test_gemini_model(self, mock_genai_client_cls):
+        from veritail.llm.client import GeminiClient
+
+        client = create_llm_client("gemini-2.5-flash")
+        assert isinstance(client, GeminiClient)
+
+    @pytest.mark.skipif(not HAS_GENAI, reason="google-genai not installed")
+    @patch("google.genai.Client")
+    def test_gemini_ignores_base_url(self, mock_genai_client_cls):
+        """Gemini models always use native SDK — base_url is ignored."""
+        from veritail.llm.client import GeminiClient
+
+        client = create_llm_client(
+            "gemini-2.5-flash",
+            base_url="http://localhost:11434/v1",
+        )
+        assert isinstance(client, GeminiClient)

@@ -36,6 +36,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gemini = ["google-genai>=1.0"]
 langfuse = ["langfuse>=2.0"]
 dev = [
     "pytest>=7.0",

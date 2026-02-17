@@ -2,6 +2,7 @@
 
 from veritail.llm.client import (
     AnthropicClient,
+    GeminiClient,
     LLMClient,
     LLMResponse,
     OpenAIClient,
@@ -13,6 +14,7 @@ __all__ = [
     "LLMClient",
     "LLMResponse",
     "AnthropicClient",
+    "GeminiClient",
     "OpenAIClient",
     "create_llm_client",
     "RelevanceJudge",

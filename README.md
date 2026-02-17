@@ -32,6 +32,12 @@ Example output from a real run:
 pip install veritail
 ```
 
+With Gemini support:
+
+```bash
+pip install veritail[gemini]
+```
+
 With Langfuse support:
 
 ```bash
@@ -476,10 +482,11 @@ veritail works with cloud LLM APIs and any OpenAI-compatible local model server.
 
 ### Cloud providers (recommended)
 
-| Provider | Example `--llm-model` | API key env var |
-|---|---|---|
-| **Anthropic** (Claude) | `claude-sonnet-4-5`, `claude-haiku-4-5` | `ANTHROPIC_API_KEY` |
-| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `o3-mini` | `OPENAI_API_KEY` |
+| Provider | Example `--llm-model` | API key env var | Install |
+|---|---|---|---|
+| **Anthropic** (Claude) | `claude-sonnet-4-5`, `claude-haiku-4-5` | `ANTHROPIC_API_KEY` | included |
+| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `o3-mini` | `OPENAI_API_KEY` | included |
+| **Google Gemini** | `gemini-2.5-flash`, `gemini-2.5-pro` | `GEMINI_API_KEY` or `GOOGLE_API_KEY` | `pip install veritail[gemini]` |
 
 Cloud models provide the highest evaluation quality and are recommended for production use.
 

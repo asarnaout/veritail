@@ -87,7 +87,7 @@ def _build_run_metadata(
     return metadata
 
 
-_KNOWN_MODEL_PREFIXES = ("claude", "gpt-", "o1", "o3", "o4")
+_KNOWN_MODEL_PREFIXES = ("claude", "gemini", "gpt-", "o1", "o3", "o4")
 
 
 def _warn_custom_model(model: str, base_url: str | None) -> None:

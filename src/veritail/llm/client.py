@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -142,6 +143,73 @@ class OpenAIClient(LLMClient):
             pass
 
 
+class GeminiClient(LLMClient):
+    """LLM client using the Google Gemini API.
+
+    Requires the ``google-genai`` package::
+
+        pip install veritail[gemini]
+
+    The API key is read from the ``GEMINI_API_KEY`` or ``GOOGLE_API_KEY``
+    environment variable, or can be passed explicitly.
+    """
+
+    def __init__(self, model: str = "gemini-2.5-flash") -> None:
+        try:
+            from google import genai  # type: ignore[import-not-found]
+        except ImportError:
+            raise ImportError(
+                "The google-genai package is required for Gemini models. "
+                "Install it with: pip install veritail[gemini]"
+            ) from None
+
+        self._genai: Any = genai
+        self._client: Any = genai.Client()
+        self._model = model
+
+    def complete(
+        self, system_prompt: str, user_prompt: str, *, max_tokens: int = 1024
+    ) -> LLMResponse:
+        from google.genai import types  # type: ignore[import-not-found]
+
+        response = self._client.models.generate_content(
+            model=self._model,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=max_tokens,
+            ),
+            contents=user_prompt,
+        )
+        text: str = response.text or ""
+        usage = response.usage_metadata
+        return LLMResponse(
+            content=text,
+            model=self._model,
+            input_tokens=usage.prompt_token_count if usage else 0,
+            output_tokens=usage.candidates_token_count if usage else 0,
+        )
+
+    def preflight_check(self) -> None:
+        try:
+            self._client.models.get(
+                model=self._model,
+            )
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "api key not valid" in msg or "401" in msg:
+                raise RuntimeError(
+                    "Gemini API key is invalid. "
+                    "Check your GEMINI_API_KEY or GOOGLE_API_KEY "
+                    "environment variable."
+                ) from exc
+            if "not found" in msg or "404" in msg:
+                raise RuntimeError(
+                    f"Model '{self._model}' not found on Gemini. "
+                    "Check the --llm-model value."
+                ) from exc
+            raise RuntimeError(f"Gemini preflight check failed: {exc}") from exc
+
+
 def create_llm_client(
     model: str,
     base_url: str | None = None,
@@ -150,14 +218,17 @@ def create_llm_client(
     """Create an LLM client based on the model name.
 
     Models starting with 'claude' use the Anthropic API.
+    Models starting with 'gemini' use the Google Gemini API.
     All other models use the OpenAI API
     (also works with OpenAI-compatible local models).
 
     When *base_url* is provided, the OpenAI client is pointed at that
-    endpoint regardless of model name (unless it starts with 'claude').
-    This allows connecting to Ollama, vLLM, LM Studio, or any other
-    OpenAI-compatible server.
+    endpoint regardless of model name (unless it starts with 'claude'
+    or 'gemini').  This allows connecting to Ollama, vLLM, LM Studio,
+    or any other OpenAI-compatible server.
     """
     if model.startswith("claude"):
         return AnthropicClient(model=model)
+    if model.startswith("gemini"):
+        return GeminiClient(model=model)
     return OpenAIClient(model=model, base_url=base_url, api_key=api_key)
