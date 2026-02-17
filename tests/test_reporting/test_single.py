@@ -230,6 +230,72 @@ class TestGenerateSingleReport:
         assert "plates" in report
         assert "appropriate" in report
 
+    def test_terminal_report_attribute_match_na_when_no_queries(self):
+        metrics = _make_metrics() + [
+            MetricResult(
+                metric_name="attribute_match@5",
+                value=0.0,
+                query_count=0,
+                total_queries=5,
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks())
+        assert "N/A" in report
+        assert "no queries with attribute constraints" in report
+
+    def test_terminal_report_attribute_match_annotation_when_partial(self):
+        metrics = _make_metrics() + [
+            MetricResult(
+                metric_name="attribute_match@5",
+                value=0.85,
+                query_count=3,
+                total_queries=10,
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks())
+        assert "0.8500" in report
+        assert "n=3 of 10 queries" in report
+
+    def test_terminal_report_attribute_match_no_annotation_when_all(self):
+        metrics = _make_metrics() + [
+            MetricResult(
+                metric_name="attribute_match@5",
+                value=0.85,
+                query_count=10,
+                total_queries=10,
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks())
+        assert "0.8500" in report
+        assert "n=" not in report
+        assert "N/A" not in report
+
+    def test_html_report_attribute_match_na(self):
+        metrics = _make_metrics() + [
+            MetricResult(
+                metric_name="attribute_match@5",
+                value=0.0,
+                query_count=0,
+                total_queries=5,
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "N/A" in report
+        assert "no queries with attribute constraints" in report
+
+    def test_html_report_attribute_match_annotation(self):
+        metrics = _make_metrics() + [
+            MetricResult(
+                metric_name="attribute_match@5",
+                value=0.85,
+                query_count=3,
+                total_queries=10,
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "0.8500" in report
+        assert "n=3 of 10 queries" in report
+
     def test_html_escapes_untrusted_judgment_content(self):
         judgment = JudgmentRecord(
             query="<script>alert('query')</script>",

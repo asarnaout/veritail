@@ -259,6 +259,49 @@ class TestComputeAllMetrics:
         assert attr5.per_query["laptop"] == pytest.approx(1.0)
         assert attr5.value == pytest.approx(0.75)  # mean of 0.5 and 1.0
 
+    def test_attribute_match_query_count_all_applicable(self):
+        queries = [
+            QueryEntry(query="red shoes", type="attribute"),
+            QueryEntry(query="blue hat", type="attribute"),
+        ]
+        judgments_by_query = {
+            0: [_j(3, 0, "red shoes", attribute_verdict="match")],
+            1: [_j(2, 0, "blue hat", attribute_verdict="mismatch")],
+        }
+        results = compute_all_metrics(judgments_by_query, queries)
+        attr5 = next(r for r in results if r.metric_name == "attribute_match@5")
+        assert attr5.query_count == 2
+        assert attr5.total_queries == 2
+
+    def test_attribute_match_query_count_some_na(self):
+        queries = [
+            QueryEntry(query="red shoes", type="attribute"),
+            QueryEntry(query="laptop", type="broad"),
+        ]
+        judgments_by_query = {
+            0: [_j(3, 0, "red shoes", attribute_verdict="match")],
+            1: [_j(2, 0, "laptop", attribute_verdict="n/a")],
+        }
+        results = compute_all_metrics(judgments_by_query, queries)
+        attr5 = next(r for r in results if r.metric_name == "attribute_match@5")
+        assert attr5.query_count == 1
+        assert attr5.total_queries == 2
+
+    def test_attribute_match_query_count_all_na(self):
+        queries = [
+            QueryEntry(query="laptop", type="broad"),
+            QueryEntry(query="cheese melter", type="broad"),
+        ]
+        judgments_by_query = {
+            0: [_j(3, 0, "laptop", attribute_verdict="n/a")],
+            1: [_j(2, 0, "cheese melter", attribute_verdict="n/a")],
+        }
+        results = compute_all_metrics(judgments_by_query, queries)
+        attr5 = next(r for r in results if r.metric_name == "attribute_match@5")
+        assert attr5.query_count == 0
+        assert attr5.total_queries == 2
+        assert attr5.value == 0.0  # fallback, but reported as N/A by display
+
     def test_duplicate_query_text_disambiguated_by_occurrence(self):
         queries = [
             QueryEntry(query="shoes"),

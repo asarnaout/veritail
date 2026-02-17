@@ -201,6 +201,7 @@ def compute_all_metrics(
         )
 
     # Attribute match rate — computed separately because n/a queries are excluded
+    total_queries = len(queries)
     for k_val, metric_name in [(5, "attribute_match@5"), (10, "attribute_match@10")]:
         attr_per_query: dict[str, float] = {}
         attr_by_type: dict[str, list[float]] = defaultdict(list)
@@ -225,6 +226,8 @@ def compute_all_metrics(
                 value=aggregate,
                 per_query=attr_per_query,
                 by_query_type=by_query_type,
+                query_count=len(all_values),
+                total_queries=total_queries,
             )
         )
 

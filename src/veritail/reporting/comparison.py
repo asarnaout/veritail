@@ -91,6 +91,24 @@ def _generate_terminal(
     for m_a in metrics_a:
         m_b = metrics_b_lookup.get(m_a.metric_name)
         if m_b:
+            # Check if both sides have no applicable queries
+            a_na = m_a.query_count is not None and m_a.query_count == 0
+            b_na = m_b.query_count is not None and m_b.query_count == 0
+            if a_na and b_na:
+                table.add_row(
+                    m_a.metric_name,
+                    "[dim]N/A[/dim]",
+                    "[dim]N/A[/dim]",
+                    "[dim]-[/dim]",
+                    "[dim]-[/dim]",
+                )
+                continue
+
+            def _fmt_value(m: MetricResult) -> str:
+                if m.query_count is not None and m.query_count == 0:
+                    return "[dim]N/A[/dim]"
+                return f"{m.value:.4f}"
+
             delta = m_b.value - m_a.value
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
             delta_str = f"{delta:+.4f}"
@@ -106,8 +124,8 @@ def _generate_terminal(
 
             table.add_row(
                 m_a.metric_name,
-                f"{m_a.value:.4f}",
-                f"{m_b.value:.4f}",
+                _fmt_value(m_a),
+                _fmt_value(m_b),
                 delta_str,
                 pct_str,
             )
@@ -247,6 +265,8 @@ def _generate_html(
     for m_a in metrics_a:
         m_b = metrics_b_lookup.get(m_a.metric_name)
         if m_b:
+            a_na = m_a.query_count is not None and m_a.query_count == 0
+            b_na = m_b.query_count is not None and m_b.query_count == 0
             delta = m_b.value - m_a.value
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
             comparison_data.append(
@@ -256,6 +276,8 @@ def _generate_html(
                     "value_b": m_b.value,
                     "delta": delta,
                     "pct_change": pct,
+                    "a_na": a_na,
+                    "b_na": b_na,
                 }
             )
 

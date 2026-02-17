@@ -97,3 +97,5 @@ class MetricResult:
     value: float
     per_query: dict[str, float] = field(default_factory=dict)
     by_query_type: dict[str, float] = field(default_factory=dict)
+    query_count: int | None = None  # queries that contributed to the aggregate
+    total_queries: int | None = None  # total queries in the evaluation

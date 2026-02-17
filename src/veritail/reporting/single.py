@@ -171,7 +171,23 @@ def _generate_terminal(
     table.add_column("Value", justify="right")
 
     for m in metrics:
-        table.add_row(m.metric_name, f"{m.value:.4f}")
+        if m.query_count is not None and m.query_count == 0:
+            table.add_row(
+                m.metric_name,
+                "[dim]N/A (no queries with attribute constraints)[/dim]",
+            )
+        elif (
+            m.query_count is not None
+            and m.total_queries is not None
+            and m.query_count < m.total_queries
+        ):
+            table.add_row(
+                m.metric_name,
+                f"{m.value:.4f}  [dim](n={m.query_count} of"
+                f" {m.total_queries} queries)[/dim]",
+            )
+        else:
+            table.add_row(m.metric_name, f"{m.value:.4f}")
 
     console.print(table)
 

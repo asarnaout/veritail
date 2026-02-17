@@ -49,14 +49,19 @@
             {% for d in comparison_data %}
             <tr>
                 <td>{{ d.name }}</td>
-                <td class="metric-value">{{ "%.4f"|format(d.value_a) }}</td>
-                <td class="metric-value">{{ "%.4f"|format(d.value_b) }}</td>
+                <td class="metric-value">{% if d.a_na %}<span style="color:#9ca3af">N/A</span>{% else %}{{ "%.4f"|format(d.value_a) }}{% endif %}</td>
+                <td class="metric-value">{% if d.b_na %}<span style="color:#9ca3af">N/A</span>{% else %}{{ "%.4f"|format(d.value_b) }}{% endif %}</td>
+                {% if d.a_na and d.b_na %}
+                <td class="metric-value" style="color:#9ca3af">-</td>
+                <td class="metric-value" style="color:#9ca3af">-</td>
+                {% else %}
                 <td class="metric-value {% if d.delta > 0 %}positive{% elif d.delta < 0 %}negative{% else %}neutral{% endif %}">
                     {{ "%+.4f"|format(d.delta) }}
                 </td>
                 <td class="metric-value {% if d.pct_change > 0 %}positive{% elif d.pct_change < 0 %}negative{% else %}neutral{% endif %}">
                     {{ "%+.1f"|format(d.pct_change) }}%
                 </td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
@@ -104,7 +109,17 @@
                   <span class="tip" data-tip="{{ metric_descriptions[m.metric_name] }}">?</span>
                   {% endif %}
                 </td>
-                <td class="metric-value">{{ "%.4f"|format(m.value) }}</td>
+                <td class="metric-value">
+                  {% if m.query_count is not none and m.query_count == 0 %}
+                  <span style="color:#9ca3af">N/A</span>
+                  <span style="color:#9ca3af; font-size:12px; font-weight:normal"> (no queries with attribute constraints)</span>
+                  {% elif m.query_count is not none and m.total_queries is not none and m.query_count < m.total_queries %}
+                  {{ "%.4f"|format(m.value) }}
+                  <span style="color:#9ca3af; font-size:12px; font-weight:normal">(n={{ m.query_count }} of {{ m.total_queries }} queries)</span>
+                  {% else %}
+                  {{ "%.4f"|format(m.value) }}
+                  {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
