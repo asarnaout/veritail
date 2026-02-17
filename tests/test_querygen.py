@@ -498,6 +498,22 @@ class TestGenerateQueriesCLI:
         assert result.exit_code == 0
         assert "Generated 2 queries" in result.output
 
+    def test_requires_llm_model(self, tmp_path):
+        out = tmp_path / "queries.csv"
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "generate-queries",
+                "--output",
+                str(out),
+                "--vertical",
+                "electronics",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "Missing option '--llm-model'" in result.output
+
     def test_help(self):
         runner = CliRunner()
         result = runner.invoke(main, ["generate-queries", "--help"])

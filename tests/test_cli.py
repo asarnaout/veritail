@@ -834,6 +834,27 @@ class TestCLI:
         assert result.exit_code != 0
         assert "API key is invalid" in result.output
 
+    def test_run_requires_llm_model(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_file),
+            ],
+        )
+        assert result.exit_code != 0
+        assert "Missing option '--llm-model'" in result.output
+
     def test_version(self):
         runner = CliRunner()
         result = runner.invoke(main, ["--version"])
