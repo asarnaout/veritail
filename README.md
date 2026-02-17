@@ -250,6 +250,22 @@ Scaffold starter files for a new project.
 | `--queries-name` | `queries.csv` | Query set filename (must end with `.csv`) |
 | `--force` | off | Overwrite existing files |
 
+### `veritail vertical list`
+
+List all built-in verticals.
+
+### `veritail vertical show <name>`
+
+Print the full text of a built-in vertical. Use this to inspect a vertical before customizing it, or to copy one as a starting point for your own:
+
+```bash
+# View a vertical
+veritail vertical show home-improvement
+
+# Copy to a file and customize
+veritail vertical show home-improvement > my_vertical.txt
+```
+
 ## HTML Report
 
 `veritail run` always writes a standalone HTML report.

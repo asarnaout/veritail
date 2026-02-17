@@ -34,6 +34,7 @@ __all__ = [
     "OFFICE_SUPPLIES",
     "PET_SUPPLIES",
     "SPORTING_GOODS",
+    "list_verticals",
     "load_vertical",
 ]
 
@@ -53,6 +54,11 @@ _BUILTIN_VERTICALS: dict[str, str] = {
     "pet-supplies": PET_SUPPLIES,
     "sporting-goods": SPORTING_GOODS,
 }
+
+
+def list_verticals() -> list[str]:
+    """Return sorted names of all built-in verticals."""
+    return sorted(_BUILTIN_VERTICALS)
 
 
 def load_vertical(name: str) -> str:

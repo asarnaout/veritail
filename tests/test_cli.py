@@ -93,6 +93,41 @@ class TestCLI:
         assert result.exit_code == 0
         assert "veritail" in result.output
 
+    def test_vertical_list(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["vertical", "list"])
+        assert result.exit_code == 0
+        assert "home-improvement" in result.output
+        assert "fashion" in result.output
+        assert "electronics" in result.output
+        # Verify sorted order
+        lines = result.output.strip().splitlines()
+        assert lines == sorted(lines)
+
+    def test_vertical_show(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["vertical", "show", "fashion"])
+        assert result.exit_code == 0
+        # Should contain actual vertical content
+        assert len(result.output) > 100
+
+    def test_vertical_show_unknown(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["vertical", "show", "nonexistent"])
+        assert result.exit_code != 0
+        assert "Unknown vertical" in result.output
+
+    def test_vertical_show_pipe_to_file(self, tmp_path):
+        """Verify output is plain text suitable for shell redirection."""
+        runner = CliRunner()
+        result = runner.invoke(main, ["vertical", "show", "home-improvement"])
+        assert result.exit_code == 0
+        # Write to file to simulate: veritail vertical show home-improvement > file.txt
+        out_file = tmp_path / "my_vertical.txt"
+        out_file.write_text(result.output, encoding="utf-8")
+        # The file should be usable as a custom vertical
+        assert out_file.read_text(encoding="utf-8") == result.output
+
     def test_run_help(self):
         runner = CliRunner()
         result = runner.invoke(main, ["run", "--help"])

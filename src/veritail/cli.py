@@ -148,6 +148,41 @@ def init(
     )
 
 
+@main.group()
+def vertical() -> None:
+    """Inspect built-in vertical prompts."""
+    pass
+
+
+@vertical.command("list")
+def vertical_list() -> None:
+    """List all built-in verticals."""
+    from veritail.verticals import list_verticals
+
+    for name in list_verticals():
+        console.print(name)
+
+
+@vertical.command("show")
+@click.argument("name")
+def vertical_show(name: str) -> None:
+    """Print the full text of a built-in vertical.
+
+    Use this to inspect a vertical before customizing it, or to copy one
+    as a starting point for your own:
+
+        veritail vertical show home-improvement > my_vertical.txt
+    """
+    from veritail.verticals import load_vertical
+
+    try:
+        text = load_vertical(name)
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(text)
+
+
 @main.command()
 @click.option(
     "--queries",
