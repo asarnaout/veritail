@@ -41,7 +41,7 @@ def _make_judgment() -> JudgmentRecord:
     )
 
 
-@patch("langfuse.Langfuse")
+@patch("veritail.backends.langfuse.Langfuse")
 def test_log_judgment(mock_langfuse_cls):
     from veritail.backends.langfuse import LangfuseBackend
 
@@ -72,7 +72,7 @@ def test_log_judgment(mock_langfuse_cls):
     assert product_data["position"] == 0
 
 
-@patch("langfuse.Langfuse")
+@patch("veritail.backends.langfuse.Langfuse")
 def test_log_experiment(mock_langfuse_cls):
     from veritail.backends.langfuse import LangfuseBackend
 
@@ -83,7 +83,7 @@ def test_log_experiment(mock_langfuse_cls):
     mock_client.trace.assert_called_once()
 
 
-@patch("langfuse.Langfuse")
+@patch("veritail.backends.langfuse.Langfuse")
 def test_get_judgments_skips_bad_trace(mock_langfuse_cls):
     """A trace that raises during processing is skipped; others still load."""
     import warnings
