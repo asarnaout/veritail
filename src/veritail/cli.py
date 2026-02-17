@@ -217,8 +217,10 @@ def init(
     default=None,
     type=str,
     help=(
-        "Business context for the LLM judge "
-        "(e.g. 'B2B industrial kitchen equipment supplier')."
+        "Business context for the LLM judge — describes your business, "
+        "customer base, and how queries should be interpreted. "
+        "Accepts long text; use shell substitution for files: "
+        '--context "$(cat context.txt)".'
     ),
 )
 @click.option(
