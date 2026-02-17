@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from veritail.reporting.single import generate_single_report
 from veritail.types import (
     CheckResult,
@@ -295,6 +297,136 @@ class TestGenerateSingleReport:
         report = generate_single_report(metrics, _make_checks(), format="html")
         assert "0.8500" in report
         assert "n=3 of 10 queries" in report
+
+    def test_html_score_distribution(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id=f"SKU-{i}",
+                    title=f"Product {i}",
+                    description="Desc",
+                    category="Shoes",
+                    price=10.0,
+                    position=i,
+                ),
+                score=score,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            )
+            for i, score in enumerate([3, 3, 2, 2, 2, 1, 0])
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "Score Distribution" in report
+        assert "7 judgments across all queries" in report
+        # Check all score levels are present in the legend
+        assert "(28.6%)" in report  # 2/7 for score 3
+        assert "(42.9%)" in report  # 3/7 for score 2
+        assert "(14.3%)" in report  # 1/7 for score 1 and 0
+
+    def test_html_score_distribution_absent_without_judgments(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        assert "Score Distribution" not in report
+
+    def test_html_ndcg_stats(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=3,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "NDCG@10 spread" in report
+        assert "min=0.8000" in report
+        assert "max=0.9000" in report
+
+    def test_html_ndcg_stats_absent_with_single_query(self):
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.9,
+                per_query={"shoes": 0.9},
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "NDCG@10 spread" not in report
+
+    def test_html_metrics_by_query_type(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        assert "Metrics by Query Type" in report
+        assert "broad" in report
+        assert "0.8500" in report
+
+    def test_html_metrics_by_query_type_absent_when_no_types(self):
+        metrics = [
+            MetricResult(metric_name="ndcg@10", value=0.85),
+            MetricResult(metric_name="mrr", value=0.72),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "Metrics by Query Type" not in report
+
+    def test_terminal_score_distribution(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id=f"SKU-{i}",
+                    title=f"Product {i}",
+                    description="Desc",
+                    category="Shoes",
+                    price=10.0,
+                    position=i,
+                ),
+                score=score,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            )
+            for i, score in enumerate([3, 2, 1, 0])
+        ]
+        report = generate_single_report(
+            _make_metrics(), _make_checks(), judgments=judgments
+        )
+        assert "Score Distribution" in report
+        assert "3/3" in report
+        assert "0/3" in report
+
+    def test_terminal_score_distribution_absent_without_judgments(self):
+        report = generate_single_report(_make_metrics(), _make_checks())
+        assert "Score Distribution" not in report
+
+    def test_terminal_ndcg_stats(self):
+        report = generate_single_report(_make_metrics(), _make_checks())
+        # Strip ANSI escape codes since Rich inserts formatting within text
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", report)
+        assert "NDCG@10 spread:" in plain
+        assert "min=0.8000" in plain
+        assert "max=0.9000" in plain
 
     def test_html_escapes_untrusted_judgment_content(self):
         judgment = JudgmentRecord(

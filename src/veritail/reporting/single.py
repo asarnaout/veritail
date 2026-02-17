@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import statistics
 from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
@@ -152,13 +153,16 @@ def generate_single_report(
         return _generate_html(
             metrics, checks, judgments, run_metadata, correction_judgments
         )
-    return _generate_terminal(metrics, checks, correction_judgments)
+    return _generate_terminal(
+        metrics, checks, correction_judgments, judgments=judgments
+    )
 
 
 def _generate_terminal(
     metrics: list[MetricResult],
     checks: list[CheckResult],
     correction_judgments: list[CorrectionJudgment] | None = None,
+    judgments: list[JudgmentRecord] | None = None,
 ) -> str:
     """Generate a rich-formatted terminal report."""
     console = Console(file=StringIO(), force_terminal=True, width=100)
@@ -190,6 +194,26 @@ def _generate_terminal(
             table.add_row(m.metric_name, f"{m.value:.4f}")
 
     console.print(table)
+
+    # Score distribution
+    if judgments:
+        score_counts: dict[int, int] = {0: 0, 1: 0, 2: 0, 3: 0}
+        for jdg in judgments:
+            score_counts[jdg.score] = score_counts.get(jdg.score, 0) + 1
+        total_judgments = sum(score_counts.values())
+        if total_judgments > 0:
+            console.print("\n")
+            score_table = Table(
+                title=f"Score Distribution ({total_judgments} judgments)",
+                show_header=True,
+            )
+            score_table.add_column("Score", style="cyan")
+            score_table.add_column("Count", justify="right")
+            score_table.add_column("%", justify="right")
+            for sc in (3, 2, 1, 0):
+                pct = score_counts[sc] / total_judgments * 100
+                score_table.add_row(f"{sc}/3", str(score_counts[sc]), f"{pct:.1f}%")
+            console.print(score_table)
 
     # By query type breakdown (if available)
     type_metrics = [m for m in metrics if m.by_query_type]
@@ -264,6 +288,15 @@ def _generate_terminal(
     # Worst queries (lowest NDCG@10)
     ndcg = next((m for m in metrics if m.metric_name == "ndcg@10"), None)
     if ndcg and ndcg.per_query:
+        ndcg_values = list(ndcg.per_query.values())
+        if len(ndcg_values) >= 2:
+            console.print(
+                f"\n  [dim]NDCG@10 spread:"
+                f"  min={min(ndcg_values):.4f}"
+                f"  median={statistics.median(ndcg_values):.4f}"
+                f"  max={max(ndcg_values):.4f}"
+                f"  stdev={statistics.stdev(ndcg_values):.4f}[/dim]"
+            )
         console.print("\n")
         worst = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:10]
         worst_table = Table(
@@ -366,6 +399,43 @@ def _generate_html(
             for q, js in sorted(grouped.items())
         ]
 
+    # Score distribution
+    score_counts: dict[int, int] | None = None
+    score_total: int = 0
+    score_pcts: dict[int, float] | None = None
+    if judgments:
+        score_counts = {0: 0, 1: 0, 2: 0, 3: 0}
+        for j in judgments:
+            score_counts[j.score] = score_counts.get(j.score, 0) + 1
+        score_total = sum(score_counts.values())
+        if score_total > 0:
+            score_pcts = {
+                s: round(c / score_total * 100, 1) for s, c in score_counts.items()
+            }
+        else:
+            score_counts = None
+
+    # NDCG@10 distribution stats
+    ndcg_stats: dict[str, float] | None = None
+    if ndcg and ndcg.per_query:
+        pq_values = list(ndcg.per_query.values())
+        if len(pq_values) >= 2:
+            ndcg_stats = {
+                "min": min(pq_values),
+                "max": max(pq_values),
+                "median": statistics.median(pq_values),
+                "stdev": statistics.stdev(pq_values),
+            }
+
+    # Metrics by query type
+    type_metrics = [m for m in metrics if m.by_query_type]
+    query_types: list[str] = []
+    if type_metrics:
+        all_types: set[str] = set()
+        for m in type_metrics:
+            all_types.update(m.by_query_type.keys())
+        query_types = sorted(all_types)
+
     return template.render(
         metrics=metrics,
         check_summary=check_summary,
@@ -376,4 +446,10 @@ def _generate_html(
         check_descriptions=CHECK_DESCRIPTIONS,
         run_metadata_rows=metadata_rows,
         correction_summary=correction_summary,
+        score_counts=score_counts,
+        score_total=score_total,
+        score_pcts=score_pcts,
+        ndcg_stats=ndcg_stats,
+        type_metrics=type_metrics,
+        query_types=query_types,
     )
