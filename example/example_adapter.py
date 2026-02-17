@@ -4,17 +4,18 @@ This is what your adapter file should look like.
 Replace this with actual calls to your search API.
 """
 
-from veritail.types import SearchResult
+from veritail.types import SearchResponse, SearchResult
 
 
-def search(query: str) -> list[SearchResult]:
+def search(query: str) -> SearchResponse:
     """
-    This function must be named 'search' and return a list of SearchResult objects.
+    This function must be named 'search' and return a SearchResponse.
 
     In a real adapter, you would:
     1. Call your search API with the query
     2. Parse the response
     3. Convert each result to a SearchResult object
+    4. Wrap them in a SearchResponse
     """
 
     # Mock results - replace with real API calls
@@ -66,4 +67,6 @@ def search(query: str) -> list[SearchResult]:
             )
         )
 
-    return results
+    return SearchResponse(results=results)
+    # To report autocorrect / "did you mean" corrections, use:
+    # return SearchResponse(results=results, corrected_query="corrected query text")
