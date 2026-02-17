@@ -169,7 +169,7 @@ veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
   --vertical home-improvement \
-  --context "$(cat context.txt)"
+  --context context.txt
 ```
 
 ## Evaluation Model
@@ -232,7 +232,7 @@ Run a single or dual-configuration evaluation.
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
 | `--top-k` | `10` | Maximum number of results to evaluate per query (must be `>= 1`) |
 | `--open` | off | Open HTML report in browser |
-| `--context` | *(none)* | Business context for LLM judge — business identity, customer base, query interpretation guidance. Accepts long text; use `--context "$(cat ctx.txt)"` for files |
+| `--context` | *(none)* | Business context for LLM judge — business identity, customer base, query interpretation guidance. Accepts a string or a path to a text file |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
 | `--sample` | *(none)* | Randomly sample N queries for a faster evaluation (deterministic seed) |

@@ -254,8 +254,7 @@ def vertical_show(name: str) -> None:
     help=(
         "Business context for the LLM judge — describes your business, "
         "customer base, and how queries should be interpreted. "
-        "Accepts long text; use shell substitution for files: "
-        '--context "$(cat context.txt)".'
+        "Accepts a string or a path to a text file."
     ),
 )
 @click.option(
@@ -339,6 +338,9 @@ def run(
         console.print(f"Loaded {len(query_entries)} queries from {queries}")
 
     rubric_data = load_rubric(rubric)
+
+    if context and Path(context).is_file():
+        context = Path(context).read_text(encoding="utf-8").rstrip()
 
     vertical_context: str | None = None
     if vertical:

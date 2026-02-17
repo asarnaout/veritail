@@ -128,6 +128,69 @@ class TestCLI:
         # The file should be usable as a custom vertical
         assert out_file.read_text(encoding="utf-8") == result.output
 
+    def test_run_context_from_file(self, tmp_path):
+        """--context accepts a file path and reads its contents."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        context_file = tmp_path / "context.txt"
+        context_file.write_text(
+            "We are a B2B commercial HVAC distributor.\n"
+            "HVAC queries require strict part number matching."
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "test-model",
+                    "--context",
+                    str(context_file),
+                ],
+            )
+
+        assert result.exit_code == 0
+        # Verify the file contents were passed to the LLM, not the file path
+        call_args = mock_client.complete.call_args
+        system_prompt = call_args.args[0]
+        assert "HVAC" in system_prompt
+        assert str(context_file) not in system_prompt
+
     def test_run_help(self):
         runner = CliRunner()
         result = runner.invoke(main, ["run", "--help"])
