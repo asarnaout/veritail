@@ -280,6 +280,8 @@ Run a single or dual-configuration evaluation.
 | `--adapter` | *(required)* | Path to adapter module (up to 2) |
 | `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
 | `--llm-model` | `claude-sonnet-4-5` | LLM model for judgments |
+| `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:11434/v1` for Ollama) |
+| `--llm-api-key` | *(none)* | API key override for the endpoint |
 | `--rubric` | `ecommerce-default` | Rubric name or custom rubric file path |
 | `--backend` | `file` | Storage backend (`file` or `langfuse`) |
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
@@ -314,6 +316,8 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 | `--vertical` | *(none)* | Built-in vertical name or path to text file |
 | `--context` | *(none)* | Business context string or path to a text file |
 | `--llm-model` | `claude-sonnet-4-5` | LLM model for generation |
+| `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint |
+| `--llm-api-key` | *(none)* | API key override for the endpoint |
 
 ### `veritail vertical list`
 
@@ -466,10 +470,90 @@ ruff check src tests
 mypy src
 ```
 
+## Supported LLM Providers
+
+veritail works with cloud LLM APIs and any OpenAI-compatible local model server.
+
+### Cloud providers (recommended)
+
+| Provider | Example `--llm-model` | API key env var |
+|---|---|---|
+| **Anthropic** (Claude) | `claude-sonnet-4-5`, `claude-haiku-4-5` | `ANTHROPIC_API_KEY` |
+| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `o3-mini` | `OPENAI_API_KEY` |
+
+Cloud models provide the highest evaluation quality and are recommended for production use.
+
+### Local models via OpenAI-compatible servers
+
+veritail connects to any server that exposes the [OpenAI chat completions API](https://platform.openai.com/docs/api-reference/chat) (`POST /v1/chat/completions`). Pass `--llm-base-url` to point at a local endpoint:
+
+```bash
+# Ollama
+ollama pull qwen3:14b
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --llm-model qwen3:14b \
+  --llm-base-url http://localhost:11434/v1 \
+  --llm-api-key not-needed
+
+# vLLM
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --llm-model meta-llama/Llama-4-Scout \
+  --llm-base-url http://localhost:8000/v1 \
+  --llm-api-key not-needed
+
+# LM Studio
+veritail run \
+  --queries queries.csv \
+  --adapter my_adapter.py \
+  --llm-model local-model \
+  --llm-base-url http://localhost:1234/v1 \
+  --llm-api-key lm-studio
+```
+
+`--llm-base-url` and `--llm-api-key` also work with `veritail generate-queries`.
+
+Alternatively, you can set environment variables instead of passing CLI flags:
+
+```bash
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_API_KEY=not-needed
+veritail run --queries queries.csv --adapter my_adapter.py --llm-model qwen3:14b
+```
+
+**Tested local servers:**
+
+| Server | Default port | Docs |
+|---|---|---|
+| [Ollama](https://ollama.com/) | `11434` | [OpenAI compatibility](https://ollama.com/blog/openai-compatibility) |
+| [vLLM](https://docs.vllm.ai/) | `8000` | [OpenAI-compatible server](https://docs.vllm.ai/en/stable/serving/openai_compatible_server/) |
+| [LM Studio](https://lmstudio.ai/) | `1234` | [API docs](https://lmstudio.ai/docs/developer/openai-compat) |
+| [LocalAI](https://localai.io/) | `8080` | [Features](https://localai.io/features/) |
+| [llama.cpp server](https://github.com/ggml-org/llama.cpp) | `8080` | [Server docs](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md) |
+| [SGLang](https://docs.sglang.io/) | varies | [Docs](https://docs.sglang.io/) |
+
+### Model quality guidance
+
+veritail computes aggregate IR metrics (NDCG, MRR, MAP) from LLM relevance scores. The reliability of these metrics depends on the LLM's ability to follow instructions and produce consistent judgments.
+
+| Model tier | Examples | Metric reliability |
+|---|---|---|
+| Frontier cloud models | Claude Sonnet/Opus, GPT-4o, GPT-o3 | High — recommended for production evaluation |
+| Large local models (70B+) | Llama 4 Maverick, Qwen 3 72B, DeepSeek V3 | Good — comparable to cloud models with sufficient hardware |
+| Mid-size local models (14B–30B) | Qwen 3 14B/30B, Phi-4 14B, Mistral 7x8B | Adequate — some scoring noise; suitable for rapid iteration |
+| Small local models (≤8B) | Llama 3.2 3B, Phi-4-mini, Gemma 3 4B | Noisy — scores may be inconsistent and affect metric reliability |
+
+For reliable metrics that can inform production search decisions, we recommend frontier cloud models or 70B+ parameter local models. Smaller models are useful for fast, low-cost iteration during development but their scores should be interpreted with caution.
+
 ## Requirements
 
 - Python >= 3.9
-- API key for [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
+- One of:
+  - API key for [Anthropic](https://console.anthropic.com/) or [OpenAI](https://platform.openai.com/)
+  - A running OpenAI-compatible local model server (see [Local models](#local-models-via-openai-compatible-servers) above)
 
 ## Disclaimer
 

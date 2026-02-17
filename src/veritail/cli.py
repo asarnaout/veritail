@@ -87,6 +87,27 @@ def _build_run_metadata(
     return metadata
 
 
+_KNOWN_MODEL_PREFIXES = ("claude", "gpt-", "o1", "o3", "o4")
+
+
+def _warn_custom_model(model: str, base_url: str | None) -> None:
+    """Emit a warning when the model name is unrecognized."""
+    if any(model.startswith(p) for p in _KNOWN_MODEL_PREFIXES):
+        return
+    if base_url:
+        console.print(
+            f"[yellow]Using custom endpoint ({base_url}) with model '{model}'. "
+            "Evaluation quality depends on model capability — "
+            "for reliable metrics, 70B+ parameter models are recommended.[/yellow]"
+        )
+    else:
+        console.print(
+            f"[yellow]Model '{model}' is not a recognized cloud model. "
+            "If you are using a local model server, pass --llm-base-url to "
+            "specify the endpoint (e.g. --llm-base-url http://localhost:11434/v1).[/yellow]"
+        )
+
+
 @click.group()
 @click.version_option(package_name="veritail")
 def main() -> None:
@@ -216,12 +237,28 @@ def vertical_show(name: str) -> None:
     default="claude-sonnet-4-5",
     help="LLM model to use for generation.",
 )
+@click.option(
+    "--llm-base-url",
+    default=None,
+    help=(
+        "Base URL for an OpenAI-compatible API endpoint. "
+        "Use this to connect to local model servers "
+        "(e.g. http://localhost:11434/v1 for Ollama)."
+    ),
+)
+@click.option(
+    "--llm-api-key",
+    default=None,
+    help="API key override (useful for non-OpenAI endpoints that ignore keys).",
+)
 def generate_queries_cmd(
     output: str,
     count: int,
     vertical: str | None,
     context: str | None,
     llm_model: str,
+    llm_base_url: str | None,
+    llm_api_key: str | None,
 ) -> None:
     """Generate evaluation queries with an LLM and save to CSV."""
     if count < 1:
@@ -233,7 +270,10 @@ def generate_queries_cmd(
     if not vertical and not context:
         raise click.UsageError("At least one of --vertical or --context is required.")
 
-    llm_client = create_llm_client(llm_model)
+    _warn_custom_model(llm_model, llm_base_url)
+    llm_client = create_llm_client(
+        llm_model, base_url=llm_base_url, api_key=llm_api_key
+    )
 
     try:
         llm_client.preflight_check()
@@ -290,6 +330,20 @@ def generate_queries_cmd(
     "--llm-model",
     default="claude-sonnet-4-5",
     help="LLM model to use for judgments",
+)
+@click.option(
+    "--llm-base-url",
+    default=None,
+    help=(
+        "Base URL for an OpenAI-compatible API endpoint. "
+        "Use this to connect to local model servers "
+        "(e.g. http://localhost:11434/v1 for Ollama)."
+    ),
+)
+@click.option(
+    "--llm-api-key",
+    default=None,
+    help="API key override (useful for non-OpenAI endpoints that ignore keys).",
 )
 @click.option(
     "--rubric",
@@ -367,6 +421,8 @@ def run(
     adapters: tuple[str, ...],
     config_names: tuple[str, ...],
     llm_model: str,
+    llm_base_url: str | None,
+    llm_api_key: str | None,
     rubric: str,
     backend_type: str,
     output_dir: str,
@@ -457,7 +513,10 @@ def run(
                 f"[dim]Loaded {len(loaded)} custom check(s) from {check_path}[/dim]"
             )
 
-    llm_client = create_llm_client(llm_model)
+    _warn_custom_model(llm_model, llm_base_url)
+    llm_client = create_llm_client(
+        llm_model, base_url=llm_base_url, api_key=llm_api_key
+    )
 
     try:
         llm_client.preflight_check()

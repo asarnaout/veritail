@@ -138,6 +138,50 @@ class TestOpenAIClient:
         client.preflight_check()
 
 
+class TestOpenAIClientBaseUrl:
+    @patch("openai.OpenAI")
+    def test_base_url_passed_to_sdk(self, mock_openai_cls):
+        """base_url and api_key are forwarded to openai.OpenAI()."""
+        OpenAIClient(
+            model="qwen3:14b",
+            base_url="http://localhost:11434/v1",
+            api_key="not-needed",
+        )
+        mock_openai_cls.assert_called_once_with(
+            base_url="http://localhost:11434/v1",
+            api_key="not-needed",
+        )
+
+    @patch("openai.OpenAI")
+    def test_base_url_defaults_to_none(self, mock_openai_cls):
+        """Without explicit base_url/api_key the SDK falls back to env vars."""
+        OpenAIClient(model="gpt-4o")
+        mock_openai_cls.assert_called_once_with(base_url=None, api_key=None)
+
+    @patch("openai.OpenAI")
+    def test_complete_with_custom_base_url(self, mock_openai_cls):
+        mock_choice = MagicMock()
+        mock_choice.message.content = "SCORE: 2\nREASONING: Ok"
+        mock_usage = MagicMock()
+        mock_usage.prompt_tokens = 100
+        mock_usage.completion_tokens = 40
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        mock_response.usage = mock_usage
+        mock_client = mock_openai_cls.return_value
+        mock_client.chat.completions.create.return_value = mock_response
+
+        client = OpenAIClient(
+            model="llama3.1:8b",
+            base_url="http://localhost:11434/v1",
+            api_key="ollama",
+        )
+        result = client.complete("system prompt", "user prompt")
+
+        assert result.content == "SCORE: 2\nREASONING: Ok"
+        assert result.model == "llama3.1:8b"
+
+
 class TestCreateLLMClient:
     @patch("anthropic.Anthropic")
     def test_claude_model(self, mock_anthropic_cls):
@@ -154,3 +198,26 @@ class TestCreateLLMClient:
         # Local models use OpenAI-compatible API
         client = create_llm_client("llama-3-70b")
         assert isinstance(client, OpenAIClient)
+
+    @patch("openai.OpenAI")
+    def test_base_url_forwarded(self, mock_openai_cls):
+        """create_llm_client passes base_url and api_key to OpenAIClient."""
+        client = create_llm_client(
+            "qwen3:14b",
+            base_url="http://localhost:11434/v1",
+            api_key="not-needed",
+        )
+        assert isinstance(client, OpenAIClient)
+        mock_openai_cls.assert_called_once_with(
+            base_url="http://localhost:11434/v1",
+            api_key="not-needed",
+        )
+
+    @patch("anthropic.Anthropic")
+    def test_claude_ignores_base_url(self, mock_anthropic_cls):
+        """Claude models always use Anthropic — base_url is ignored."""
+        client = create_llm_client(
+            "claude-sonnet-4-5",
+            base_url="http://localhost:11434/v1",
+        )
+        assert isinstance(client, AnthropicClient)

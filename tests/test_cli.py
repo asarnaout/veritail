@@ -380,6 +380,136 @@ class TestCLI:
         assert (experiment_dirs[0] / "metrics.json").exists()
         assert (experiment_dirs[0] / "report.html").exists()
 
+    def test_run_help_shows_llm_base_url_option(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--help"])
+        assert result.exit_code == 0
+        assert "--llm-base-url" in result.output
+        assert "--llm-api-key" in result.output
+
+    def test_generate_queries_help_shows_llm_base_url_option(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["generate-queries", "--help"])
+        assert result.exit_code == 0
+        assert "--llm-base-url" in result.output
+        assert "--llm-api-key" in result.output
+
+    def test_run_with_llm_base_url(self, tmp_path):
+        """--llm-base-url and --llm-api-key are forwarded to create_llm_client."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="qwen3:14b",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch(
+            "veritail.cli.create_llm_client", return_value=mock_client
+        ) as mock_create:
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "qwen3:14b",
+                    "--llm-base-url",
+                    "http://localhost:11434/v1",
+                    "--llm-api-key",
+                    "not-needed",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_create.assert_called_once_with(
+            "qwen3:14b",
+            base_url="http://localhost:11434/v1",
+            api_key="not-needed",
+        )
+
+    def test_run_warns_on_unrecognized_model_with_base_url(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="llama3.1:8b",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "llama3.1:8b",
+                    "--llm-base-url",
+                    "http://localhost:11434/v1",
+                    "--llm-api-key",
+                    "ollama",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "custom endpoint" in result.output
+        assert "70B+" in result.output
+
     def test_run_help_shows_checks_option(self):
         runner = CliRunner()
         result = runner.invoke(main, ["run", "--help"])

@@ -84,12 +84,21 @@ class AnthropicClient(LLMClient):
 
 
 class OpenAIClient(LLMClient):
-    """LLM client using the OpenAI API (GPT models or OpenAI-compatible APIs)."""
+    """LLM client using the OpenAI API (GPT models or OpenAI-compatible APIs).
 
-    def __init__(self, model: str = "gpt-4o") -> None:
+    Works with any OpenAI-compatible endpoint by setting ``base_url``.
+    This includes local model servers such as Ollama, vLLM, and LM Studio.
+    """
+
+    def __init__(
+        self,
+        model: str = "gpt-4o",
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> None:
         import openai
 
-        self._client = openai.OpenAI()
+        self._client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self._model = model
 
     def complete(
@@ -133,13 +142,22 @@ class OpenAIClient(LLMClient):
             pass
 
 
-def create_llm_client(model: str) -> LLMClient:
+def create_llm_client(
+    model: str,
+    base_url: str | None = None,
+    api_key: str | None = None,
+) -> LLMClient:
     """Create an LLM client based on the model name.
 
     Models starting with 'claude' use the Anthropic API.
     All other models use the OpenAI API
     (also works with OpenAI-compatible local models).
+
+    When *base_url* is provided, the OpenAI client is pointed at that
+    endpoint regardless of model name (unless it starts with 'claude').
+    This allows connecting to Ollama, vLLM, LM Studio, or any other
+    OpenAI-compatible server.
     """
     if model.startswith("claude"):
         return AnthropicClient(model=model)
-    return OpenAIClient(model=model)
+    return OpenAIClient(model=model, base_url=base_url, api_key=api_key)
