@@ -6,9 +6,10 @@ from unittest.mock import Mock
 
 import pytest
 
+from veritail.backends import EvalBackend
 from veritail.backends.file import FileBackend
 from veritail.llm.client import LLMClient, LLMResponse
-from veritail.pipeline import run_evaluation
+from veritail.pipeline import run_dual_evaluation, run_evaluation
 from veritail.types import (
     CheckResult,
     ExperimentConfig,
@@ -591,3 +592,232 @@ class TestRunEvaluation:
         )
 
         assert len(corrections) == 0
+
+    def test_backend_log_judgment_failure_does_not_crash(self, tmp_path):
+        """If backend.log_judgment raises, the judgment is still collected."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        backend = Mock(spec=EvalBackend)
+        backend.log_judgment.side_effect = RuntimeError("Langfuse down")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        # Judgments still collected despite backend failures
+        assert len(judgments) == 3
+        assert len(metrics) > 0
+
+    def test_backend_log_experiment_failure_does_not_crash(self, tmp_path):
+        """If backend.log_experiment raises, evaluation still runs."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        backend = Mock(spec=EvalBackend)
+        backend.log_experiment.side_effect = ConnectionError("Network down")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        assert len(judgments) == 3
+
+    def test_backend_log_correction_failure_does_not_crash(self, tmp_path):
+        """If backend.log_correction_judgment raises, corrections still collected."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = Mock(spec=LLMClient)
+        llm_client.complete.side_effect = [
+            LLMResponse(
+                content="SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+                model="test",
+                input_tokens=100,
+                output_tokens=50,
+            ),
+            LLMResponse(
+                content="VERDICT: appropriate\nREASONING: Spelling fix.",
+                model="test",
+                input_tokens=80,
+                output_tokens=30,
+            ),
+        ]
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        backend = Mock(spec=EvalBackend)
+        backend.log_correction_judgment.side_effect = RuntimeError("Backend down")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        # Correction still collected despite backend failure
+        assert len(corrections) == 1
+        assert corrections[0].verdict == "appropriate"
+
+    def test_comparison_check_failure_does_not_crash(self, tmp_path):
+        """If a comparison check throws, the dual evaluation still completes."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config_a = ExperimentConfig(
+            name="config-a",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        config_b = ExperimentConfig(
+            name="config-b",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        from unittest.mock import patch
+
+        with patch(
+            "veritail.pipeline.check_result_overlap",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            result = run_dual_evaluation(
+                queries,
+                adapter,
+                config_a,
+                adapter,
+                config_b,
+                llm_client,
+                rubric,
+                backend,
+            )
+
+        # Should return a valid 9-tuple despite comparison check failure
+        assert len(result) == 9
+        judgments_a, judgments_b = result[0], result[1]
+        assert len(judgments_a) == 3
+        assert len(judgments_b) == 3
+        # Comparison checks may be empty due to the error
+        comparison_checks = result[6]
+        assert isinstance(comparison_checks, list)
+
+    def test_correction_error_verdict_counted_in_summary(self, tmp_path, capsys):
+        """Error verdicts from failed correction judges are counted separately."""
+        queries = [
+            QueryEntry(query="plats", type="broad"),
+            QueryEntry(query="cambro", type="broad"),
+        ]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Product",
+                        description="desc",
+                        category="Kitchen",
+                        price=50.0,
+                        position=0,
+                    )
+                ],
+                corrected_query=query + " corrected",
+            )
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        def make_response(content: str) -> LLMResponse:
+            return LLMResponse(
+                content=content,
+                model="test",
+                input_tokens=10,
+                output_tokens=10,
+            )
+
+        llm_client = Mock(spec=LLMClient)
+        llm_client.complete.side_effect = [
+            # Relevance judgments (2 queries x 1 result)
+            make_response("SCORE: 2\nATTRIBUTES: n/a\nREASONING: OK"),
+            make_response("SCORE: 2\nATTRIBUTES: n/a\nREASONING: OK"),
+            # Correction judgments: first succeeds, second fails
+            make_response("VERDICT: appropriate\nREASONING: Spelling fix."),
+            RuntimeError("LLM timeout"),
+        ]
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        assert len(corrections) == 2
+        verdicts = [c.verdict for c in corrections]
+        assert "appropriate" in verdicts
+        assert "error" in verdicts

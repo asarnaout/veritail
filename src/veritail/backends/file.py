@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -65,14 +66,20 @@ class FileBackend(EvalBackend):
 
         judgments: list[JudgmentRecord] = []
         with open(judgments_file, encoding="utf-8") as f:
-            for line in f:
+            for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
                     continue
-                data = json.loads(line)
-                product_data = data.pop("product")
-                data.setdefault("attribute_verdict", "n/a")
-                product = SearchResult(**product_data)
-                judgments.append(JudgmentRecord(product=product, **data))
+                try:
+                    data = json.loads(line)
+                    product_data = data.pop("product")
+                    data.setdefault("attribute_verdict", "n/a")
+                    product = SearchResult(**product_data)
+                    judgments.append(JudgmentRecord(product=product, **data))
+                except (json.JSONDecodeError, KeyError, TypeError) as e:
+                    warnings.warn(
+                        f"Skipping corrupted line {line_num} in {judgments_file}: {e}",
+                        stacklevel=2,
+                    )
 
         return judgments

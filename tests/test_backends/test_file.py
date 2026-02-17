@@ -154,3 +154,79 @@ class TestFileBackend:
         loaded = backend.get_judgments("test-exp")
         assert len(loaded) == 1
         assert loaded[0].attribute_verdict == "n/a"
+
+    def test_corrupted_jsonl_line_skipped(self, tmp_path):
+        """Corrupted lines in JSONL are skipped; valid lines still load."""
+        import json
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        exp_dir = tmp_path / "test-exp"
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        valid_record = {
+            "query": "shoes",
+            "product": {
+                "product_id": "SKU-1",
+                "title": "Good Shoes",
+                "description": "desc",
+                "category": "Shoes",
+                "price": 50.0,
+                "position": 0,
+            },
+            "score": 3,
+            "reasoning": "Great",
+            "attribute_verdict": "match",
+            "model": "test",
+            "experiment": "test-exp",
+            "metadata": {},
+        }
+
+        with open(exp_dir / "judgments.jsonl", "w", encoding="utf-8") as f:
+            f.write(json.dumps(valid_record) + "\n")
+            f.write("this is not valid json\n")
+            f.write(json.dumps(valid_record) + "\n")
+
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            loaded = backend.get_judgments("test-exp")
+
+        # Two valid records loaded, corrupted line skipped
+        assert len(loaded) == 2
+        assert loaded[0].product.product_id == "SKU-1"
+        assert loaded[1].product.product_id == "SKU-1"
+
+        # Warning emitted for the corrupted line
+        assert len(w) == 1
+        assert "Skipping corrupted line 2" in str(w[0].message)
+
+    def test_missing_product_key_skipped(self, tmp_path):
+        """A JSON line missing the 'product' key is skipped gracefully."""
+        import json
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        exp_dir = tmp_path / "test-exp"
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        bad_record = {
+            "query": "shoes",
+            "score": 3,
+            "reasoning": "Great",
+            "model": "test",
+            "experiment": "test-exp",
+            "metadata": {},
+        }
+
+        with open(exp_dir / "judgments.jsonl", "w", encoding="utf-8") as f:
+            f.write(json.dumps(bad_record) + "\n")
+
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            loaded = backend.get_judgments("test-exp")
+
+        assert len(loaded) == 0
+        assert len(w) == 1
+        assert "Skipping corrupted line 1" in str(w[0].message)

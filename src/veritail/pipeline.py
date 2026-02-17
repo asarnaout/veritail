@@ -91,17 +91,20 @@ def run_evaluation(
         llm_client, correction_system_prompt, config.name
     )
 
-    backend.log_experiment(
-        config.name,
-        {
-            "adapter_path": config.adapter_path,
-            "llm_model": config.llm_model,
-            "rubric": config.rubric,
-            "top_k": config.top_k,
-            "context": context,
-            "vertical": vertical,
-        },
-    )
+    try:
+        backend.log_experiment(
+            config.name,
+            {
+                "adapter_path": config.adapter_path,
+                "llm_model": config.llm_model,
+                "rubric": config.rubric,
+                "top_k": config.top_k,
+                "context": context,
+                "vertical": vertical,
+            },
+        )
+    except Exception as e:
+        console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
 
     all_judgments: list[JudgmentRecord] = []
     all_checks: list[CheckResult] = []
@@ -210,7 +213,12 @@ def run_evaluation(
                 if corrected_query is not None:
                     judgment.metadata["corrected_query"] = corrected_query
 
-                backend.log_judgment(judgment)
+                try:
+                    backend.log_judgment(judgment)
+                except Exception as e:
+                    console.print(
+                        f"[yellow]Warning: failed to log judgment to backend: {e}"
+                    )
                 all_judgments.append(judgment)
                 judgments_by_query[query_index].append(judgment)
 
@@ -242,7 +250,12 @@ def run_evaluation(
                         metadata={"error": str(e)},
                     )
                 all_correction_judgments.append(cj)
-                backend.log_correction_judgment(cj)
+                try:
+                    backend.log_correction_judgment(cj)
+                except Exception as e:
+                    console.print(
+                        f"[yellow]Warning: failed to log correction to backend: {e}"
+                    )
                 progress.advance(corr_task)
 
         # Console summary
@@ -252,12 +265,20 @@ def run_evaluation(
         inappropriate = sum(
             1 for cj in all_correction_judgments if cj.verdict == "inappropriate"
         )
-        n = len(all_correction_judgments)
-        console.print(
-            f"[bold]Corrections:[/bold] {n} queries corrected, "
-            f"{appropriate} appropriate, {inappropriate} inappropriate "
-            f"({n} extra LLM calls)"
+        errored = sum(
+            1
+            for cj in all_correction_judgments
+            if cj.verdict not in ("appropriate", "inappropriate")
         )
+        n = len(all_correction_judgments)
+        summary = (
+            f"[bold]Corrections:[/bold] {n} queries corrected, "
+            f"{appropriate} appropriate, {inappropriate} inappropriate"
+        )
+        if errored:
+            summary += f", {errored} errored"
+        summary += f" ({n} extra LLM calls)"
+        console.print(summary)
 
     # Step 4: Compute metrics
     metrics = compute_all_metrics(judgments_by_query, queries)
@@ -346,9 +367,12 @@ def run_dual_evaluation(
         ra = results_a_by_query.get(q, [])
         rb = results_b_by_query.get(q, [])
 
-        comparison_checks.append(check_result_overlap(q, ra, rb))
-        comparison_checks.append(check_rank_correlation(q, ra, rb))
-        comparison_checks.extend(find_position_shifts(q, ra, rb))
+        try:
+            comparison_checks.append(check_result_overlap(q, ra, rb))
+            comparison_checks.append(check_rank_correlation(q, ra, rb))
+            comparison_checks.extend(find_position_shifts(q, ra, rb))
+        except Exception as e:
+            console.print(f"[yellow]Warning: comparison check failed for '{q}': {e}")
 
     return (
         judgments_a,

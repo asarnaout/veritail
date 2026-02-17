@@ -237,10 +237,17 @@ def _generate_terminal(
             if cjs:
                 appropriate = sum(1 for c in cjs if c.verdict == "appropriate")
                 inappropriate = sum(1 for c in cjs if c.verdict == "inappropriate")
-                console.print(
-                    f"  {label}: {len(cjs)} corrected "
-                    f"({appropriate} appropriate, {inappropriate} inappropriate)"
+                errored = sum(
+                    1 for c in cjs if c.verdict not in ("appropriate", "inappropriate")
                 )
+                line = (
+                    f"  {label}: {len(cjs)} corrected "
+                    f"({appropriate} appropriate, {inappropriate} inappropriate"
+                )
+                if errored:
+                    line += f", {errored} errored"
+                line += ")"
+                console.print(line)
 
     assert isinstance(console.file, StringIO)
     return console.file.getvalue()
