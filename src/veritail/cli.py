@@ -298,6 +298,11 @@ def run(
 
     llm_client = create_llm_client(llm_model)
 
+    try:
+        llm_client.preflight_check()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
     backend_kwargs: dict[str, str] = {}
     if backend_type == "file":
         backend_kwargs["output_dir"] = output_dir

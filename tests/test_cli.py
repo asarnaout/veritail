@@ -356,6 +356,43 @@ class TestCLI:
         assert result.exit_code == 0
         assert "Loaded 1 custom check(s)" in result.output
 
+    def test_run_aborts_on_preflight_check_failure(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.preflight_check.side_effect = RuntimeError(
+            "Anthropic API key is invalid. "
+            "Check your ANTHROPIC_API_KEY environment variable."
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert "API key is invalid" in result.output
+
     def test_version(self):
         runner = CliRunner()
         result = runner.invoke(main, ["--version"])

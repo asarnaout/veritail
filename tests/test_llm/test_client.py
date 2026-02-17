@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from veritail.llm.client import (
     AnthropicClient,
     OpenAIClient,
@@ -29,6 +31,45 @@ class TestAnthropicClient:
         assert result.input_tokens == 100
         assert result.output_tokens == 50
 
+    @patch("anthropic.Anthropic")
+    def test_preflight_check_success(self, mock_anthropic_cls):
+        client = AnthropicClient(model="claude-sonnet-4-5")
+        # models.retrieve returns without error → no exception raised
+        client.preflight_check()
+        mock_anthropic_cls.return_value.models.retrieve.assert_called_once_with(
+            model_id="claude-sonnet-4-5"
+        )
+
+    @patch("anthropic.Anthropic")
+    def test_preflight_check_bad_key(self, mock_anthropic_cls):
+        import anthropic
+
+        mock_anthropic_cls.return_value.models.retrieve.side_effect = (
+            anthropic.AuthenticationError(
+                message="invalid key",
+                response=MagicMock(status_code=401),
+                body=None,
+            )
+        )
+        client = AnthropicClient(model="claude-sonnet-4-5")
+        with pytest.raises(RuntimeError, match="Anthropic API key is invalid"):
+            client.preflight_check()
+
+    @patch("anthropic.Anthropic")
+    def test_preflight_check_bad_model(self, mock_anthropic_cls):
+        import anthropic
+
+        mock_anthropic_cls.return_value.models.retrieve.side_effect = (
+            anthropic.NotFoundError(
+                message="not found",
+                response=MagicMock(status_code=404),
+                body=None,
+            )
+        )
+        client = AnthropicClient(model="claude-nonexistent")
+        with pytest.raises(RuntimeError, match="not found on Anthropic"):
+            client.preflight_check()
+
 
 class TestOpenAIClient:
     @patch("openai.OpenAI")
@@ -51,6 +92,50 @@ class TestOpenAIClient:
         assert result.model == "gpt-4o"
         assert result.input_tokens == 200
         assert result.output_tokens == 80
+
+    @patch("openai.OpenAI")
+    def test_preflight_check_success(self, mock_openai_cls):
+        client = OpenAIClient(model="gpt-4o")
+        client.preflight_check()
+        mock_openai_cls.return_value.models.retrieve.assert_called_once_with("gpt-4o")
+
+    @patch("openai.OpenAI")
+    def test_preflight_check_bad_key(self, mock_openai_cls):
+        import openai
+
+        mock_openai_cls.return_value.models.retrieve.side_effect = (
+            openai.AuthenticationError(
+                message="invalid key",
+                response=MagicMock(status_code=401),
+                body=None,
+            )
+        )
+        client = OpenAIClient(model="gpt-4o")
+        with pytest.raises(RuntimeError, match="OpenAI API key is invalid"):
+            client.preflight_check()
+
+    @patch("openai.OpenAI")
+    def test_preflight_check_bad_model(self, mock_openai_cls):
+        import openai
+
+        mock_openai_cls.return_value.models.retrieve.side_effect = openai.NotFoundError(
+            message="not found",
+            response=MagicMock(status_code=404),
+            body=None,
+        )
+        client = OpenAIClient(model="gpt-nonexistent")
+        with pytest.raises(RuntimeError, match="not found on OpenAI"):
+            client.preflight_check()
+
+    @patch("openai.OpenAI")
+    def test_preflight_check_skips_for_compatible_apis(self, mock_openai_cls):
+        """OpenAI-compatible APIs may not implement /v1/models; don't fail."""
+        mock_openai_cls.return_value.models.retrieve.side_effect = ConnectionError(
+            "refused"
+        )
+        client = OpenAIClient(model="llama-3-70b")
+        # Should not raise
+        client.preflight_check()
 
 
 class TestCreateLLMClient:

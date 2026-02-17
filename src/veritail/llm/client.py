@@ -24,6 +24,14 @@ class LLMClient(ABC):
         """Send a prompt to the LLM and get a response."""
         ...
 
+    @abstractmethod
+    def preflight_check(self) -> None:
+        """Validate API key and model availability.
+
+        Raises ``RuntimeError`` with a user-friendly message on failure.
+        """
+        ...
+
 
 class AnthropicClient(LLMClient):
     """LLM client using the Anthropic API (Claude models)."""
@@ -54,6 +62,22 @@ class AnthropicClient(LLMClient):
             output_tokens=response.usage.output_tokens,
         )
 
+    def preflight_check(self) -> None:
+        import anthropic
+
+        try:
+            self._client.models.retrieve(model_id=self._model)
+        except anthropic.AuthenticationError as exc:
+            raise RuntimeError(
+                "Anthropic API key is invalid. "
+                "Check your ANTHROPIC_API_KEY environment variable."
+            ) from exc
+        except anthropic.NotFoundError as exc:
+            raise RuntimeError(
+                f"Model '{self._model}' not found on Anthropic. "
+                "Check the --llm-model value."
+            ) from exc
+
 
 class OpenAIClient(LLMClient):
     """LLM client using the OpenAI API (GPT models or OpenAI-compatible APIs)."""
@@ -81,6 +105,26 @@ class OpenAIClient(LLMClient):
             input_tokens=usage.prompt_tokens if usage else 0,
             output_tokens=usage.completion_tokens if usage else 0,
         )
+
+    def preflight_check(self) -> None:
+        import openai
+
+        try:
+            self._client.models.retrieve(self._model)
+        except openai.AuthenticationError as exc:
+            raise RuntimeError(
+                "OpenAI API key is invalid. "
+                "Check your OPENAI_API_KEY environment variable."
+            ) from exc
+        except openai.NotFoundError as exc:
+            raise RuntimeError(
+                f"Model '{self._model}' not found on OpenAI. "
+                "Check the --llm-model value."
+            ) from exc
+        except Exception:
+            # OpenAI-compatible APIs may not implement the models endpoint;
+            # skip validation and let the first real call surface errors.
+            pass
 
 
 def create_llm_client(model: str) -> LLMClient:
