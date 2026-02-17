@@ -165,7 +165,7 @@ def init(
     console.print("\n[dim]Next step:[/dim]")
     console.print(
         f"[dim]  veritail run --queries {queries_path.name} "
-        f"--adapter {adapter_path.name}[/dim]"
+        f"--adapter {adapter_path.name} --llm-model <model>[/dim]"
     )
 
 
@@ -234,8 +234,11 @@ def vertical_show(name: str) -> None:
 )
 @click.option(
     "--llm-model",
-    default="claude-sonnet-4-5",
-    help="LLM model to use for generation.",
+    required=True,
+    help=(
+        "LLM model to use for generation "
+        "(e.g. gpt-4o, claude-sonnet-4-5, gemini-2.5-flash)."
+    ),
 )
 @click.option(
     "--llm-base-url",
@@ -297,7 +300,8 @@ def generate_queries_cmd(
     console.print(f"[green]Generated {len(queries)} queries[/green] -> {output_path}")
     console.print("\n[dim]Next step:[/dim]")
     console.print(
-        f"[dim]  veritail run --queries {output_path} --adapter <your_adapter.py>[/dim]"
+        f"[dim]  veritail run --queries {output_path} "
+        f"--adapter <your_adapter.py> --llm-model <model>[/dim]"
     )
 
 
@@ -328,8 +332,11 @@ def generate_queries_cmd(
 )
 @click.option(
     "--llm-model",
-    default="claude-sonnet-4-5",
-    help="LLM model to use for judgments",
+    required=True,
+    help=(
+        "LLM model to use for judgments "
+        "(e.g. gpt-4o, claude-sonnet-4-5, gemini-2.5-flash)"
+    ),
 )
 @click.option(
     "--llm-base-url",
@@ -441,9 +448,11 @@ def run(
             "Option 1 - scaffold starter files (adapter + sample queries):\n"
             "  veritail init\n\n"
             "Option 2 - generate domain-aware queries with an LLM:\n"
-            "  veritail generate-queries --vertical <vertical> --output queries.csv\n\n"
+            "  veritail generate-queries --vertical <vertical> "
+            "--output queries.csv --llm-model <model>\n\n"
             "Then run:\n"
-            "  veritail run --queries queries.csv --adapter adapter.py"
+            "  veritail run --queries queries.csv "
+            "--adapter adapter.py --llm-model <model>"
         )
 
     if not adapters:
@@ -452,7 +461,8 @@ def run(
             "To scaffold a starter adapter:\n"
             "  veritail init\n\n"
             "Then run:\n"
-            "  veritail run --queries queries.csv --adapter adapter.py"
+            "  veritail run --queries queries.csv "
+            "--adapter adapter.py --llm-model <model>"
         )
 
     if config_names and len(adapters) != len(config_names):

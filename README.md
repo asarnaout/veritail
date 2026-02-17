@@ -65,17 +65,18 @@ If you don't have query logs yet, let an LLM generate a starter set:
 
 ```bash
 # From a built-in vertical
-veritail generate-queries --vertical electronics --output queries.csv
+veritail generate-queries --vertical electronics --output queries.csv --llm-model gpt-4o
 
 # From business context
-veritail generate-queries --context "B2B industrial fastener distributor" --output queries.csv
+veritail generate-queries --context "B2B industrial fastener distributor" --output queries.csv --llm-model gpt-4o
 
 # Both vertical and context, custom count
 veritail generate-queries \
   --vertical foodservice \
   --context "BBQ restaurant equipment supplier" \
   --output queries.csv \
-  --count 50
+  --count 50 \
+  --llm-model gpt-4o
 ```
 
 This writes a CSV with `query`, `type`, `category`, and `source` columns. Review and edit the generated queries before running an evaluation — the file is designed for human-in-the-loop review.
@@ -138,7 +139,8 @@ eval-results/<generated-or-custom-config-name>/
 veritail run \
   --queries queries.csv \
   --adapter adapter_v1.py --config-name v1 \
-  --adapter adapter_v2.py --config-name v2
+  --adapter adapter_v2.py --config-name v2 \
+  --llm-model gpt-4o
 ```
 
 The comparison report shows metric deltas, overlap, rank correlation, and position shifts.
@@ -277,7 +279,7 @@ Run a single or dual-configuration evaluation.
 | `--queries` | *(required)* | Path to query set (`.csv` or `.json`) |
 | `--adapter` | *(required)* | Path to adapter module (up to 2) |
 | `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
-| `--llm-model` | `claude-sonnet-4-5` | LLM model for judgments |
+| `--llm-model` | *(required)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`) |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:11434/v1` for Ollama) |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
 | `--rubric` | `ecommerce-default` | Rubric name or custom rubric file path |
@@ -313,7 +315,7 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 | `--count` | `25` | Number of queries to generate |
 | `--vertical` | *(none)* | Built-in vertical name or path to text file |
 | `--context` | *(none)* | Business context string or path to a text file |
-| `--llm-model` | `claude-sonnet-4-5` | LLM model for generation |
+| `--llm-model` | *(required)* | LLM model for generation (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`) |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
 
@@ -373,7 +375,7 @@ def format_user_prompt(query: str, result: SearchResult) -> str:
 Then run with:
 
 ```bash
-veritail run --queries queries.csv --adapter my_adapter.py --rubric my_rubric.py
+veritail run --queries queries.csv --adapter my_adapter.py --rubric my_rubric.py --llm-model gpt-4o
 ```
 
 ## Custom Checks
@@ -418,7 +420,8 @@ veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
   --checks my_checks.py \
-  --checks more_checks.py
+  --checks more_checks.py \
+  --llm-model gpt-4o
 ```
 
 Custom check results appear alongside built-in checks in reports.
@@ -449,7 +452,8 @@ export LANGFUSE_SECRET_KEY=sk-...
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --backend langfuse
+  --backend langfuse \
+  --llm-model gpt-4o
 ```
 
 ## Development

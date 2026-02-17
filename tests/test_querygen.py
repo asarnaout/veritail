@@ -365,6 +365,8 @@ class TestGenerateQueriesCLI:
                     str(out),
                     "--vertical",
                     "electronics",
+                    "--llm-model",
+                    "test-model",
                 ],
             )
 
@@ -377,7 +379,13 @@ class TestGenerateQueriesCLI:
         runner = CliRunner()
         result = runner.invoke(
             main,
-            ["generate-queries", "--output", str(out)],
+            [
+                "generate-queries",
+                "--output",
+                str(out),
+                "--llm-model",
+                "test-model",
+            ],
         )
         assert result.exit_code != 0
         assert "At least one" in result.output
@@ -393,6 +401,8 @@ class TestGenerateQueriesCLI:
                 str(out),
                 "--vertical",
                 "electronics",
+                "--llm-model",
+                "test-model",
                 "--count",
                 "0",
             ],
@@ -411,6 +421,8 @@ class TestGenerateQueriesCLI:
                 str(out),
                 "--vertical",
                 "electronics",
+                "--llm-model",
+                "test-model",
             ],
         )
         assert result.exit_code != 0
@@ -430,6 +442,8 @@ class TestGenerateQueriesCLI:
                     str(out),
                     "--vertical",
                     "electronics",
+                    "--llm-model",
+                    "test-model",
                 ],
             )
 
@@ -452,6 +466,8 @@ class TestGenerateQueriesCLI:
                     str(out),
                     "--vertical",
                     "electronics",
+                    "--llm-model",
+                    "test-model",
                 ],
             )
 
@@ -472,6 +488,8 @@ class TestGenerateQueriesCLI:
                     str(out),
                     "--context",
                     "B2B industrial supplier",
+                    "--llm-model",
+                    "test-model",
                     "--count",
                     "10",
                 ],
