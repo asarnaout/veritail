@@ -382,10 +382,12 @@ def run(
     if not queries:
         raise click.UsageError(
             "--queries is required.\n\n"
-            "To generate a starter query set:\n"
+            "Option 1 - scaffold starter files (adapter + sample queries):\n"
+            "  veritail init\n\n"
+            "Option 2 - generate domain-aware queries with an LLM:\n"
             "  veritail generate-queries --vertical <vertical> --output queries.csv\n\n"
             "Then run:\n"
-            "  veritail run --queries queries.csv --adapter <your_adapter.py>"
+            "  veritail run --queries queries.csv --adapter adapter.py"
         )
 
     if not adapters:
