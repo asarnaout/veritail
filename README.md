@@ -98,7 +98,7 @@ veritail run \
   --open
 ```
 
-**Cost note:** Each query-result pair requires one LLM API call. A run with 50 queries and `--top-k 10` makes ~500 calls. With `claude-sonnet-4-5`, this typically costs a few dollars. Larger query sets or more expensive models will cost more. Use `--top-k` to control results per query. Prompt caching is supported — the shared system prompt is reused across all calls, reducing input token costs on providers that support it.
+**Cost note:** Each query-result pair requires one LLM API call. A run with 50 queries and `--top-k 10` makes ~500 calls. With `claude-sonnet-4-5`, this typically costs a few dollars. Larger query sets or more expensive models will cost more. Use `--top-k` to control results per query and `--sample N` to evaluate a random subset of queries. Prompt caching is supported — the shared system prompt is reused across all calls, reducing input token costs on providers that support it.
 
 Outputs are written under:
 
@@ -228,6 +228,7 @@ Run a single or dual-configuration evaluation.
 | `--context` | *(none)* | Business context string for LLM judge |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
+| `--sample` | *(none)* | Randomly sample N queries for a faster evaluation (deterministic seed) |
 
 If `--config-name` is provided, pass one name per adapter.
 
