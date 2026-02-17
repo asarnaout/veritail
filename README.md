@@ -29,19 +29,11 @@ Example output from a real run:
 ### 1. Install
 
 ```bash
-pip install veritail
-```
-
-With Gemini support:
-
-```bash
-pip install veritail[gemini]
-```
-
-With Langfuse support:
-
-```bash
-pip install veritail[langfuse]
+pip install veritail                   # OpenAI + local models (default)
+pip install veritail[anthropic]        # + Claude support
+pip install veritail[gemini]           # + Gemini support
+pip install veritail[cloud]            # all three cloud providers
+pip install veritail[cloud,langfuse]   # everything
 ```
 
 ### 2. Bootstrap starter files (recommended)
@@ -88,7 +80,7 @@ veritail generate-queries \
 
 This writes a CSV with `query`, `type`, `category`, and `source` columns. Review and edit the generated queries before running an evaluation — the file is designed for human-in-the-loop review.
 
-**Cost note:** Query generation makes a single LLM call (a fraction of a cent with `claude-sonnet-4-5`).
+**Cost note:** Query generation makes a single LLM call (a fraction of a cent with most cloud models).
 
 ### 5. Create an adapter (manual option)
 
@@ -122,17 +114,17 @@ Adapters can return either `SearchResponse` or a bare `list[SearchResult]` (back
 ### 6. Run evaluation
 
 ```bash
-export ANTHROPIC_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --llm-model claude-sonnet-4-5 \
+  --llm-model gpt-4o \
   --top-k 10 \
   --open
 ```
 
-**Cost note:** Each query-result pair requires one LLM API call. A run with 50 queries and `--top-k 10` makes ~500 calls. With `claude-sonnet-4-5`, this typically costs a few dollars. Larger query sets or more expensive models will cost more. Use `--top-k` to control results per query and `--sample N` to evaluate a random subset of queries. Prompt caching is supported — the shared system prompt is reused across all calls, reducing input token costs on providers that support it.
+**Cost note:** Each query-result pair requires one LLM API call. A run with 50 queries and `--top-k 10` makes ~500 calls. With frontier cloud models, this typically costs a few dollars. Larger query sets or more expensive models will cost more. Use `--top-k` to control results per query and `--sample N` to evaluate a random subset of queries. Prompt caching is supported — the shared system prompt is reused across all calls, reducing input token costs on providers that support it.
 
 Outputs are written under:
 
@@ -465,7 +457,7 @@ veritail run \
 ```bash
 git clone https://github.com/asarnaout/veritail.git
 cd veritail
-pip install -e ".[dev]"
+pip install -e ".[dev,cloud]"
 ```
 
 Run checks:
@@ -484,8 +476,8 @@ veritail works with cloud LLM APIs and any OpenAI-compatible local model server.
 
 | Provider | Example `--llm-model` | API key env var | Install |
 |---|---|---|---|
-| **Anthropic** (Claude) | `claude-sonnet-4-5`, `claude-haiku-4-5` | `ANTHROPIC_API_KEY` | included |
 | **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `o3-mini` | `OPENAI_API_KEY` | included |
+| **Anthropic** (Claude) | `claude-sonnet-4-5`, `claude-haiku-4-5` | `ANTHROPIC_API_KEY` | `pip install veritail[anthropic]` |
 | **Google Gemini** | `gemini-2.5-flash`, `gemini-2.5-pro` | `GEMINI_API_KEY` or `GOOGLE_API_KEY` | `pip install veritail[gemini]` |
 
 Cloud models provide the highest evaluation quality and are recommended for production use.
@@ -558,9 +550,11 @@ For reliable metrics that can inform production search decisions, we recommend f
 ## Requirements
 
 - Python >= 3.9
-- One of:
-  - API key for [Anthropic](https://console.anthropic.com/), [OpenAI](https://platform.openai.com/), or [Google Gemini](https://ai.google.dev/)
-  - A running OpenAI-compatible local model server (see [Local models](#local-models-via-openai-compatible-servers) above)
+- An LLM provider — one of:
+  - [OpenAI](https://platform.openai.com/) API key (included with base install)
+  - [Anthropic](https://console.anthropic.com/) API key (`pip install veritail[anthropic]`)
+  - [Google Gemini](https://ai.google.dev/) API key (`pip install veritail[gemini]`)
+  - A running OpenAI-compatible local model server (no extra install needed — see [Local models](#local-models-via-openai-compatible-servers) above)
 
 ## Disclaimer
 

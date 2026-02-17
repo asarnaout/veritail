@@ -37,10 +37,21 @@ class LLMClient(ABC):
 
 
 class AnthropicClient(LLMClient):
-    """LLM client using the Anthropic API (Claude models)."""
+    """LLM client using the Anthropic API (Claude models).
+
+    Requires the ``anthropic`` package::
+
+        pip install veritail[anthropic]
+    """
 
     def __init__(self, model: str = "claude-sonnet-4-5") -> None:
-        import anthropic
+        try:
+            import anthropic
+        except ImportError:
+            raise ImportError(
+                "The anthropic package is required for Claude models. "
+                "Install it with: pip install veritail[anthropic]"
+            ) from None
 
         self._client = anthropic.Anthropic()
         self._model = model

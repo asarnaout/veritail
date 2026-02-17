@@ -7,6 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 try:
+    import anthropic  # noqa: F401
+
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
+
+try:
     from google import genai  # noqa: F401
 
     HAS_GENAI = True
@@ -14,15 +21,17 @@ except ImportError:
     HAS_GENAI = False
 
 from veritail.llm.client import (
-    AnthropicClient,
     OpenAIClient,
     create_llm_client,
 )
 
 
+@pytest.mark.skipif(not HAS_ANTHROPIC, reason="anthropic not installed")
 class TestAnthropicClient:
     @patch("anthropic.Anthropic")
     def test_complete(self, mock_anthropic_cls):
+        from veritail.llm.client import AnthropicClient
+
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text="SCORE: 2\nREASONING: Good match")]
         mock_response.usage.input_tokens = 100
@@ -40,6 +49,8 @@ class TestAnthropicClient:
 
     @patch("anthropic.Anthropic")
     def test_preflight_check_success(self, mock_anthropic_cls):
+        from veritail.llm.client import AnthropicClient
+
         client = AnthropicClient(model="claude-sonnet-4-5")
         # models.retrieve returns without error → no exception raised
         client.preflight_check()
@@ -50,6 +61,8 @@ class TestAnthropicClient:
     @patch("anthropic.Anthropic")
     def test_preflight_check_bad_key(self, mock_anthropic_cls):
         import anthropic
+
+        from veritail.llm.client import AnthropicClient
 
         mock_anthropic_cls.return_value.models.retrieve.side_effect = (
             anthropic.AuthenticationError(
@@ -65,6 +78,8 @@ class TestAnthropicClient:
     @patch("anthropic.Anthropic")
     def test_preflight_check_bad_model(self, mock_anthropic_cls):
         import anthropic
+
+        from veritail.llm.client import AnthropicClient
 
         mock_anthropic_cls.return_value.models.retrieve.side_effect = (
             anthropic.NotFoundError(
@@ -281,6 +296,15 @@ class TestGeminiClient:
             client.preflight_check()
 
 
+@pytest.mark.skipif(HAS_ANTHROPIC, reason="anthropic is installed")
+def test_anthropic_import_error_without_package():
+    """AnthropicClient raises helpful ImportError when anthropic is missing."""
+    from veritail.llm.client import AnthropicClient
+
+    with pytest.raises(ImportError, match="pip install veritail\\[anthropic\\]"):
+        AnthropicClient(model="claude-sonnet-4-5")
+
+
 @pytest.mark.skipif(HAS_GENAI, reason="google-genai is installed")
 def test_gemini_import_error_without_package():
     """GeminiClient raises helpful ImportError when google-genai is missing."""
@@ -291,8 +315,11 @@ def test_gemini_import_error_without_package():
 
 
 class TestCreateLLMClient:
+    @pytest.mark.skipif(not HAS_ANTHROPIC, reason="anthropic not installed")
     @patch("anthropic.Anthropic")
     def test_claude_model(self, mock_anthropic_cls):
+        from veritail.llm.client import AnthropicClient
+
         client = create_llm_client("claude-sonnet-4-5")
         assert isinstance(client, AnthropicClient)
 
@@ -321,9 +348,12 @@ class TestCreateLLMClient:
             api_key="not-needed",
         )
 
+    @pytest.mark.skipif(not HAS_ANTHROPIC, reason="anthropic not installed")
     @patch("anthropic.Anthropic")
     def test_claude_ignores_base_url(self, mock_anthropic_cls):
         """Claude models always use Anthropic — base_url is ignored."""
+        from veritail.llm.client import AnthropicClient
+
         client = create_llm_client(
             "claude-sonnet-4-5",
             base_url="http://localhost:11434/v1",
