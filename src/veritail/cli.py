@@ -272,7 +272,7 @@ def generate_queries_cmd(
 @click.option(
     "--adapter",
     "adapters",
-    required=True,
+    required=False,
     multiple=True,
     type=click.Path(exists=True),
     help="Path to search adapter module(s)",
@@ -386,6 +386,15 @@ def run(
             "  veritail generate-queries --vertical <vertical> --output queries.csv\n\n"
             "Then run:\n"
             "  veritail run --queries queries.csv --adapter <your_adapter.py>"
+        )
+
+    if not adapters:
+        raise click.UsageError(
+            "--adapter is required.\n\n"
+            "To scaffold a starter adapter:\n"
+            "  veritail init\n\n"
+            "Then run:\n"
+            "  veritail run --queries queries.csv --adapter adapter.py"
         )
 
     if config_names and len(adapters) != len(config_names):
