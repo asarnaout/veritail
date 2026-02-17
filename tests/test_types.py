@@ -2,10 +2,12 @@
 
 from veritail.types import (
     CheckResult,
+    CorrectionJudgment,
     ExperimentConfig,
     JudgmentRecord,
     MetricResult,
     QueryEntry,
+    SearchResponse,
     SearchResult,
 )
 
@@ -111,3 +113,49 @@ def test_metric_result_defaults():
     metric = MetricResult(metric_name="ndcg@10", value=0.85)
     assert metric.per_query == {}
     assert metric.by_query_type == {}
+
+
+def test_search_response_defaults():
+    result = SearchResult(
+        product_id="SKU-001",
+        title="Test",
+        description="Desc",
+        category="Cat",
+        price=9.99,
+        position=0,
+    )
+    response = SearchResponse(results=[result])
+    assert response.corrected_query is None
+    assert len(response.results) == 1
+
+
+def test_search_response_with_correction():
+    response = SearchResponse(results=[], corrected_query="plates")
+    assert response.corrected_query == "plates"
+    assert response.results == []
+
+
+def test_correction_judgment_defaults():
+    cj = CorrectionJudgment(
+        original_query="plats",
+        corrected_query="plates",
+        verdict="appropriate",
+        reasoning="Spelling fix",
+        model="test-model",
+        experiment="exp-1",
+    )
+    assert cj.metadata == {}
+    assert cj.verdict == "appropriate"
+
+
+def test_correction_judgment_with_metadata():
+    cj = CorrectionJudgment(
+        original_query="plats",
+        corrected_query="plates",
+        verdict="inappropriate",
+        reasoning="Valid term",
+        model="test-model",
+        experiment="exp-1",
+        metadata={"input_tokens": 100},
+    )
+    assert cj.metadata["input_tokens"] == 100

@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from veritail.reporting.single import generate_single_report
-from veritail.types import CheckResult, JudgmentRecord, MetricResult, SearchResult
+from veritail.types import (
+    CheckResult,
+    CorrectionJudgment,
+    JudgmentRecord,
+    MetricResult,
+    SearchResult,
+)
 
 
 def _make_metrics() -> list[MetricResult]:
@@ -129,6 +135,100 @@ class TestGenerateSingleReport:
         report = generate_single_report(_make_metrics(), _make_checks(), format="html")
         assert 'data-tip="Fails when a query returns no results at all"' in report
         assert 'data-tip="Checks if each result' in report
+
+    def test_terminal_report_corrections_table(self):
+        corrections = [
+            CorrectionJudgment(
+                original_query="plats",
+                corrected_query="plates",
+                verdict="appropriate",
+                reasoning="Spelling fix",
+                model="test",
+                experiment="exp",
+            ),
+            CorrectionJudgment(
+                original_query="cambro",
+                corrected_query="camaro",
+                verdict="inappropriate",
+                reasoning="Valid brand",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            correction_judgments=corrections,
+        )
+        assert "Query Corrections" in report
+        assert "plats" in report
+        assert "plates" in report
+        assert "appropriate" in report
+        assert "inappropriate" in report
+
+    def test_terminal_report_no_corrections_no_table(self):
+        report = generate_single_report(_make_metrics(), _make_checks())
+        assert "Query Corrections" not in report
+
+    def test_html_report_corrections_section(self):
+        corrections = [
+            CorrectionJudgment(
+                original_query="plats",
+                corrected_query="plates",
+                verdict="appropriate",
+                reasoning="Spelling fix",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            correction_judgments=corrections,
+        )
+        assert "Query Corrections" in report
+        assert "plats" in report
+        assert "plates" in report
+        assert "appropriate" in report
+
+    def test_html_report_correction_in_judgment_drilldown(self):
+        judgment = JudgmentRecord(
+            query="plats",
+            product=SearchResult(
+                product_id="SKU-1",
+                title="Plates",
+                description="Dinner plates",
+                category="Kitchen",
+                price=10.0,
+                position=0,
+            ),
+            score=3,
+            reasoning="Good match",
+            attribute_verdict="n/a",
+            model="test",
+            experiment="exp",
+        )
+        corrections = [
+            CorrectionJudgment(
+                original_query="plats",
+                corrected_query="plates",
+                verdict="appropriate",
+                reasoning="Spelling fix",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=[judgment],
+            correction_judgments=corrections,
+        )
+        # The drill-down should show "plats → plates (appropriate)"
+        assert "plates" in report
+        assert "appropriate" in report
 
     def test_html_escapes_untrusted_judgment_content(self):
         judgment = JudgmentRecord(

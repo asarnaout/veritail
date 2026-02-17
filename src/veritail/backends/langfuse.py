@@ -7,7 +7,7 @@ from typing import Any
 from langfuse import Langfuse  # type: ignore[import-not-found]
 
 from veritail.backends import EvalBackend
-from veritail.types import JudgmentRecord, SearchResult
+from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
 
 
 class LangfuseBackend(EvalBackend):
@@ -146,3 +146,23 @@ class LangfuseBackend(EvalBackend):
             )
 
         return judgments
+
+    def log_correction_judgment(self, judgment: CorrectionJudgment) -> None:
+        """Store a correction judgment as a Langfuse trace with a score."""
+        trace = self._client.trace(
+            name="veritail-correction-judgment",
+            metadata={
+                "experiment": judgment.experiment,
+                "original_query": judgment.original_query,
+                "corrected_query": judgment.corrected_query,
+                "verdict": judgment.verdict,
+                "model": judgment.model,
+            },
+            tags=[judgment.experiment, "correction"],
+        )
+
+        trace.score(
+            name="correction_appropriate",
+            value=1 if judgment.verdict == "appropriate" else 0,
+            comment=judgment.reasoning,
+        )

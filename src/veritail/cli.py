@@ -463,7 +463,7 @@ def run(
         )
         adapter_fn = load_adapter(adapters[0])
 
-        judgments, checks, metrics = run_evaluation(
+        judgments, checks, metrics, correction_judgments = run_evaluation(
             query_entries,
             adapter_fn,
             config,
@@ -488,6 +488,7 @@ def run(
             metrics,
             checks,
             run_metadata=run_metadata,
+            correction_judgments=correction_judgments or None,
         )
         console.print(report)
 
@@ -504,12 +505,23 @@ def run(
             encoding="utf-8",
         )
 
+        if correction_judgments:
+            corrections_path = exp_dir / "corrections.jsonl"
+            corrections_path.write_text(
+                "\n".join(
+                    json.dumps(asdict(cj), default=str) for cj in correction_judgments
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
         html = generate_single_report(
             metrics,
             checks,
             judgments=judgments,
             format="html",
             run_metadata=run_metadata,
+            correction_judgments=correction_judgments or None,
         )
         html_path = exp_dir / "report.html"
         html_path.write_text(html, encoding="utf-8")
@@ -547,6 +559,8 @@ def run(
             metrics_a,
             metrics_b,
             comparison_checks,
+            corrections_a,
+            corrections_b,
         ) = run_dual_evaluation(
             query_entries,
             adapter_a,
@@ -578,14 +592,16 @@ def run(
             config_names[0],
             config_names[1],
             run_metadata=run_metadata,
+            correction_judgments_a=corrections_a or None,
+            correction_judgments_b=corrections_b or None,
         )
         console.print(report)
 
-        configs_and_metrics = [
-            (config_names[0], metrics_a),
-            (config_names[1], metrics_b),
+        configs_and_data = [
+            (config_names[0], metrics_a, corrections_a),
+            (config_names[1], metrics_b, corrections_b),
         ]
-        for cfg_name, cfg_metrics in configs_and_metrics:
+        for cfg_name, cfg_metrics, cfg_corrections in configs_and_data:
             exp_dir = Path(output_dir) / cfg_name
             exp_dir.mkdir(parents=True, exist_ok=True)
             metrics_path = exp_dir / "metrics.json"
@@ -597,6 +613,15 @@ def run(
                 ),
                 encoding="utf-8",
             )
+            if cfg_corrections:
+                corrections_path = exp_dir / "corrections.jsonl"
+                corrections_path.write_text(
+                    "\n".join(
+                        json.dumps(asdict(cj), default=str) for cj in cfg_corrections
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
 
         html = generate_comparison_report(
             metrics_a,

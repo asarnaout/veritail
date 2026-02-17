@@ -9,7 +9,13 @@ import pytest
 from veritail.backends.file import FileBackend
 from veritail.llm.client import LLMClient, LLMResponse
 from veritail.pipeline import run_evaluation
-from veritail.types import CheckResult, ExperimentConfig, QueryEntry, SearchResult
+from veritail.types import (
+    CheckResult,
+    ExperimentConfig,
+    QueryEntry,
+    SearchResponse,
+    SearchResult,
+)
 
 
 def _make_mock_adapter():
@@ -77,7 +83,7 @@ class TestRunEvaluation:
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("system prompt", lambda q, r: f"Query: {q}\nProduct: {r.title}")
 
-        judgments, checks, metrics = run_evaluation(
+        judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
@@ -100,6 +106,9 @@ class TestRunEvaluation:
         assert "ndcg@10" in metric_names
         assert "mrr" in metric_names
 
+        # No corrections since adapter returns bare list
+        assert len(corrections) == 0
+
         # Judgments should be persisted in backend
         stored = backend.get_judgments("test-exp")
         assert len(stored) == 3
@@ -121,7 +130,7 @@ class TestRunEvaluation:
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
-        judgments, checks, metrics = run_evaluation(
+        judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
@@ -259,7 +268,7 @@ class TestRunEvaluation:
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("system", lambda q, r: q)
 
-        judgments, checks, metrics = run_evaluation(
+        judgments, checks, metrics, corrections = run_evaluation(
             queries,
             failing_adapter,
             config,
@@ -311,7 +320,7 @@ class TestRunEvaluation:
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("system", lambda q, r: f"Query: {q}")
 
-        judgments, checks, metrics = run_evaluation(
+        judgments, checks, metrics, corrections = run_evaluation(
             queries,
             mixed_adapter,
             config,
@@ -377,7 +386,7 @@ class TestRunEvaluation:
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("system", lambda q, r: f"Query: {q}")
 
-        judgments, checks, metrics = run_evaluation(
+        judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
@@ -420,7 +429,7 @@ class TestRunEvaluation:
                 )
             ]
 
-        judgments, checks, metrics = run_evaluation(
+        judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
@@ -436,3 +445,149 @@ class TestRunEvaluation:
         # Built-in checks should still be present
         builtin = [c for c in checks if c.check_name != "custom_always_fail"]
         assert len(builtin) > 0
+
+    def test_correction_flow(self, tmp_path):
+        """Adapter returning SearchResponse with corrected_query triggers
+        correction checks and LLM correction evaluation."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great running shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = Mock(spec=LLMClient)
+        # First call: relevance judgment, second call: correction judgment
+        llm_client.complete.side_effect = [
+            LLMResponse(
+                content="SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+                model="test",
+                input_tokens=100,
+                output_tokens=50,
+            ),
+            LLMResponse(
+                content=("VERDICT: appropriate\nREASONING: Spelling fix."),
+                model="test",
+                input_tokens=80,
+                output_tokens=30,
+            ),
+        ]
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        # Should have correction checks
+        corr_checks = [
+            c
+            for c in checks
+            if c.check_name in ("correction_vocabulary", "unnecessary_correction")
+        ]
+        assert len(corr_checks) == 2
+
+        # Should have one correction judgment
+        assert len(corrections) == 1
+        assert corrections[0].verdict == "appropriate"
+        assert corrections[0].original_query == "runnign shoes"
+        assert corrections[0].corrected_query == "running shoes"
+
+        # Judgment metadata should include corrected_query
+        assert judgments[0].metadata["corrected_query"] == "running shoes"
+
+    def test_no_corrections_when_none(self, tmp_path):
+        """Adapter returning no corrected_query produces zero corrections."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        assert len(corrections) == 0
+        # No correction checks should be in the list
+        corr_checks = [
+            c
+            for c in checks
+            if c.check_name in ("correction_vocabulary", "unnecessary_correction")
+        ]
+        assert len(corr_checks) == 0
+
+    def test_empty_corrected_query_normalized_to_none(self, tmp_path):
+        """Empty or whitespace corrected_query is treated as None."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Shoes",
+                        description="desc",
+                        category="Shoes",
+                        price=50.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="   ",
+            )
+
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        assert len(corrections) == 0

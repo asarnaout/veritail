@@ -57,4 +57,6 @@ __all__ = [
     "check_title_length",
     "check_out_of_stock_prominence",
     "run_all_checks",
+    "check_correction_vocabulary",
+    "check_unnecessary_correction",
 ]

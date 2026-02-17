@@ -70,7 +70,12 @@ grounded in the criteria above. Do not include chain-of-thought.
 """
 
 
-def format_user_prompt(query: str, result: SearchResult) -> str:
+def format_user_prompt(
+    query: str,
+    result: SearchResult,
+    *,
+    corrected_query: str | None = None,
+) -> str:
     """Format a query-product pair into a user prompt for the LLM judge."""
     attrs_str = ""
     if result.attributes:
@@ -82,9 +87,16 @@ def format_user_prompt(query: str, result: SearchResult) -> str:
         meta_lines = [f"  - {k}: {v}" for k, v in result.metadata.items()]
         metadata_str = "\n".join(meta_lines)
 
+    if corrected_query is not None:
+        query_section = (
+            f"## Original Search Query\n{query}\n\n"
+            f"## Corrected Search Query (used for retrieval)\n{corrected_query}"
+        )
+    else:
+        query_section = f"## Search Query\n{query}"
+
     return f"""\
-## Search Query
-{query}
+{query_section}
 
 ## Product
 - **Title**: {result.title}

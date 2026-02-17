@@ -22,7 +22,7 @@ class TestCLI:
         assert queries_path.exists()
 
         adapter_text = adapter_path.read_text(encoding="utf-8")
-        assert "def search(query: str) -> list[SearchResult]:" in adapter_text
+        assert "def search(query: str) -> SearchResponse:" in adapter_text
         assert "urlopen(request, timeout=10)" in adapter_text
         assert "SEARCH_API_URL" in adapter_text
 

@@ -15,15 +15,21 @@ from veritail.checks.comparison import (
     check_result_overlap,
     find_position_shifts,
 )
+from veritail.checks.correction import (
+    check_correction_vocabulary,
+    check_unnecessary_correction,
+)
 from veritail.llm.client import LLMClient
-from veritail.llm.judge import RelevanceJudge
+from veritail.llm.judge import CORRECTION_SYSTEM_PROMPT, CorrectionJudge, RelevanceJudge
 from veritail.metrics.ir import compute_all_metrics
 from veritail.types import (
     CheckResult,
+    CorrectionJudgment,
     ExperimentConfig,
     JudgmentRecord,
     MetricResult,
     QueryEntry,
+    SearchResponse,
     SearchResult,
 )
 
@@ -32,26 +38,32 @@ console = Console()
 
 def run_evaluation(
     queries: list[QueryEntry],
-    adapter: Callable[[str], list[SearchResult]],
+    adapter: Callable[[str], SearchResponse | list[SearchResult]],
     config: ExperimentConfig,
     llm_client: LLMClient,
-    rubric: tuple[str, Callable[[str, SearchResult], str]],
+    rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
     vertical: str | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
-) -> tuple[list[JudgmentRecord], list[CheckResult], list[MetricResult]]:
+) -> tuple[
+    list[JudgmentRecord],
+    list[CheckResult],
+    list[MetricResult],
+    list[CorrectionJudgment],
+]:
     """Run a full evaluation pipeline for a single configuration.
 
     Steps:
         1. Log the experiment
         2. For each query: call adapter, run checks, judge with LLM, log results
-        3. Compute IR metrics
+        3. Run correction evaluations for corrected queries
+        4. Compute IR metrics
 
     Returns:
-        Tuple of (judgments, check_results, metrics)
+        Tuple of (judgments, check_results, metrics, correction_judgments)
     """
     system_prompt, format_user_prompt = rubric
     prefix_parts: list[str] = []
@@ -67,6 +79,16 @@ def run_evaluation(
         system_prompt,
         format_user_prompt,
         config.name,
+    )
+
+    # Build correction judge
+    if prefix_parts:
+        prefix = "\n\n".join(prefix_parts)
+        correction_system_prompt = f"{prefix}\n\n{CORRECTION_SYSTEM_PROMPT}"
+    else:
+        correction_system_prompt = CORRECTION_SYSTEM_PROMPT
+    correction_judge = CorrectionJudge(
+        llm_client, correction_system_prompt, config.name
     )
 
     backend.log_experiment(
@@ -87,6 +109,9 @@ def run_evaluation(
     # strings are evaluated as separate rows in metric aggregation.
     judgments_by_query: dict[int | str, list[JudgmentRecord]] = defaultdict(list)
 
+    # Track queries with corrections for later LLM evaluation
+    correction_entries: list[tuple[int, str, str]] = []  # (index, original, corrected)
+
     with Progress(console=console) as progress:
         task = progress.add_task(
             f"[cyan]Evaluating '{config.name}'...",
@@ -96,7 +121,16 @@ def run_evaluation(
         for query_index, query_entry in enumerate(queries):
             # Step 1: Call adapter
             try:
-                results = adapter(query_entry.query)[: config.top_k]
+                raw_response = adapter(query_entry.query)
+                if isinstance(raw_response, SearchResponse):
+                    response = raw_response
+                else:
+                    response = SearchResponse(results=raw_response)
+                results = response.results[: config.top_k]
+                corrected_query = response.corrected_query
+                # Normalize empty strings to None
+                if corrected_query is not None and not corrected_query.strip():
+                    corrected_query = None
             except Exception as e:
                 console.print(f"[red]Adapter error for '{query_entry.query}': {e}")
                 progress.advance(task)
@@ -105,6 +139,22 @@ def run_evaluation(
             # Step 2: Run deterministic checks
             checks = run_all_checks(query_entry, results, custom_checks=custom_checks)
             all_checks.extend(checks)
+
+            # Step 2b: Run correction checks if corrected
+            if corrected_query is not None:
+                all_checks.append(
+                    check_correction_vocabulary(
+                        query_entry.query, corrected_query, results
+                    )
+                )
+                all_checks.append(
+                    check_unnecessary_correction(
+                        query_entry.query, corrected_query, results
+                    )
+                )
+                correction_entries.append(
+                    (query_index, query_entry.query, corrected_query)
+                )
 
             # Build failed-checks info per product.
             # A "failed check" is any deterministic check with passed=False
@@ -135,6 +185,7 @@ def run_evaluation(
                         query_entry.query,
                         result,
                         query_type=query_entry.type,
+                        corrected_query=corrected_query,
                     )
                 except Exception as e:
                     console.print(
@@ -155,6 +206,9 @@ def run_evaluation(
                 # Annotate with check failures
                 if product_failed_checks:
                     judgment.metadata["failed_checks"] = product_failed_checks
+                # Annotate with corrected query
+                if corrected_query is not None:
+                    judgment.metadata["corrected_query"] = corrected_query
 
                 backend.log_judgment(judgment)
                 all_judgments.append(judgment)
@@ -162,20 +216,63 @@ def run_evaluation(
 
             progress.advance(task)
 
+    # Step 3b: Correction LLM evaluations
+    all_correction_judgments: list[CorrectionJudgment] = []
+    if correction_entries:
+        with Progress(console=console) as progress:
+            corr_task = progress.add_task(
+                f"[cyan]Evaluating query corrections for '{config.name}'...",
+                total=len(correction_entries),
+            )
+            for _idx, original, corrected in correction_entries:
+                try:
+                    cj = correction_judge.judge(original, corrected)
+                except Exception as e:
+                    console.print(
+                        f"[red]Correction judge error for "
+                        f"'{original}' -> '{corrected}': {e}"
+                    )
+                    cj = CorrectionJudgment(
+                        original_query=original,
+                        corrected_query=corrected,
+                        verdict="error",
+                        reasoning=f"Error: {e}",
+                        model=config.llm_model,
+                        experiment=config.name,
+                        metadata={"error": str(e)},
+                    )
+                all_correction_judgments.append(cj)
+                backend.log_correction_judgment(cj)
+                progress.advance(corr_task)
+
+        # Console summary
+        appropriate = sum(
+            1 for cj in all_correction_judgments if cj.verdict == "appropriate"
+        )
+        inappropriate = sum(
+            1 for cj in all_correction_judgments if cj.verdict == "inappropriate"
+        )
+        n = len(all_correction_judgments)
+        console.print(
+            f"[bold]Corrections:[/bold] {n} queries corrected, "
+            f"{appropriate} appropriate, {inappropriate} inappropriate "
+            f"({n} extra LLM calls)"
+        )
+
     # Step 4: Compute metrics
     metrics = compute_all_metrics(judgments_by_query, queries)
 
-    return all_judgments, all_checks, metrics
+    return all_judgments, all_checks, metrics, all_correction_judgments
 
 
 def run_dual_evaluation(
     queries: list[QueryEntry],
-    adapter_a: Callable[[str], list[SearchResult]],
+    adapter_a: Callable[[str], SearchResponse | list[SearchResult]],
     config_a: ExperimentConfig,
-    adapter_b: Callable[[str], list[SearchResult]],
+    adapter_b: Callable[[str], SearchResponse | list[SearchResult]],
     config_b: ExperimentConfig,
     llm_client: LLMClient,
-    rubric: tuple[str, Callable[[str, SearchResult], str]],
+    rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
     vertical: str | None = None,
@@ -190,12 +287,15 @@ def run_dual_evaluation(
     list[MetricResult],
     list[MetricResult],
     list[CheckResult],
+    list[CorrectionJudgment],
+    list[CorrectionJudgment],
 ]:
     """Run evaluation for two configurations and generate comparison checks.
 
     Returns:
         Tuple of (judgments_a, judgments_b, checks_a, checks_b,
-                  metrics_a, metrics_b, comparison_checks)
+                  metrics_a, metrics_b, comparison_checks,
+                  correction_judgments_a, correction_judgments_b)
     """
     console.print(
         f"\n[bold]Running dual evaluation: "
@@ -203,7 +303,7 @@ def run_dual_evaluation(
     )
 
     # Run evaluation for config A
-    judgments_a, checks_a, metrics_a = run_evaluation(
+    judgments_a, checks_a, metrics_a, corrections_a = run_evaluation(
         queries,
         adapter_a,
         config_a,
@@ -216,7 +316,7 @@ def run_dual_evaluation(
     )
 
     # Run evaluation for config B
-    judgments_b, checks_b, metrics_b = run_evaluation(
+    judgments_b, checks_b, metrics_b, corrections_b = run_evaluation(
         queries,
         adapter_b,
         config_b,
@@ -258,4 +358,6 @@ def run_dual_evaluation(
         metrics_a,
         metrics_b,
         comparison_checks,
+        corrections_a,
+        corrections_b,
     )

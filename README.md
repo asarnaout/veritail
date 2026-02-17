@@ -88,12 +88,12 @@ This writes a CSV with `query`, `type`, `category`, and `source` columns. Review
 
 ```python
 # my_adapter.py
-from veritail import SearchResult
+from veritail import SearchResponse, SearchResult
 
 
-def search(query: str) -> list[SearchResult]:
+def search(query: str) -> SearchResponse:
     results = my_search_api.query(query)
-    return [
+    items = [
         SearchResult(
             product_id=r["id"],
             title=r["title"],
@@ -106,7 +106,12 @@ def search(query: str) -> list[SearchResult]:
         )
         for i, r in enumerate(results)
     ]
+    return SearchResponse(results=items)
+    # To report autocorrect / "did you mean" corrections:
+    # return SearchResponse(results=items, corrected_query="corrected text")
 ```
+
+Adapters can return either `SearchResponse` or a bare `list[SearchResult]` (backward compatible). Use `SearchResponse` when your search engine returns autocorrect information.
 
 ### 6. Run evaluation
 
@@ -224,6 +229,10 @@ Default rubric criteria:
 - near-duplicate detection (title similarity threshold)
 - out-of-stock prominence (position 1 = fail, positions 2-5 = warning)
 
+**Correction-level** (when adapter returns `corrected_query`)
+- correction vocabulary (do corrected terms appear in results?)
+- unnecessary correction (do original terms still appear in results?)
+
 **Comparison-level** (dual-config only)
 - result overlap (Jaccard)
 - rank correlation (Spearman)
@@ -237,6 +246,27 @@ Computed from LLM scores:
 - `map`
 - `p@5`, `p@10`
 - `attribute_match@5`, `attribute_match@10`
+
+## Autocorrect Evaluation
+
+When your search engine corrects queries (autocorrect / "did you mean"), veritail automatically evaluates correction quality. No opt-in flag needed — return `corrected_query` from your adapter and veritail handles the rest.
+
+**How it works:**
+
+1. Your adapter returns `SearchResponse(results=..., corrected_query="corrected text")`
+2. veritail runs two free deterministic checks per corrected query:
+   - **correction_vocabulary**: Are the corrected terms actually present in result titles/descriptions? (Catches phantom corrections like "plats" → "planes" in foodservice)
+   - **unnecessary_correction**: Do the original terms still appear in results? (Catches over-correction like "Cambro" → "Camaro" when results contain Cambro products)
+3. veritail makes one LLM call per corrected query to judge whether the correction was appropriate or inappropriate
+4. Result-level LLM prompts include both original and corrected queries for richer reasoning
+
+**Output:**
+- Console: separate progress bar for correction evaluations, summary with call count
+- Terminal report: "Query Corrections" table with verdict and reasoning
+- HTML report: correction summary table + per-query drill-down showing `original → corrected (verdict)`
+- `corrections.jsonl` written alongside `metrics.json`
+
+**Cost:** One extra LLM call per corrected query (not per result). If your adapter corrects 15 of 50 queries, that's 15 extra calls.
 
 ## CLI Reference
 

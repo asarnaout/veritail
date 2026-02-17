@@ -10,7 +10,7 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
-from veritail.types import CheckResult, MetricResult
+from veritail.types import CheckResult, CorrectionJudgment, MetricResult
 
 _JINJA_ENV = Environment(
     autoescape=select_autoescape(("html", "xml"), default_for_string=True),
@@ -25,6 +25,8 @@ def generate_comparison_report(
     config_b: str,
     format: str = "terminal",
     run_metadata: Mapping[str, object] | None = None,
+    correction_judgments_a: list[CorrectionJudgment] | None = None,
+    correction_judgments_b: list[CorrectionJudgment] | None = None,
 ) -> str:
     """Generate a comparison report for two evaluation configurations.
 
@@ -35,6 +37,8 @@ def generate_comparison_report(
         config_a: Name of the baseline configuration
         config_b: Name of the experimental configuration
         format: "terminal" or "html"
+        correction_judgments_a: Optional correction judgments for config A
+        correction_judgments_b: Optional correction judgments for config B
 
     Returns:
         Formatted report string.
@@ -54,6 +58,8 @@ def generate_comparison_report(
         comparison_checks,
         config_a,
         config_b,
+        correction_judgments_a=correction_judgments_a,
+        correction_judgments_b=correction_judgments_b,
     )
 
 
@@ -63,6 +69,8 @@ def _generate_terminal(
     comparison_checks: list[CheckResult],
     config_a: str,
     config_b: str,
+    correction_judgments_a: list[CorrectionJudgment] | None = None,
+    correction_judgments_b: list[CorrectionJudgment] | None = None,
 ) -> str:
     """Generate a rich-formatted terminal comparison report."""
     console = Console(file=StringIO(), force_terminal=True, width=120)
@@ -199,6 +207,22 @@ def _generate_terminal(
                 )
 
             console.print(reg_table)
+
+    # Correction summary
+    has_corrections = correction_judgments_a or correction_judgments_b
+    if has_corrections:
+        console.print("\n[bold]Query Corrections[/bold]")
+        for label, cjs in [
+            (config_a, correction_judgments_a),
+            (config_b, correction_judgments_b),
+        ]:
+            if cjs:
+                appropriate = sum(1 for c in cjs if c.verdict == "appropriate")
+                inappropriate = sum(1 for c in cjs if c.verdict == "inappropriate")
+                console.print(
+                    f"  {label}: {len(cjs)} corrected "
+                    f"({appropriate} appropriate, {inappropriate} inappropriate)"
+                )
 
     assert isinstance(console.file, StringIO)
     return console.file.getvalue()

@@ -6,7 +6,35 @@ import re
 from collections.abc import Callable
 
 from veritail.llm.client import LLMClient
-from veritail.types import JudgmentRecord, SearchResult
+from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
+
+CORRECTION_SYSTEM_PROMPT = """\
+You are an expert ecommerce search quality analyst. Your task is to judge whether \
+a search engine's query correction (autocorrect / "did you mean") was appropriate.
+
+## Criteria
+
+A correction is **appropriate** when:
+- It fixes a clear spelling mistake (e.g. "runnign shoes" -> "running shoes")
+- It normalizes common typos or transpositions
+- The corrected query preserves the shopper's original intent
+
+A correction is **inappropriate** when:
+- It changes the shopper's intent (e.g. "plats" -> "planes" in a foodservice context \
+where "plats" means plates)
+- It corrects away a valid brand name, model number, or industry jargon \
+(e.g. "Cambro" -> "Camaro")
+- The original query is a valid catalog term that the search engine should recognize
+
+## Response Format
+
+You MUST respond in exactly this format:
+
+VERDICT: <verdict>
+REASONING: <your concise justification in 1-2 sentences>
+
+Where <verdict> is exactly one of: appropriate, inappropriate
+"""
 
 
 class RelevanceJudge:
@@ -16,7 +44,7 @@ class RelevanceJudge:
         self,
         client: LLMClient,
         system_prompt: str,
-        format_user_prompt: Callable[[str, SearchResult], str],
+        format_user_prompt: Callable[..., str],
         experiment: str,
     ) -> None:
         self._client = client
@@ -30,9 +58,18 @@ class RelevanceJudge:
         result: SearchResult,
         *,
         query_type: str | None = None,
+        corrected_query: str | None = None,
     ) -> JudgmentRecord:
         """Judge the relevance of a single search result to a query."""
-        user_prompt = self._format_user_prompt(query, result)
+        if corrected_query is not None:
+            try:
+                user_prompt = self._format_user_prompt(
+                    query, result, corrected_query=corrected_query
+                )
+            except TypeError:
+                user_prompt = self._format_user_prompt(query, result)
+        else:
+            user_prompt = self._format_user_prompt(query, result)
         response = self._client.complete(self._system_prompt, user_prompt)
 
         score, attribute_verdict, reasoning = self._parse_response(response.content)
@@ -90,3 +127,66 @@ class RelevanceJudge:
         reasoning = reasoning_match.group(1).strip() if reasoning_match else ""
 
         return score, attribute_verdict, reasoning
+
+
+class CorrectionJudge:
+    """Judges whether a query correction was appropriate using an LLM."""
+
+    def __init__(
+        self,
+        client: LLMClient,
+        system_prompt: str,
+        experiment: str,
+    ) -> None:
+        self._client = client
+        self._system_prompt = system_prompt
+        self._experiment = experiment
+
+    def judge(
+        self,
+        original_query: str,
+        corrected_query: str,
+    ) -> CorrectionJudgment:
+        """Judge whether a query correction was appropriate."""
+        user_prompt = self._format_user_prompt(original_query, corrected_query)
+        response = self._client.complete(self._system_prompt, user_prompt)
+
+        verdict, reasoning = self._parse_response(response.content)
+
+        return CorrectionJudgment(
+            original_query=original_query,
+            corrected_query=corrected_query,
+            verdict=verdict,
+            reasoning=reasoning,
+            model=response.model,
+            experiment=self._experiment,
+            metadata={
+                "input_tokens": response.input_tokens,
+                "output_tokens": response.output_tokens,
+            },
+        )
+
+    @staticmethod
+    def _format_user_prompt(original: str, corrected: str) -> str:
+        return (
+            f"## Original Query\n{original}\n\n"
+            f"## Corrected Query\n{corrected}\n\n"
+            "Was this correction appropriate?"
+        )
+
+    @staticmethod
+    def _parse_response(response_text: str) -> tuple[str, str]:
+        """Parse verdict and reasoning from LLM response."""
+        verdict_match = re.search(
+            r"(?i)VERDICT\s*[:=]\s*(appropriate|inappropriate)",
+            response_text,
+        )
+        verdict = verdict_match.group(1).lower() if verdict_match else "error"
+
+        reasoning_match = re.search(
+            r"(?is)REASONING\s*[:=]\s*(.*)",
+            response_text,
+        )
+        reasoning = reasoning_match.group(1).strip() if reasoning_match else ""
+
+        return verdict, reasoning

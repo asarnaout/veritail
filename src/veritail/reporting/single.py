@@ -10,7 +10,12 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
-from veritail.types import CheckResult, JudgmentRecord, MetricResult
+from veritail.types import (
+    CheckResult,
+    CorrectionJudgment,
+    JudgmentRecord,
+    MetricResult,
+)
 
 _JINJA_ENV = Environment(
     autoescape=select_autoescape(("html", "xml"), default_for_string=True),
@@ -78,6 +83,14 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
         "Flags out-of-stock products ranked too high "
         "(position 1 = fail, positions 2-5 = warning)"
     ),
+    "correction_vocabulary": (
+        "Checks if corrected query terms appear in any "
+        "returned product title or description"
+    ),
+    "unnecessary_correction": (
+        "Flags corrections where original query terms "
+        "still appear in the corrected result set"
+    ),
 }
 
 FAILURE_ONLY_CHECKS: set[str] = {"duplicate"}
@@ -121,6 +134,7 @@ def generate_single_report(
     format: str = "terminal",
     judgments: list[JudgmentRecord] | None = None,
     run_metadata: Mapping[str, object] | None = None,
+    correction_judgments: list[CorrectionJudgment] | None = None,
 ) -> str:
     """Generate a report for a single evaluation configuration.
 
@@ -129,18 +143,22 @@ def generate_single_report(
         checks: Deterministic check results
         format: "terminal" for rich console output, "html" for HTML file
         judgments: Optional list of per-product LLM judgments (used in HTML output)
+        correction_judgments: Optional list of correction judgments
 
     Returns:
         Formatted report string.
     """
     if format == "html":
-        return _generate_html(metrics, checks, judgments, run_metadata)
-    return _generate_terminal(metrics, checks)
+        return _generate_html(
+            metrics, checks, judgments, run_metadata, correction_judgments
+        )
+    return _generate_terminal(metrics, checks, correction_judgments)
 
 
 def _generate_terminal(
     metrics: list[MetricResult],
     checks: list[CheckResult],
+    correction_judgments: list[CorrectionJudgment] | None = None,
 ) -> str:
     """Generate a rich-formatted terminal report."""
     console = Console(file=StringIO(), force_terminal=True, width=100)
@@ -199,6 +217,34 @@ def _generate_terminal(
 
     console.print(check_table)
 
+    # Query Corrections table
+    if correction_judgments:
+        console.print("\n")
+        corr_table = Table(title="Query Corrections", show_header=True)
+        corr_table.add_column("Original Query", style="cyan")
+        corr_table.add_column("Corrected Query")
+        corr_table.add_column("Verdict", justify="center")
+        corr_table.add_column("Reasoning")
+
+        for cj in correction_judgments:
+            verdict_style = (
+                "[green]appropriate[/green]"
+                if cj.verdict == "appropriate"
+                else (
+                    "[red]inappropriate[/red]"
+                    if cj.verdict == "inappropriate"
+                    else f"[yellow]{cj.verdict}[/yellow]"
+                )
+            )
+            corr_table.add_row(
+                cj.original_query,
+                cj.corrected_query,
+                verdict_style,
+                cj.reasoning,
+            )
+
+        console.print(corr_table)
+
     # Worst queries (lowest NDCG@10)
     ndcg = next((m for m in metrics if m.metric_name == "ndcg@10"), None)
     if ndcg and ndcg.per_query:
@@ -225,6 +271,7 @@ def _generate_html(
     checks: list[CheckResult],
     judgments: list[JudgmentRecord] | None = None,
     run_metadata: Mapping[str, object] | None = None,
+    correction_judgments: list[CorrectionJudgment] | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -268,6 +315,21 @@ def _generate_html(
                     }
                 )
 
+    # Build correction lookup by original query
+    correction_lookup: dict[str, CorrectionJudgment] = {}
+    correction_summary: list[dict[str, str]] = []
+    if correction_judgments:
+        for cj in correction_judgments:
+            correction_lookup[cj.original_query] = cj
+            correction_summary.append(
+                {
+                    "original_query": cj.original_query,
+                    "corrected_query": cj.corrected_query,
+                    "verdict": cj.verdict,
+                    "reasoning": cj.reasoning,
+                }
+            )
+
     # Group judgments by query for the drill-down section
     judgments_for_template: list[dict[str, object]] = []
     if judgments:
@@ -283,6 +345,7 @@ def _generate_html(
                 "query": q,
                 "avg_score": sum(j.score for j in js) / len(js),
                 "judgments": js,
+                "correction": correction_lookup.get(q),
             }
             for q, js in sorted(grouped.items())
         ]
@@ -296,4 +359,5 @@ def _generate_html(
         metric_descriptions=METRIC_DESCRIPTIONS,
         check_descriptions=CHECK_DESCRIPTIONS,
         run_metadata_rows=metadata_rows,
+        correction_summary=correction_summary,
     )

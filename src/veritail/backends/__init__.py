@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from veritail.types import JudgmentRecord
+from veritail.types import CorrectionJudgment, JudgmentRecord
 
 
 class EvalBackend(ABC):
@@ -25,6 +25,10 @@ class EvalBackend(ABC):
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
         """Retrieve all LLM judgments for an experiment."""
         ...
+
+    def log_correction_judgment(self, judgment: CorrectionJudgment) -> None:
+        """Optionally store a correction judgment. Default no-op."""
+        pass
 
 
 def create_backend(backend_type: str, **kwargs: Any) -> EvalBackend:

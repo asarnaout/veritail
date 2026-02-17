@@ -22,7 +22,7 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from veritail import SearchResult
+from veritail import SearchResponse, SearchResult
 
 
 SEARCH_API_URL = os.getenv("SEARCH_API_URL", "https://api.example.com/search")
@@ -50,7 +50,7 @@ def _to_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def search(query: str) -> list[SearchResult]:
+def search(query: str) -> SearchResponse:
     \"\"\"Fetch products from your API and map them to SearchResult.\"\"\"
     params = urlencode({"q": query, "limit": 10})
     url = f"{SEARCH_API_URL}?{params}"
@@ -98,7 +98,9 @@ def search(query: str) -> list[SearchResult]:
             )
         )
 
-    return results
+    return SearchResponse(results=results)
+    # To report autocorrect / "did you mean" corrections, use:
+    # return SearchResponse(results=results, corrected_query="corrected query text")
 """
 
 QUERIES_TEMPLATE = """\

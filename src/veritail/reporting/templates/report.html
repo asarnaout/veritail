@@ -137,6 +137,32 @@
     </table></div>
     {% endif %}
 
+    {% if correction_summary %}
+    <h2>Query Corrections</h2>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Original Query</th>
+                <th>Corrected Query</th>
+                <th>Verdict</th>
+                <th>Reasoning</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in correction_summary %}
+            <tr>
+                <td>{{ c.original_query }}</td>
+                <td>{{ c.corrected_query }}</td>
+                <td class="{% if c.verdict == 'appropriate' %}positive{% elif c.verdict == 'inappropriate' %}negative{% else %}neutral{% endif %}">
+                    {{ c.verdict }}
+                </td>
+                <td style="font-size:13px">{{ c.reasoning }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% endif %}
+
     {% if worst_queries %}
     <h2>Worst Performing Queries (NDCG@10)</h2>
     <div class="table-wrap"><table>
@@ -169,7 +195,7 @@
                       border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);
                       font-weight:600; list-style:none; display:flex;
                       justify-content:space-between; align-items:center;">
-        <span>{{ item.query }}</span>
+        <span>{{ item.query }}{% if item.correction %} <span style="font-weight:normal; font-size:13px; color:#6b7280;">&rarr; {{ item.correction.corrected_query }} (<span class="{% if item.correction.verdict == 'appropriate' %}positive{% elif item.correction.verdict == 'inappropriate' %}negative{% else %}neutral{% endif %}">{{ item.correction.verdict }}</span>)</span>{% endif %}</span>
         <span style="color:#6b7280; font-size:13px; font-weight:normal;">
           avg score {{ "%.2f"|format(item.avg_score) }}
           &nbsp;·&nbsp; {{ item.judgments|length }} results

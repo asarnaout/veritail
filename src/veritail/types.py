@@ -22,6 +22,27 @@ class SearchResult:
 
 
 @dataclass
+class SearchResponse:
+    """Wrapper returned by search adapters."""
+
+    results: list[SearchResult]
+    corrected_query: str | None = None
+
+
+@dataclass
+class CorrectionJudgment:
+    """LLM verdict on whether a query correction was appropriate."""
+
+    original_query: str
+    corrected_query: str
+    verdict: str  # "appropriate" | "inappropriate"
+    reasoning: str
+    model: str
+    experiment: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class QueryEntry:
     """A query from the input query set (CSV or JSON)."""
 

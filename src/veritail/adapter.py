@@ -6,14 +6,14 @@ import importlib.util
 from collections.abc import Callable
 from pathlib import Path
 
-from veritail.types import SearchResult
+from veritail.types import SearchResponse
 
 
-def load_adapter(path: str) -> Callable[[str], list[SearchResult]]:
+def load_adapter(path: str) -> Callable[[str], SearchResponse]:
     """Load a search adapter function from a Python file.
 
     The file must define a function named 'search' that takes a query string
-    and returns a list of SearchResult objects.
+    and returns a list of SearchResult objects or a SearchResponse.
     """
     file_path = Path(path)
     if not file_path.exists():
@@ -40,5 +40,10 @@ def load_adapter(path: str) -> Callable[[str], list[SearchResult]]:
     if not callable(search_fn):
         raise TypeError(f"'search' in '{path}' is not callable")
 
-    result: Callable[[str], list[SearchResult]] = search_fn
-    return result
+    def _wrap(query: str) -> SearchResponse:
+        raw = search_fn(query)
+        if isinstance(raw, SearchResponse):
+            return raw
+        return SearchResponse(results=raw)
+
+    return _wrap
