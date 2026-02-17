@@ -62,6 +62,8 @@ def _build_run_metadata(
     rubric: str,
     vertical: str | None,
     top_k: int,
+    sample: int | None = None,
+    total_queries: int | None = None,
     adapter_path: str | None = None,
     adapter_path_a: str | None = None,
     adapter_path_b: str | None = None,
@@ -74,6 +76,8 @@ def _build_run_metadata(
         "vertical": vertical if vertical else "none",
         "top_k": top_k,
     }
+    if sample is not None and total_queries is not None:
+        metadata["sample"] = f"{sample} of {total_queries}"
     if adapter_path is not None:
         metadata["adapter_path"] = adapter_path
     if adapter_path_a is not None:
@@ -237,6 +241,12 @@ def init(
     type=click.Path(exists=True),
     help="Path to custom check module(s) with check_* functions.",
 )
+@click.option(
+    "--sample",
+    default=None,
+    type=int,
+    help="Randomly sample N queries from the query set for a faster evaluation.",
+)
 def run(
     queries: str,
     adapters: tuple[str, ...],
@@ -251,6 +261,7 @@ def run(
     context: str | None,
     vertical: str | None,
     check_modules: tuple[str, ...],
+    sample: int | None,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
     if config_names and len(adapters) != len(config_names):
@@ -275,8 +286,20 @@ def run(
             f"{', '.join(config_names)}[/dim]",
         )
 
+    if sample is not None and sample < 1:
+        raise click.UsageError("--sample must be >= 1.")
+
     query_entries = load_queries(queries)
-    console.print(f"Loaded {len(query_entries)} queries from {queries}")
+    total_queries = len(query_entries)
+
+    if sample is not None and sample < total_queries:
+        import random
+
+        rng = random.Random(42)
+        query_entries = rng.sample(query_entries, sample)
+        console.print(f"Sampled {sample} of {total_queries} queries from {queries}")
+    else:
+        console.print(f"Loaded {len(query_entries)} queries from {queries}")
 
     rubric_data = load_rubric(rubric)
 
@@ -339,6 +362,8 @@ def run(
             rubric=rubric,
             vertical=vertical,
             top_k=top_k,
+            sample=sample,
+            total_queries=total_queries,
             adapter_path=adapters[0],
         )
 
@@ -423,6 +448,8 @@ def run(
             rubric=rubric,
             vertical=vertical,
             top_k=top_k,
+            sample=sample,
+            total_queries=total_queries,
             adapter_path_a=adapters[0],
             adapter_path_b=adapters[1],
         )

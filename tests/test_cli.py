@@ -356,6 +356,209 @@ class TestCLI:
         assert result.exit_code == 0
         assert "Loaded 1 custom check(s)" in result.output
 
+    def test_run_help_shows_sample_option(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--help"])
+        assert result.exit_code == 0
+        assert "--sample" in result.output
+
+    def test_run_rejects_sample_less_than_one(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_file),
+                "--sample",
+                "0",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "--sample must be >= 1" in result.output
+
+    def test_run_sample_selects_subset(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\nboots\nsandals\nsneakers\nloafers\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title=q,\n"
+            "        description='A product',\n"
+            "        category='Footwear', price=50.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "test-model",
+                    "--sample",
+                    "2",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "Sampled 2 of 5 queries" in result.output
+        # Only 2 queries evaluated → only 2 LLM calls
+        assert mock_client.complete.call_count == 2
+
+    def test_run_sample_gte_total_uses_all(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\nboots\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title=q,\n"
+            "        description='A product',\n"
+            "        category='Footwear', price=50.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "test-model",
+                    "--sample",
+                    "10",
+                ],
+            )
+
+        assert result.exit_code == 0
+        # --sample 10 >= 2 total queries, so all are used
+        assert "Loaded 2 queries" in result.output
+        assert mock_client.complete.call_count == 2
+
+    def test_run_sample_is_deterministic(self, tmp_path):
+        """Same --sample N with same query file should pick the same queries."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nalpha\nbravo\ncharlie\ndelta\necho\nfoxtrot\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title=q,\n"
+            "        description='A product',\n"
+            "        category='Test', price=10.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        queries_seen: list[list[str]] = []
+
+        def capture_calls():
+            mock_client = Mock(spec=LLMClient)
+            mock_client.complete.return_value = LLMResponse(
+                content="SCORE: 2\nREASONING: Good match",
+                model="test-model",
+                input_tokens=100,
+                output_tokens=50,
+            )
+            return mock_client
+
+        for run_idx in range(2):
+            mock_client = capture_calls()
+            with patch("veritail.cli.create_llm_client", return_value=mock_client):
+                runner = CliRunner()
+                result = runner.invoke(
+                    main,
+                    [
+                        "run",
+                        "--queries",
+                        str(queries_file),
+                        "--adapter",
+                        str(adapter_file),
+                        "--config-name",
+                        f"test-{run_idx}",
+                        "--backend",
+                        "file",
+                        "--output-dir",
+                        str(tmp_path / f"results-{run_idx}"),
+                        "--llm-model",
+                        "test-model",
+                        "--sample",
+                        "3",
+                    ],
+                )
+            assert result.exit_code == 0
+            # Extract which queries were judged from the LLM call args
+            called_queries = [
+                call.args[1]  # user_prompt
+                for call in mock_client.complete.call_args_list
+            ]
+            queries_seen.append(called_queries)
+
+        # Both runs should have called the LLM with the exact same prompts
+        assert queries_seen[0] == queries_seen[1]
+
     def test_run_aborts_on_preflight_check_failure(self, tmp_path):
         queries_file = tmp_path / "queries.csv"
         queries_file.write_text("query\nshoes\n")
