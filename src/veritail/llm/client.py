@@ -20,7 +20,9 @@ class LLMClient(ABC):
     """Abstract base class for LLM providers."""
 
     @abstractmethod
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+    def complete(
+        self, system_prompt: str, user_prompt: str, *, max_tokens: int = 1024
+    ) -> LLMResponse:
         """Send a prompt to the LLM and get a response."""
         ...
 
@@ -42,10 +44,12 @@ class AnthropicClient(LLMClient):
         self._client = anthropic.Anthropic()
         self._model = model
 
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+    def complete(
+        self, system_prompt: str, user_prompt: str, *, max_tokens: int = 1024
+    ) -> LLMResponse:
         response = self._client.messages.create(
             model=self._model,
-            max_tokens=1024,
+            max_tokens=max_tokens,
             system=[
                 {
                     "type": "text",
@@ -88,14 +92,16 @@ class OpenAIClient(LLMClient):
         self._client = openai.OpenAI()
         self._model = model
 
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+    def complete(
+        self, system_prompt: str, user_prompt: str, *, max_tokens: int = 1024
+    ) -> LLMResponse:
         response = self._client.chat.completions.create(
             model=self._model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=1024,
+            max_tokens=max_tokens,
         )
         choice = response.choices[0]
         usage = response.usage

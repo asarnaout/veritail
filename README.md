@@ -61,7 +61,30 @@ nike air max 90,navigational,Shoes
 
 `type` and `category` are optional, but they improve analysis quality.
 
-### 4. Create an adapter (manual option)
+### 4. Generate queries with an LLM (alternative)
+
+If you don't have query logs yet, let an LLM generate a starter set:
+
+```bash
+# From a built-in vertical
+veritail generate-queries --vertical electronics --output queries.csv
+
+# From business context
+veritail generate-queries --context "B2B industrial fastener distributor" --output queries.csv
+
+# Both vertical and context, custom count
+veritail generate-queries \
+  --vertical foodservice \
+  --context "BBQ restaurant equipment supplier" \
+  --output queries.csv \
+  --count 50
+```
+
+This writes a CSV with `query`, `type`, `category`, and `source` columns. Review and edit the generated queries before running an evaluation — the file is designed for human-in-the-loop review.
+
+**Cost note:** Query generation makes a single LLM call (a fraction of a cent with `claude-sonnet-4-5`).
+
+### 5. Create an adapter (manual option)
 
 ```python
 # my_adapter.py
@@ -85,7 +108,7 @@ def search(query: str) -> list[SearchResult]:
     ]
 ```
 
-### 5. Run evaluation
+### 6. Run evaluation
 
 ```bash
 export ANTHROPIC_API_KEY=sk-...
@@ -106,7 +129,7 @@ Outputs are written under:
 eval-results/<generated-or-custom-config-name>/
 ```
 
-### 6. Compare two search configurations
+### 7. Compare two search configurations
 
 ```bash
 veritail run \
@@ -249,6 +272,18 @@ Scaffold starter files for a new project.
 | `--adapter-name` | `adapter.py` | Adapter filename (must end with `.py`) |
 | `--queries-name` | `queries.csv` | Query set filename (must end with `.csv`) |
 | `--force` | off | Overwrite existing files |
+
+### `veritail generate-queries`
+
+Generate evaluation queries with an LLM and save to CSV. At least one of `--vertical` or `--context` is required.
+
+| Option | Default | Description |
+|---|---|---|
+| `--output` | *(required)* | Output CSV path (must end with `.csv`) |
+| `--count` | `25` | Number of queries to generate |
+| `--vertical` | *(none)* | Built-in vertical name or path to text file |
+| `--context` | *(none)* | Business context string or path to a text file |
+| `--llm-model` | `claude-sonnet-4-5` | LLM model for generation |
 
 ### `veritail vertical list`
 

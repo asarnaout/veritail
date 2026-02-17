@@ -183,6 +183,84 @@ def vertical_show(name: str) -> None:
     click.echo(text)
 
 
+@main.command("generate-queries")
+@click.option(
+    "--output",
+    required=True,
+    type=str,
+    help="Output CSV path (must end with .csv).",
+)
+@click.option(
+    "--count",
+    default=25,
+    type=int,
+    help="Number of queries to generate.",
+)
+@click.option(
+    "--vertical",
+    default=None,
+    type=str,
+    help=(
+        "Vertical for domain-specific query generation "
+        "(built-in name or path to text file)."
+    ),
+)
+@click.option(
+    "--context",
+    default=None,
+    type=str,
+    help="Business context string or path to a text file.",
+)
+@click.option(
+    "--llm-model",
+    default="claude-sonnet-4-5",
+    help="LLM model to use for generation.",
+)
+def generate_queries_cmd(
+    output: str,
+    count: int,
+    vertical: str | None,
+    context: str | None,
+    llm_model: str,
+) -> None:
+    """Generate evaluation queries with an LLM and save to CSV."""
+    if count < 1:
+        raise click.UsageError("--count must be >= 1.")
+
+    if not output.endswith(".csv"):
+        raise click.UsageError("--output must end with .csv.")
+
+    if not vertical and not context:
+        raise click.UsageError("At least one of --vertical or --context is required.")
+
+    llm_client = create_llm_client(llm_model)
+
+    try:
+        llm_client.preflight_check()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    from veritail.querygen import generate_queries
+
+    output_path = Path(output)
+    try:
+        queries = generate_queries(
+            llm_client=llm_client,
+            output_path=output_path,
+            count=count,
+            vertical=vertical,
+            context=context,
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    console.print(f"[green]Generated {len(queries)} queries[/green] -> {output_path}")
+    console.print("\n[dim]Next step:[/dim]")
+    console.print(
+        f"[dim]  veritail run --queries {output_path} --adapter <your_adapter.py>[/dim]"
+    )
+
+
 @main.command()
 @click.option(
     "--queries",
