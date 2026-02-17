@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from veritail.reporting.comparison import generate_comparison_report
-from veritail.types import CheckResult, MetricResult
+from veritail.types import CheckResult, CorrectionJudgment, MetricResult
 
 
 def _make_metrics_a() -> list[MetricResult]:
@@ -171,3 +171,56 @@ class TestGenerateComparisonReport:
         assert "<img src=x onerror=alert('detail')>" not in report
         assert "&lt;script&gt;alert" in report
         assert "&lt;img src=x onerror=alert" in report
+
+    def test_correction_summary_shows_error_count(self):
+        corrections_a = [
+            CorrectionJudgment(
+                original_query="plats",
+                corrected_query="plates",
+                verdict="appropriate",
+                reasoning="Spelling fix",
+                model="test",
+                experiment="exp",
+            ),
+            CorrectionJudgment(
+                original_query="cambro",
+                corrected_query="camaro",
+                verdict="error",
+                reasoning="Error: LLM timeout",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            correction_judgments_a=corrections_a,
+        )
+        assert "appropriate" in report
+        assert "inappropriate" in report
+        assert "errored" in report
+
+    def test_correction_summary_no_error_label_when_zero_errors(self):
+        corrections_a = [
+            CorrectionJudgment(
+                original_query="plats",
+                corrected_query="plates",
+                verdict="appropriate",
+                reasoning="Spelling fix",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            correction_judgments_a=corrections_a,
+        )
+        assert "appropriate" in report
+        assert "errored" not in report

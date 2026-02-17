@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 from langfuse import Langfuse  # type: ignore[import-not-found]
@@ -101,49 +102,58 @@ class LangfuseBackend(EvalBackend):
 
         traces = self._client.fetch_traces(tags=[experiment])
         for trace in traces.data:
-            if not trace.metadata:
-                continue
-            if trace.metadata.get("type") == "experiment_registration":
-                continue
+            try:
+                if not trace.metadata:
+                    continue
+                if trace.metadata.get("type") == "experiment_registration":
+                    continue
 
-            # Find the relevance score
-            trace_scores = self._client.fetch_scores(trace_id=trace.id)
-            relevance_score = None
-            reasoning = ""
-            for score in trace_scores.data:
-                if score.name == "relevance":
-                    relevance_score = int(score.value)
-                    reasoning = score.comment or ""
-                    break
+                # Find the relevance score
+                trace_scores = self._client.fetch_scores(trace_id=trace.id)
+                relevance_score = None
+                reasoning = ""
+                for score in trace_scores.data:
+                    if score.name == "relevance":
+                        relevance_score = int(score.value)
+                        reasoning = score.comment or ""
+                        break
 
-            if relevance_score is None:
-                continue
+                if relevance_score is None:
+                    continue
 
-            product_data = trace.metadata.get("product", {})
-            product = SearchResult(
-                product_id=product_data.get("product_id", ""),
-                title=product_data.get("title", ""),
-                description=product_data.get("description", ""),
-                category=product_data.get("category", ""),
-                price=float(product_data.get("price", 0.0)),
-                position=int(product_data.get("position", 0)),
-                in_stock=bool(product_data.get("in_stock", True)),
-                attributes=product_data.get("attributes", {}),
-                metadata=product_data.get("metadata", {}),
-            )
-
-            judgments.append(
-                JudgmentRecord(
-                    query=trace.metadata.get("query", ""),
-                    product=product,
-                    score=relevance_score,
-                    reasoning=reasoning,
-                    attribute_verdict=trace.metadata.get("attribute_verdict", "n/a"),
-                    model=trace.metadata.get("model", ""),
-                    experiment=experiment,
-                    query_type=trace.metadata.get("query_type"),
+                product_data = trace.metadata.get("product", {})
+                product = SearchResult(
+                    product_id=product_data.get("product_id", ""),
+                    title=product_data.get("title", ""),
+                    description=product_data.get("description", ""),
+                    category=product_data.get("category", ""),
+                    price=float(product_data.get("price", 0.0)),
+                    position=int(product_data.get("position", 0)),
+                    in_stock=bool(product_data.get("in_stock", True)),
+                    attributes=product_data.get("attributes", {}),
+                    metadata=product_data.get("metadata", {}),
                 )
-            )
+
+                judgments.append(
+                    JudgmentRecord(
+                        query=trace.metadata.get("query", ""),
+                        product=product,
+                        score=relevance_score,
+                        reasoning=reasoning,
+                        attribute_verdict=trace.metadata.get(
+                            "attribute_verdict", "n/a"
+                        ),
+                        model=trace.metadata.get("model", ""),
+                        experiment=experiment,
+                        query_type=trace.metadata.get("query_type"),
+                    )
+                )
+            except Exception as e:
+                trace_id = getattr(trace, "id", "unknown")
+                warnings.warn(
+                    f"Skipping trace {trace_id}: {e}",
+                    stacklevel=2,
+                )
 
         return judgments
 

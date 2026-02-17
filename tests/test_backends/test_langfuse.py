@@ -81,3 +81,62 @@ def test_log_experiment(mock_langfuse_cls):
     backend.log_experiment("test-exp", {"llm_model": "claude-sonnet-4-5"})
 
     mock_client.trace.assert_called_once()
+
+
+@patch("langfuse.Langfuse")
+def test_get_judgments_skips_bad_trace(mock_langfuse_cls):
+    """A trace that raises during processing is skipped; others still load."""
+    import warnings
+
+    from veritail.backends.langfuse import LangfuseBackend
+
+    mock_client = mock_langfuse_cls.return_value
+
+    # Two traces: first is good, second has bad metadata that causes an error
+    good_trace = MagicMock()
+    good_trace.id = "trace-1"
+    good_trace.metadata = {
+        "query": "shoes",
+        "product": {
+            "product_id": "SKU-1",
+            "title": "Shoes",
+            "description": "desc",
+            "category": "Shoes",
+            "price": 50.0,
+            "position": 0,
+        },
+        "attribute_verdict": "match",
+        "model": "test",
+    }
+
+    bad_trace = MagicMock()
+    bad_trace.id = "trace-2"
+    bad_trace.metadata = {"query": "broken", "product": "not-a-dict"}
+
+    traces_response = MagicMock()
+    traces_response.data = [good_trace, bad_trace]
+    mock_client.fetch_traces.return_value = traces_response
+
+    # Set up scores for the good trace
+    good_score = MagicMock()
+    good_score.name = "relevance"
+    good_score.value = 3
+    good_score.comment = "Great match"
+    good_scores_response = MagicMock()
+    good_scores_response.data = [good_score]
+
+    bad_scores_response = MagicMock()
+    bad_scores_response.data = []
+
+    mock_client.fetch_scores.side_effect = [good_scores_response, bad_scores_response]
+
+    backend = LangfuseBackend()
+
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("always")
+        judgments = backend.get_judgments("test-exp")
+
+    # Good trace loaded, bad trace skipped
+    assert len(judgments) == 1
+    assert judgments[0].query == "shoes"
+    assert judgments[0].score == 3
