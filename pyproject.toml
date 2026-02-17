@@ -75,3 +75,7 @@ select = ["E", "F", "I", "N", "W", "UP"]
 [tool.mypy]
 python_version = "3.9"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["langfuse.*", "google.*", "anthropic.*"]
+ignore_missing_imports = true

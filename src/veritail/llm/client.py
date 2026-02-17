@@ -167,7 +167,7 @@ class GeminiClient(LLMClient):
 
     def __init__(self, model: str = "gemini-2.5-flash") -> None:
         try:
-            from google import genai  # type: ignore[import-not-found]
+            from google import genai
         except ImportError:
             raise ImportError(
                 "The google-genai package is required for Gemini models. "
@@ -181,7 +181,7 @@ class GeminiClient(LLMClient):
     def complete(
         self, system_prompt: str, user_prompt: str, *, max_tokens: int = 1024
     ) -> LLMResponse:
-        from google.genai import types  # type: ignore[import-not-found]
+        from google.genai import types
 
         response = self._client.models.generate_content(
             model=self._model,

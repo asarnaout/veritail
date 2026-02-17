@@ -5,7 +5,7 @@ from __future__ import annotations
 import warnings
 from typing import Any
 
-from langfuse import Langfuse  # type: ignore[import-not-found]
+from langfuse import Langfuse
 
 from veritail.backends import EvalBackend
 from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
@@ -38,7 +38,7 @@ class LangfuseBackend(EvalBackend):
         if secret_key:
             kwargs["secret_key"] = secret_key
 
-        self._client = Langfuse(**kwargs)
+        self._client: Any = Langfuse(**kwargs)
 
     def log_judgment(self, judgment: JudgmentRecord) -> None:
         """Store a judgment as a Langfuse trace with a generation span and score."""
