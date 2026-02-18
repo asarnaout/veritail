@@ -2,10 +2,11 @@
 
 Evaluate ecommerce search relevance with one command.
 
-veritail runs three evaluation layers together:
+veritail runs four evaluation layers together:
 - LLM relevance judgments (0-3)
 - Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
 - IR metrics (NDCG, MRR, MAP, Precision, attribute match)
+- Autocorrect evaluation (catches intent-altering or unnecessary query corrections)
 
 It includes 14 built-in ecommerce verticals (automotive, beauty, electronics, fashion, foodservice, furniture, groceries, home improvement, industrial, marketplace, medical, office supplies, pet supplies, and sporting goods) for domain-aware LLM judging, and supports custom vertical context and rubrics.
 Built for rapid search iteration: compare baseline vs candidate, inspect regressions, and decide from per-query evidence.
