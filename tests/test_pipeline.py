@@ -962,7 +962,7 @@ class TestRunBatchEvaluation:
         # First result succeeds, second/third fail
         client.retrieve_batch_results.return_value = [
             BatchResult(
-                custom_id="rel:0:0",
+                custom_id="rel-0-0",
                 response=LLMResponse(
                     content="SCORE: 3\nATTRIBUTES: match\nREASONING: Good",
                     model="test",
@@ -971,12 +971,12 @@ class TestRunBatchEvaluation:
                 ),
             ),
             BatchResult(
-                custom_id="rel:0:1",
+                custom_id="rel-0-1",
                 response=None,
                 error="Rate limit exceeded",
             ),
             BatchResult(
-                custom_id="rel:0:2",
+                custom_id="rel-0-2",
                 response=None,
                 error="Server error",
             ),

@@ -521,7 +521,7 @@ def run_batch_evaluation(
 
             # Build batch requests for each result
             for result_idx, result in enumerate(results):
-                custom_id = f"rel:{query_index}:{result_idx}"
+                custom_id = f"rel-{query_index}-{result_idx}"
                 product_failed_checks = failed_checks_by_product.get(
                     result.product_id, []
                 )
@@ -657,7 +657,7 @@ def run_batch_evaluation(
         corr_context: dict[str, tuple[str, str]] = {}
 
         for idx, (_, original, corrected) in enumerate(correction_entries):
-            custom_id = f"corr:{idx}"
+            custom_id = f"corr-{idx}"
             corr_req = correction_judge.prepare_request(custom_id, original, corrected)
             corr_requests.append(corr_req)
             corr_context[custom_id] = (original, corrected)
