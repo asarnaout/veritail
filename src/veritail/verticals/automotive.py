@@ -101,9 +101,9 @@ identifiers as the primary fitment constraint for these queries.
 
 Query: "2019 Honda Civic front brake pads"
 Result: "Ceramic front brake pad set, fits 2016–2021 Honda Civic"
-→ SCORE: 3 (correct vehicle range, correct position, correct component)
+→ Highly relevant (correct vehicle range, correct position, correct component)
 
 Query: "2019 Honda Civic front brake pads"
 Result: "Front brake pad set for 2019 Honda Accord"
-→ SCORE: 0 (wrong vehicle model — Accord is not Civic; YMM mismatch \
+→ Irrelevant (wrong vehicle model — Accord is not Civic; YMM mismatch \
 is a hard disqualifier regardless of part similarity)"""
