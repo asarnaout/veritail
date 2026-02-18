@@ -452,6 +452,16 @@ def generate_queries_cmd(
     default=False,
     help="Use provider batch API for LLM calls (50%% cheaper, slower).",
 )
+@click.option(
+    "--resume",
+    "use_resume",
+    is_flag=True,
+    default=False,
+    help=(
+        "Resume a previously interrupted run. Requires --config-name "
+        "to identify the previous run."
+    ),
+)
 def run(
     queries: str | None,
     adapters: tuple[str, ...],
@@ -470,6 +480,7 @@ def run(
     check_modules: tuple[str, ...],
     sample: int | None,
     use_batch: bool,
+    use_resume: bool,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
     if not queries:
@@ -519,6 +530,46 @@ def run(
 
     if sample is not None and sample < 1:
         raise click.UsageError("--sample must be >= 1.")
+
+    if use_resume:
+        if not config_names:
+            raise click.UsageError(
+                "--resume requires --config-name to identify the previous run."
+            )
+        # Verify experiment directory exists for each config
+        for cn in config_names:
+            exp_dir = Path(output_dir) / cn
+            if not exp_dir.exists():
+                raise click.UsageError(
+                    f"--resume: experiment directory '{exp_dir}' does not exist. "
+                    "Cannot resume a run that never started."
+                )
+            # Config mismatch detection
+            config_file = exp_dir / "config.json"
+            if config_file.exists():
+                with open(config_file, encoding="utf-8") as f:
+                    saved = json.load(f)
+                mismatches: list[str] = []
+                if saved.get("llm_model") != llm_model:
+                    mismatches.append(
+                        f"  llm_model: saved={saved.get('llm_model')!r}, "
+                        f"current={llm_model!r}"
+                    )
+                if saved.get("rubric") != rubric:
+                    mismatches.append(
+                        f"  rubric: saved={saved.get('rubric')!r}, current={rubric!r}"
+                    )
+                if saved.get("top_k") != top_k:
+                    mismatches.append(
+                        f"  top_k: saved={saved.get('top_k')!r}, current={top_k!r}"
+                    )
+                if mismatches:
+                    detail = "\n".join(mismatches)
+                    raise click.UsageError(
+                        f"--resume: config mismatch for '{cn}':\n{detail}\n"
+                        "Drop --resume to start a fresh run, or fix the "
+                        "arguments to match the previous run."
+                    )
 
     query_entries = load_queries(queries)
     total_queries = len(query_entries)
@@ -606,6 +657,8 @@ def run(
             context=context,
             vertical=vertical_context,
             custom_checks=custom_check_fns,
+            resume=use_resume,
+            output_dir=output_dir,
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,
@@ -707,6 +760,8 @@ def run(
             context=context,
             vertical=vertical_context,
             custom_checks=custom_check_fns,
+            resume=use_resume,
+            output_dir=output_dir,
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,

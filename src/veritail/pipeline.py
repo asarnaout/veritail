@@ -5,11 +5,20 @@ from __future__ import annotations
 import time
 from collections import defaultdict
 from collections.abc import Callable
+from dataclasses import asdict
 
 from rich.console import Console
 from rich.progress import Progress
 
 from veritail.backends import EvalBackend
+from veritail.checkpoint import (
+    BatchCheckpoint,
+    clear_checkpoint,
+    deserialize_request_context,
+    load_checkpoint,
+    save_checkpoint,
+    serialize_request_context,
+)
 from veritail.checks import run_all_checks
 from veritail.checks.comparison import (
     check_rank_correlation,
@@ -49,6 +58,8 @@ def run_evaluation(
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
+    resume: bool = False,
+    output_dir: str = "./eval-results",
 ) -> tuple[
     list[JudgmentRecord],
     list[CheckResult],
@@ -103,6 +114,7 @@ def run_evaluation(
                 "context": context,
                 "vertical": vertical,
             },
+            resume=resume,
         )
     except Exception as e:
         console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
@@ -112,6 +124,23 @@ def run_evaluation(
     # Key by query-row index instead of raw query text so duplicate query
     # strings are evaluated as separate rows in metric aggregation.
     judgments_by_query: dict[int | str, list[JudgmentRecord]] = defaultdict(list)
+
+    # Resume: reload existing judgments
+    completed_indices: set[int] = set()
+    if resume:
+        completed_indices = backend.get_completed_query_indices(config.name)
+        if completed_indices:
+            existing = backend.get_judgments(config.name)
+            for j in existing:
+                qi = j.metadata.get("query_index")
+                if qi is not None:
+                    all_judgments.append(j)
+                    judgments_by_query[int(qi)].append(j)
+            remaining = len(queries) - len(completed_indices)
+            console.print(
+                f"[bold]Resuming: {len(completed_indices)} queries already "
+                f"complete, {remaining} remaining[/bold]"
+            )
 
     # Track queries with corrections for later LLM evaluation
     correction_entries: list[tuple[int, str, str]] = []  # (index, original, corrected)
@@ -123,6 +152,11 @@ def run_evaluation(
         )
 
         for query_index, query_entry in enumerate(queries):
+            # Skip already-completed queries on resume
+            if query_index in completed_indices:
+                progress.advance(task)
+                continue
+
             # Step 1: Call adapter
             try:
                 raw_response = adapter(query_entry.query)
@@ -213,6 +247,8 @@ def run_evaluation(
                 # Annotate with corrected query
                 if corrected_query is not None:
                     judgment.metadata["corrected_query"] = corrected_query
+                # Always store query_index for resume support
+                judgment.metadata["query_index"] = query_index
 
                 try:
                     backend.log_judgment(judgment)
@@ -225,7 +261,7 @@ def run_evaluation(
 
             progress.advance(task)
 
-    # Step 3b: Correction LLM evaluations
+    # Step 3b: Correction LLM evaluations (always re-run from scratch)
     all_correction_judgments: list[CorrectionJudgment] = []
     if correction_entries:
         with Progress(console=console) as progress:
@@ -301,6 +337,8 @@ def run_dual_evaluation(
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
+    resume: bool = False,
+    output_dir: str = "./eval-results",
 ) -> tuple[
     list[JudgmentRecord],
     list[JudgmentRecord],
@@ -335,6 +373,8 @@ def run_dual_evaluation(
         context=context,
         vertical=vertical,
         custom_checks=custom_checks,
+        resume=resume,
+        output_dir=output_dir,
     )
 
     # Run evaluation for config B
@@ -348,6 +388,8 @@ def run_dual_evaluation(
         context=context,
         vertical=vertical,
         custom_checks=custom_checks,
+        resume=resume,
+        output_dir=output_dir,
     )
 
     # Run comparison checks
@@ -401,6 +443,8 @@ def run_batch_evaluation(
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
     poll_interval: int = 60,
+    resume: bool = False,
+    output_dir: str = "./eval-results",
 ) -> tuple[
     list[JudgmentRecord],
     list[CheckResult],
@@ -450,137 +494,183 @@ def run_batch_evaluation(
                 "vertical": vertical,
                 "batch_mode": True,
             },
+            resume=resume,
         )
     except Exception as e:
         console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
 
-    # Phase 1: Collect — call adapters and build batch requests
-    all_checks: list[CheckResult] = []
-    batch_requests: list[BatchRequest] = []
-    # Context for each request:
-    # (query, result, query_type, corrected_query, failed_checks, query_index)
-    request_context: dict[
-        str,
-        tuple[str, SearchResult, str | None, str | None, list[dict[str, str]], int],
-    ] = {}
-    correction_entries: list[tuple[int, str, str]] = []
+    # Check for existing checkpoint when resuming
+    saved_checkpoint: BatchCheckpoint | None = None
+    if resume:
+        saved_checkpoint = load_checkpoint(output_dir, config.name)
 
-    with Progress(console=console) as progress:
-        task = progress.add_task(
-            f"[cyan]Collecting requests for '{config.name}'...",
-            total=len(queries),
-        )
+    # ---- Resume path: skip Phase 1 & 2, jump to polling ----
+    if saved_checkpoint is not None:
+        batch_id = saved_checkpoint.batch_id
+        request_context = deserialize_request_context(saved_checkpoint.request_context)
+        all_checks_data = saved_checkpoint.checks
+        all_checks = [CheckResult(**c) for c in all_checks_data]
+        correction_entries = [
+            (int(e[0]), str(e[1]), str(e[2]))
+            for e in saved_checkpoint.correction_entries
+        ]
+        # Restore Gemini custom_id ordering if needed
+        if saved_checkpoint.gemini_custom_id_order:
+            llm_client.restore_batch_custom_ids(
+                batch_id, saved_checkpoint.gemini_custom_id_order
+            )
+        console.print(f"[bold]Resuming batch {batch_id} for '{config.name}'...[/bold]")
+    else:
+        # Phase 1: Collect — call adapters and build batch requests
+        all_checks = []
+        batch_requests: list[BatchRequest] = []
+        request_context = {}
+        correction_entries = []
 
-        for query_index, query_entry in enumerate(queries):
-            try:
-                raw_response = adapter(query_entry.query)
-                if isinstance(raw_response, SearchResponse):
-                    response = raw_response
-                else:
-                    response = SearchResponse(results=raw_response)
-                results = response.results[: config.top_k]
-                corrected_query = response.corrected_query
-                if corrected_query is not None and not corrected_query.strip():
-                    corrected_query = None
-            except Exception as e:
-                console.print(f"[red]Adapter error for '{query_entry.query}': {e}")
-                progress.advance(task)
-                continue
+        with Progress(console=console) as progress:
+            task = progress.add_task(
+                f"[cyan]Collecting requests for '{config.name}'...",
+                total=len(queries),
+            )
 
-            # Deterministic checks
-            checks = run_all_checks(query_entry, results, custom_checks=custom_checks)
-            all_checks.extend(checks)
-
-            # Correction checks
-            if corrected_query is not None:
-                all_checks.append(
-                    check_correction_vocabulary(
-                        query_entry.query, corrected_query, results
-                    )
-                )
-                all_checks.append(
-                    check_unnecessary_correction(
-                        query_entry.query, corrected_query, results
-                    )
-                )
-                correction_entries.append(
-                    (query_index, query_entry.query, corrected_query)
-                )
-
-            # Failed checks by product
-            failed_checks_by_product: dict[str, list[dict[str, str]]] = {}
-            for check in checks:
-                if not check.passed and check.product_id:
-                    pid = check.product_id
-                    failed_checks_by_product.setdefault(pid, []).append(
-                        {
-                            "check_name": check.check_name,
-                            "detail": check.detail,
-                        }
-                    )
-
-            # Build batch requests for each result
-            for result_idx, result in enumerate(results):
-                custom_id = f"rel-{query_index}-{result_idx}"
-                product_failed_checks = failed_checks_by_product.get(
-                    result.product_id, []
-                )
-
+            for query_index, query_entry in enumerate(queries):
                 try:
-                    batch_req = judge.prepare_request(
-                        custom_id,
-                        query_entry.query,
-                        result,
-                        corrected_query=corrected_query,
-                    )
-                    batch_requests.append(batch_req)
-                    request_context[custom_id] = (
-                        query_entry.query,
-                        result,
-                        query_entry.type,
-                        corrected_query,
-                        product_failed_checks,
-                        query_index,
-                    )
+                    raw_response = adapter(query_entry.query)
+                    if isinstance(raw_response, SearchResponse):
+                        response = raw_response
+                    else:
+                        response = SearchResponse(results=raw_response)
+                    results = response.results[: config.top_k]
+                    corrected_query = response.corrected_query
+                    if corrected_query is not None and not corrected_query.strip():
+                        corrected_query = None
                 except Exception as e:
-                    console.print(
-                        f"[red]Error preparing request for '{query_entry.query}' / "
-                        f"'{result.product_id}': {e}"
+                    console.print(f"[red]Adapter error for '{query_entry.query}': {e}")
+                    progress.advance(task)
+                    continue
+
+                # Deterministic checks
+                checks = run_all_checks(
+                    query_entry, results, custom_checks=custom_checks
+                )
+                all_checks.extend(checks)
+
+                # Correction checks
+                if corrected_query is not None:
+                    all_checks.append(
+                        check_correction_vocabulary(
+                            query_entry.query, corrected_query, results
+                        )
+                    )
+                    all_checks.append(
+                        check_unnecessary_correction(
+                            query_entry.query, corrected_query, results
+                        )
+                    )
+                    correction_entries.append(
+                        (query_index, query_entry.query, corrected_query)
                     )
 
-            progress.advance(task)
+                # Failed checks by product
+                failed_checks_by_product: dict[str, list[dict[str, str]]] = {}
+                for check in checks:
+                    if not check.passed and check.product_id:
+                        pid = check.product_id
+                        failed_checks_by_product.setdefault(pid, []).append(
+                            {
+                                "check_name": check.check_name,
+                                "detail": check.detail,
+                            }
+                        )
 
-    # Edge case: no requests
-    if not batch_requests:
-        metrics = compute_all_metrics({}, queries)
-        return [], all_checks, metrics, []
+                # Build batch requests for each result
+                for result_idx, result in enumerate(results):
+                    custom_id = f"rel-{query_index}-{result_idx}"
+                    product_failed_checks = failed_checks_by_product.get(
+                        result.product_id, []
+                    )
 
-    # Phase 2: Submit batch
-    console.print(f"[cyan]Submitting batch of {len(batch_requests)} requests...[/cyan]")
-    batch_id = llm_client.submit_batch(batch_requests)
-    console.print(f"[dim]Batch ID: {batch_id}[/dim]")
+                    try:
+                        batch_req = judge.prepare_request(
+                            custom_id,
+                            query_entry.query,
+                            result,
+                            corrected_query=corrected_query,
+                        )
+                        batch_requests.append(batch_req)
+                        request_context[custom_id] = (
+                            query_entry.query,
+                            result,
+                            query_entry.type,
+                            corrected_query,
+                            product_failed_checks,
+                            query_index,
+                        )
+                    except Exception as e:
+                        console.print(
+                            f"[red]Error preparing request for "
+                            f"'{query_entry.query}' / '{result.product_id}': {e}"
+                        )
+
+                progress.advance(task)
+
+        # Edge case: no requests
+        if not batch_requests:
+            metrics = compute_all_metrics({}, queries)
+            return [], all_checks, metrics, []
+
+        # Phase 2: Submit batch
+        console.print(
+            f"[cyan]Submitting batch of {len(batch_requests)} requests...[/cyan]"
+        )
+        batch_id = llm_client.submit_batch(batch_requests)
+        console.print(f"[dim]Batch ID: {batch_id}[/dim]")
+
+        # Save checkpoint after submission
+        gemini_order = getattr(llm_client, "_batch_custom_ids", {}).get(batch_id, [])
+        save_checkpoint(
+            output_dir,
+            config.name,
+            BatchCheckpoint(
+                batch_id=batch_id,
+                experiment_name=config.name,
+                phase="relevance",
+                request_context=serialize_request_context(request_context),
+                checks=[asdict(c) for c in all_checks],
+                correction_entries=[
+                    [idx, orig, corr] for idx, orig, corr in correction_entries
+                ],
+                gemini_custom_id_order=gemini_order,
+            ),
+        )
 
     # Phase 3: Poll for completion
     with Progress(console=console) as progress:
         poll_task = progress.add_task(
             "[cyan]Waiting for batch completion...",
-            total=len(batch_requests),
+            total=len(request_context),
         )
         while True:
             status, completed, total = llm_client.poll_batch(batch_id)
             progress.update(
-                poll_task, completed=completed, total=total or len(batch_requests)
+                poll_task, completed=completed, total=total or len(request_context)
             )
 
             if status == "completed":
                 break
             if status in ("failed", "expired"):
+                clear_checkpoint(output_dir, config.name)
                 detail = llm_client.batch_error_message(batch_id)
                 msg = f"Batch {batch_id} {status}."
                 if detail:
                     msg += f" Error: {detail}"
                 else:
                     msg += " Check your provider's dashboard for details."
+                if resume:
+                    msg += (
+                        " Checkpoint cleared — re-run without --resume "
+                        "to start a fresh batch."
+                    )
                 raise RuntimeError(msg)
 
             time.sleep(poll_interval)
@@ -642,6 +732,8 @@ def run_batch_evaluation(
         # Annotate with corrected query
         if corrected_query is not None:
             judgment.metadata["corrected_query"] = corrected_query
+        # Store query_index for resume support
+        judgment.metadata["query_index"] = query_index
 
         try:
             backend.log_judgment(judgment)
@@ -759,6 +851,9 @@ def run_batch_evaluation(
     # Phase 6: Compute metrics
     metrics = compute_all_metrics(judgments_by_query, queries)
 
+    # Clear checkpoint on success
+    clear_checkpoint(output_dir, config.name)
+
     return all_judgments, all_checks, metrics, all_correction_judgments
 
 
@@ -777,6 +872,8 @@ def run_dual_batch_evaluation(
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
     poll_interval: int = 60,
+    resume: bool = False,
+    output_dir: str = "./eval-results",
 ) -> tuple[
     list[JudgmentRecord],
     list[JudgmentRecord],
@@ -805,6 +902,8 @@ def run_dual_batch_evaluation(
         vertical=vertical,
         custom_checks=custom_checks,
         poll_interval=poll_interval,
+        resume=resume,
+        output_dir=output_dir,
     )
 
     judgments_b, checks_b, metrics_b, corrections_b = run_batch_evaluation(
@@ -818,6 +917,8 @@ def run_dual_batch_evaluation(
         vertical=vertical,
         custom_checks=custom_checks,
         poll_interval=poll_interval,
+        resume=resume,
+        output_dir=output_dir,
     )
 
     # Run comparison checks

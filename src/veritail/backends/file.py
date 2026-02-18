@@ -44,7 +44,9 @@ class FileBackend(EvalBackend):
         with open(judgments_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, default=str) + "\n")
 
-    def log_experiment(self, name: str, config: dict[str, Any]) -> None:
+    def log_experiment(
+        self, name: str, config: dict[str, Any], *, resume: bool = False
+    ) -> None:
         """Write experiment configuration to a JSON file."""
         exp_dir = self._experiment_dir(name)
         config_file = exp_dir / "config.json"
@@ -53,8 +55,32 @@ class FileBackend(EvalBackend):
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump({"name": name, **config}, f, indent=2, default=str)
 
-        # One experiment run should produce one deterministic judgments file.
-        judgments_file.write_text("", encoding="utf-8")
+        if not resume:
+            # One experiment run should produce one deterministic judgments file.
+            judgments_file.write_text("", encoding="utf-8")
+
+    def get_completed_query_indices(self, experiment: str) -> set[int]:
+        """Return query indices that already have judgments on disk."""
+        exp_dir = self._experiment_path(experiment)
+        judgments_file = exp_dir / "judgments.jsonl"
+
+        if not judgments_file.exists():
+            return set()
+
+        indices: set[int] = set()
+        with open(judgments_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    qi = data.get("metadata", {}).get("query_index")
+                    if qi is not None:
+                        indices.add(int(qi))
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    continue
+        return indices
 
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
         """Read all judgments from JSONL file."""

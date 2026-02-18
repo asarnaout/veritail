@@ -88,7 +88,9 @@ class LangfuseBackend(EvalBackend):
             comment=judgment.reasoning,
         )
 
-    def log_experiment(self, name: str, config: dict[str, Any]) -> None:
+    def log_experiment(
+        self, name: str, config: dict[str, Any], *, resume: bool = False
+    ) -> None:
         """Create a Langfuse session/dataset for the experiment."""
         self._client.trace(
             name=f"experiment-{name}",

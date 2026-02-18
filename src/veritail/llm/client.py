@@ -80,6 +80,10 @@ class LLMClient(ABC):
         """
         return None
 
+    def restore_batch_custom_ids(self, batch_id: str, custom_ids: list[str]) -> None:
+        """Restore custom_id ordering for a batch (needed by Gemini on resume)."""
+        pass
+
 
 class AnthropicClient(LLMClient):
     """LLM client using the Anthropic API (Claude models).
@@ -562,6 +566,10 @@ class GeminiClient(LLMClient):
                 parts.extend(job.error.details[:5])
             return "; ".join(parts) if parts else None
         return None
+
+    def restore_batch_custom_ids(self, batch_id: str, custom_ids: list[str]) -> None:
+        """Restore custom_id ordering so results can be mapped after resume."""
+        self._batch_custom_ids[batch_id] = custom_ids
 
 
 def create_llm_client(

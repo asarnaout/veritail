@@ -17,7 +17,9 @@ class EvalBackend(ABC):
         ...
 
     @abstractmethod
-    def log_experiment(self, name: str, config: dict[str, Any]) -> None:
+    def log_experiment(
+        self, name: str, config: dict[str, Any], *, resume: bool = False
+    ) -> None:
         """Register an experiment run with its configuration."""
         ...
 
@@ -29,6 +31,10 @@ class EvalBackend(ABC):
     def log_correction_judgment(self, judgment: CorrectionJudgment) -> None:
         """Optionally store a correction judgment. Default no-op."""
         pass
+
+    def get_completed_query_indices(self, experiment: str) -> set[int]:
+        """Return the set of query indices already judged for *experiment*."""
+        return set()
 
 
 def create_backend(backend_type: str, **kwargs: Any) -> EvalBackend:
