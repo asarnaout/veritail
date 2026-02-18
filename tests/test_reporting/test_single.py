@@ -428,6 +428,51 @@ class TestGenerateSingleReport:
         assert "min=0.8000" in plain
         assert "max=0.9000" in plain
 
+    def test_html_judgments_sorted_worst_first(self):
+        judgments = [
+            JudgmentRecord(
+                query="great query",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Perfect Match",
+                    description="Desc",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=3,
+                reasoning="Excellent",
+                attribute_verdict="match",
+                model="test",
+                experiment="exp",
+            ),
+            JudgmentRecord(
+                query="bad query",
+                product=SearchResult(
+                    product_id="SKU-2",
+                    title="Wrong Product",
+                    description="Desc",
+                    category="Electronics",
+                    price=99.0,
+                    position=0,
+                ),
+                score=0,
+                reasoning="Irrelevant",
+                attribute_verdict="mismatch",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        bad_pos = report.index("bad query")
+        great_pos = report.index("great query")
+        assert bad_pos < great_pos, "Worst queries should appear before best"
+
     def test_html_escapes_untrusted_judgment_content(self):
         judgment = JudgmentRecord(
             query="<script>alert('query')</script>",

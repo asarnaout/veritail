@@ -389,15 +389,18 @@ def _generate_html(
             grouped[j.query].append(j)
         for q in grouped:
             grouped[q].sort(key=lambda j: j.product.position)
-        judgments_for_template = [
+        unsorted = [
             {
                 "query": q,
                 "avg_score": sum(j.score for j in js) / len(js),
                 "judgments": js,
                 "correction": correction_lookup.get(q),
             }
-            for q, js in sorted(grouped.items())
+            for q, js in grouped.items()
         ]
+        judgments_for_template = sorted(
+            unsorted, key=lambda x: float(x["avg_score"])  # type: ignore[arg-type]
+        )
 
     # Score distribution
     score_counts: dict[int, int] | None = None
