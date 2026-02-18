@@ -765,6 +765,8 @@ def run(
             config_names[1],
             format="html",
             run_metadata=run_metadata,
+            correction_judgments_a=corrections_a or None,
+            correction_judgments_b=corrections_b or None,
         )
         cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
         html_path = Path(output_dir) / cmp_dir / "report.html"

@@ -575,10 +575,13 @@ def run_batch_evaluation(
             if status == "completed":
                 break
             if status in ("failed", "expired"):
-                raise RuntimeError(
-                    f"Batch {batch_id} {status}. "
-                    "Check your provider's dashboard for details."
-                )
+                detail = llm_client.batch_error_message(batch_id)
+                msg = f"Batch {batch_id} {status}."
+                if detail:
+                    msg += f" Error: {detail}"
+                else:
+                    msg += " Check your provider's dashboard for details."
+                raise RuntimeError(msg)
 
             time.sleep(poll_interval)
 
@@ -607,7 +610,7 @@ def run_batch_evaluation(
                 judgment = judge.parse_batch_result(
                     batch_result.response, query, result, query_type=query_type
                 )
-            except (ValueError, Exception) as e:
+            except Exception as e:
                 judgment = JudgmentRecord(
                     query=query,
                     product=result,
@@ -681,10 +684,13 @@ def run_batch_evaluation(
                 if status == "completed":
                     break
                 if status in ("failed", "expired"):
-                    raise RuntimeError(
-                        f"Correction batch {corr_batch_id} {status}. "
-                        "Check your provider's dashboard for details."
-                    )
+                    detail = llm_client.batch_error_message(corr_batch_id)
+                    msg = f"Correction batch {corr_batch_id} {status}."
+                    if detail:
+                        msg += f" Error: {detail}"
+                    else:
+                        msg += " Check your provider's dashboard for details."
+                    raise RuntimeError(msg)
 
                 time.sleep(poll_interval)
 

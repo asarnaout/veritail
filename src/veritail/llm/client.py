@@ -73,6 +73,13 @@ class LLMClient(ABC):
         """Retrieve results from a completed batch."""
         raise NotImplementedError("This provider does not support batch operations.")
 
+    def batch_error_message(self, batch_id: str) -> str | None:
+        """Return a human-readable error message for a failed batch.
+
+        Returns ``None`` when no detail is available.
+        """
+        return None
+
 
 class AnthropicClient(LLMClient):
     """LLM client using the Anthropic API (Claude models).
@@ -375,6 +382,14 @@ class OpenAIClient(LLMClient):
                 )
 
         return results
+
+    def batch_error_message(self, batch_id: str) -> str | None:
+        batch = self._client.batches.retrieve(batch_id)
+        errors = getattr(batch, "errors", None)
+        if errors and getattr(errors, "data", None):
+            messages = [getattr(e, "message", str(e)) for e in errors.data[:5]]
+            return "; ".join(m for m in messages if m)
+        return None
 
 
 class GeminiClient(LLMClient):
