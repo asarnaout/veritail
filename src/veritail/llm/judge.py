@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-from veritail.llm.client import LLMClient
+from veritail.llm.client import BatchRequest, LLMClient, LLMResponse
 from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
 
 CORRECTION_SYSTEM_PROMPT = """\
@@ -89,6 +89,55 @@ class RelevanceJudge:
             },
         )
 
+    def prepare_request(
+        self,
+        custom_id: str,
+        query: str,
+        result: SearchResult,
+        *,
+        corrected_query: str | None = None,
+    ) -> BatchRequest:
+        """Build a BatchRequest for a single query-result pair."""
+        if corrected_query is not None:
+            try:
+                user_prompt = self._format_user_prompt(
+                    query, result, corrected_query=corrected_query
+                )
+            except TypeError:
+                user_prompt = self._format_user_prompt(query, result)
+        else:
+            user_prompt = self._format_user_prompt(query, result)
+        return BatchRequest(
+            custom_id=custom_id,
+            system_prompt=self._system_prompt,
+            user_prompt=user_prompt,
+        )
+
+    def parse_batch_result(
+        self,
+        response: LLMResponse,
+        query: str,
+        result: SearchResult,
+        *,
+        query_type: str | None = None,
+    ) -> JudgmentRecord:
+        """Parse a batch response into a JudgmentRecord."""
+        score, attribute_verdict, reasoning = self._parse_response(response.content)
+        return JudgmentRecord(
+            query=query,
+            product=result,
+            score=score,
+            reasoning=reasoning,
+            attribute_verdict=attribute_verdict,
+            model=response.model,
+            experiment=self._experiment,
+            query_type=query_type,
+            metadata={
+                "input_tokens": response.input_tokens,
+                "output_tokens": response.output_tokens,
+            },
+        )
+
     @staticmethod
     def _parse_response(response_text: str) -> tuple[int, str, str]:
         """Parse the LLM response to extract score, attribute verdict, and reasoning.
@@ -153,6 +202,35 @@ class CorrectionJudge:
 
         verdict, reasoning = self._parse_response(response.content)
 
+        return CorrectionJudgment(
+            original_query=original_query,
+            corrected_query=corrected_query,
+            verdict=verdict,
+            reasoning=reasoning,
+            model=response.model,
+            experiment=self._experiment,
+            metadata={
+                "input_tokens": response.input_tokens,
+                "output_tokens": response.output_tokens,
+            },
+        )
+
+    def prepare_request(
+        self, custom_id: str, original_query: str, corrected_query: str
+    ) -> BatchRequest:
+        """Build a BatchRequest for a correction judgment."""
+        user_prompt = self._format_user_prompt(original_query, corrected_query)
+        return BatchRequest(
+            custom_id=custom_id,
+            system_prompt=self._system_prompt,
+            user_prompt=user_prompt,
+        )
+
+    def parse_batch_result(
+        self, response: LLMResponse, original_query: str, corrected_query: str
+    ) -> CorrectionJudgment:
+        """Parse a batch response into a CorrectionJudgment."""
+        verdict, reasoning = self._parse_response(response.content)
         return CorrectionJudgment(
             original_query=original_query,
             corrected_query=corrected_query,

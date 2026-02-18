@@ -8,8 +8,8 @@ import pytest
 
 from veritail.backends import EvalBackend
 from veritail.backends.file import FileBackend
-from veritail.llm.client import LLMClient, LLMResponse
-from veritail.pipeline import run_dual_evaluation, run_evaluation
+from veritail.llm.client import BatchRequest, BatchResult, LLMClient, LLMResponse
+from veritail.pipeline import run_batch_evaluation, run_dual_evaluation, run_evaluation
 from veritail.types import (
     CheckResult,
     ExperimentConfig,
@@ -821,3 +821,376 @@ class TestRunEvaluation:
         verdicts = [c.verdict for c in corrections]
         assert "appropriate" in verdicts
         assert "error" in verdicts
+
+
+def _make_mock_batch_llm_client(responses: list[str]) -> LLMClient:
+    """Create a mock LLM client with batch support.
+
+    The client records submitted BatchRequests and returns pre-built
+    BatchResults based on the provided response strings.
+    """
+    client = Mock(spec=LLMClient)
+    client.supports_batch.return_value = True
+
+    submitted: list[list[BatchRequest]] = []
+
+    def submit_batch(requests):
+        submitted.append(list(requests))
+        return f"batch-{len(submitted)}"
+
+    client.submit_batch.side_effect = submit_batch
+    client.poll_batch.return_value = ("completed", 0, 0)
+
+    call_count = [0]
+
+    def retrieve_batch_results(batch_id):
+        results = []
+        batch_idx = int(batch_id.split("-")[1]) - 1
+        reqs = submitted[batch_idx]
+        for req in reqs:
+            idx = call_count[0]
+            content = responses[idx] if idx < len(responses) else "SCORE: 0"
+            call_count[0] += 1
+            results.append(
+                BatchResult(
+                    custom_id=req.custom_id,
+                    response=LLMResponse(
+                        content=content,
+                        model="test",
+                        input_tokens=100,
+                        output_tokens=50,
+                    ),
+                )
+            )
+        return results
+
+    client.retrieve_batch_results.side_effect = retrieve_batch_results
+    return client
+
+
+class TestRunBatchEvaluation:
+    def test_batch_basic_pipeline(self, tmp_path):
+        queries = [QueryEntry(query="running shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        responses = [
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Excellent match",
+            "SCORE: 2\nATTRIBUTES: partial\nREASONING: Good match",
+            "SCORE: 1\nATTRIBUTES: mismatch\nREASONING: Marginal match",
+        ]
+        llm_client = _make_mock_batch_llm_client(responses)
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}\nProduct: {r.title}")
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        assert len(judgments) == 3
+        assert judgments[0].score == 3
+        assert judgments[1].score == 2
+        assert judgments[2].score == 1
+
+        assert len(checks) > 0
+
+        metric_names = [m.metric_name for m in metrics]
+        assert "ndcg@10" in metric_names
+        assert "mrr" in metric_names
+
+        assert len(corrections) == 0
+        llm_client.submit_batch.assert_called_once()
+
+    def test_batch_zero_requests(self, tmp_path):
+        """All adapters fail → empty judgments, zero-filled metrics."""
+        queries = [QueryEntry(query="error query")]
+
+        def failing_adapter(query: str):
+            raise RuntimeError("API down")
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test",
+            rubric="default",
+        )
+        llm_client = _make_mock_batch_llm_client([])
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system", lambda q, r: q)
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            failing_adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        assert len(judgments) == 0
+        llm_client.submit_batch.assert_not_called()
+
+    def test_batch_partial_failures(self, tmp_path):
+        """Some results error → score=0 judgments."""
+        queries = [QueryEntry(query="running shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+        client.submit_batch.return_value = "batch-1"
+        client.poll_batch.return_value = ("completed", 3, 3)
+
+        # First result succeeds, second/third fail
+        client.retrieve_batch_results.return_value = [
+            BatchResult(
+                custom_id="rel:0:0",
+                response=LLMResponse(
+                    content="SCORE: 3\nATTRIBUTES: match\nREASONING: Good",
+                    model="test",
+                    input_tokens=100,
+                    output_tokens=50,
+                ),
+            ),
+            BatchResult(
+                custom_id="rel:0:1",
+                response=None,
+                error="Rate limit exceeded",
+            ),
+            BatchResult(
+                custom_id="rel:0:2",
+                response=None,
+                error="Server error",
+            ),
+        ]
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        assert len(judgments) == 3
+        assert judgments[0].score == 3
+        assert judgments[1].score == 0
+        assert "Rate limit" in judgments[1].reasoning
+        assert judgments[2].score == 0
+
+    def test_batch_with_corrections(self, tmp_path):
+        """Verify two separate batches submitted when corrections exist."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        responses = [
+            # Relevance judgment
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+            # Correction judgment
+            "VERDICT: appropriate\nREASONING: Spelling fix.",
+        ]
+        llm_client = _make_mock_batch_llm_client(responses)
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        assert len(judgments) == 1
+        assert judgments[0].score == 3
+        assert len(corrections) == 1
+        assert corrections[0].verdict == "appropriate"
+        # Two batches: one for relevance, one for corrections
+        assert llm_client.submit_batch.call_count == 2
+
+    def test_batch_poll_failure(self, tmp_path):
+        """'failed' status → RuntimeError."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+        client.submit_batch.return_value = "batch-1"
+        client.poll_batch.return_value = ("failed", 0, 3)
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        with pytest.raises(RuntimeError, match="batch-1 failed"):
+            run_batch_evaluation(
+                queries,
+                adapter,
+                config,
+                client,
+                rubric,
+                backend,
+                poll_interval=0,
+            )
+
+    def test_batch_parse_errors(self, tmp_path):
+        """Unparseable LLM output → graceful score=0 fallback."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+
+        def adapter(query: str) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=50.0,
+                    position=0,
+                )
+            ]
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+        # Response that can't be parsed (no SCORE)
+        responses = ["This is a bad response with no score."]
+        llm_client = _make_mock_batch_llm_client(responses)
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        assert len(judgments) == 1
+        assert judgments[0].score == 0
+        assert "Error" in judgments[0].reasoning
+
+    def test_batch_results_match_non_batch(self, tmp_path):
+        """Same LLM content through both paths → identical scores."""
+        queries = [QueryEntry(query="running shoes", type="broad")]
+
+        def adapter(query: str) -> list[SearchResult]:
+            return [
+                SearchResult(
+                    product_id="SKU-1",
+                    title="Running Shoes",
+                    description="Great shoes",
+                    category="Shoes",
+                    price=100.0,
+                    position=0,
+                )
+            ]
+
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+        response_text = "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect"
+
+        # Non-batch path
+        config_sync = ExperimentConfig(
+            name="test-sync",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+        sync_client = Mock(spec=LLMClient)
+        sync_client.complete.return_value = LLMResponse(
+            content=response_text,
+            model="test",
+            input_tokens=100,
+            output_tokens=50,
+        )
+        backend_sync = FileBackend(output_dir=str(tmp_path / "sync"))
+        j_sync, _, m_sync, _ = run_evaluation(
+            queries, adapter, config_sync, sync_client, rubric, backend_sync
+        )
+
+        # Batch path
+        config_batch = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+        batch_client = _make_mock_batch_llm_client([response_text])
+        backend_batch = FileBackend(output_dir=str(tmp_path / "batch"))
+        j_batch, _, m_batch, _ = run_batch_evaluation(
+            queries,
+            adapter,
+            config_batch,
+            batch_client,
+            rubric,
+            backend_batch,
+            poll_interval=0,
+        )
+
+        assert len(j_sync) == len(j_batch) == 1
+        assert j_sync[0].score == j_batch[0].score
+        assert j_sync[0].attribute_verdict == j_batch[0].attribute_verdict
+
+        ndcg_sync = next(m for m in m_sync if m.metric_name == "ndcg@10")
+        ndcg_batch = next(m for m in m_batch if m.metric_name == "ndcg@10")
+        assert ndcg_sync.value == pytest.approx(ndcg_batch.value)

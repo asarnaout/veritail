@@ -16,7 +16,12 @@ from veritail.adapter import load_adapter
 from veritail.backends import create_backend
 from veritail.checks.custom import CustomCheckFn, load_checks
 from veritail.llm.client import create_llm_client
-from veritail.pipeline import run_dual_evaluation, run_evaluation
+from veritail.pipeline import (
+    run_batch_evaluation,
+    run_dual_batch_evaluation,
+    run_dual_evaluation,
+    run_evaluation,
+)
 from veritail.queries import load_queries
 from veritail.reporting.comparison import generate_comparison_report
 from veritail.reporting.single import generate_single_report
@@ -440,6 +445,13 @@ def generate_queries_cmd(
     type=int,
     help="Randomly sample N queries from the query set for a faster evaluation.",
 )
+@click.option(
+    "--batch",
+    "use_batch",
+    is_flag=True,
+    default=False,
+    help="Use provider batch API for LLM calls (50%% cheaper, slower).",
+)
 def run(
     queries: str | None,
     adapters: tuple[str, ...],
@@ -457,6 +469,7 @@ def run(
     vertical: str | None,
     check_modules: tuple[str, ...],
     sample: int | None,
+    use_batch: bool,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
     if not queries:
@@ -550,6 +563,18 @@ def run(
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
 
+    if use_batch:
+        if llm_base_url is not None:
+            raise click.UsageError(
+                "--batch cannot be used with --llm-base-url. "
+                "Batch APIs are only available for cloud providers "
+                "(OpenAI, Anthropic, Gemini)."
+            )
+        if not llm_client.supports_batch():
+            raise click.UsageError(
+                f"The model '{llm_model}' does not support batch operations."
+            )
+
     backend_kwargs: dict[str, str] = {}
     if backend_type == "file":
         backend_kwargs["output_dir"] = output_dir
@@ -570,7 +595,8 @@ def run(
         )
         adapter_fn = load_adapter(adapters[0])
 
-        judgments, checks, metrics, correction_judgments = run_evaluation(
+        pipeline_fn = run_batch_evaluation if use_batch else run_evaluation
+        judgments, checks, metrics, correction_judgments = pipeline_fn(
             query_entries,
             adapter_fn,
             config,
@@ -658,6 +684,7 @@ def run(
         adapter_a = load_adapter(adapters[0])
         adapter_b = load_adapter(adapters[1])
 
+        dual_fn = run_dual_batch_evaluation if use_batch else run_dual_evaluation
         (
             judgments_a,
             judgments_b,
@@ -668,7 +695,7 @@ def run(
             comparison_checks,
             corrections_a,
             corrections_b,
-        ) = run_dual_evaluation(
+        ) = dual_fn(
             query_entries,
             adapter_a,
             config_a,

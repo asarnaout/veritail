@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from veritail.llm.client import LLMClient, LLMResponse
-from veritail.llm.judge import RelevanceJudge
+from veritail.llm.client import BatchRequest, LLMClient, LLMResponse
+from veritail.llm.judge import CORRECTION_SYSTEM_PROMPT, CorrectionJudge, RelevanceJudge
 from veritail.types import SearchResult
 
 
@@ -179,3 +179,106 @@ class TestRelevanceJudge:
         judgment = judge.judge("shoes", _make_result())
         assert judgment.attribute_verdict == "n/a"
         assert judgment.reasoning == "Decent match."
+
+
+class TestRelevanceJudgeBatch:
+    def test_prepare_request_basic(self):
+        client = _make_mock_client("unused")
+        judge = RelevanceJudge(client, "system prompt", _format_user_prompt, "exp-1")
+
+        req = judge.prepare_request("req-0", "running shoes", _make_result())
+
+        assert isinstance(req, BatchRequest)
+        assert req.custom_id == "req-0"
+        assert req.system_prompt == "system prompt"
+        assert "running shoes" in req.user_prompt
+        assert "Nike Running Shoes" in req.user_prompt
+
+    def test_prepare_request_with_corrected_query(self):
+        """When format_user_prompt accepts corrected_query, it is passed through."""
+
+        def fmt(query, result, *, corrected_query=None):
+            if corrected_query:
+                return f"Query: {query} (corrected: {corrected_query})"
+            return f"Query: {query}"
+
+        client = _make_mock_client("unused")
+        judge = RelevanceJudge(client, "system", fmt, "exp-1")
+
+        req = judge.prepare_request(
+            "req-0",
+            "runnign shoes",
+            _make_result(),
+            corrected_query="running shoes",
+        )
+        assert "corrected: running shoes" in req.user_prompt
+
+    def test_parse_batch_result_success(self):
+        client = _make_mock_client("unused")
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        response = LLMResponse(
+            content="SCORE: 3\nATTRIBUTES: match\nREASONING: Great match.",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+        judgment = judge.parse_batch_result(
+            response, "running shoes", _make_result(), query_type="broad"
+        )
+
+        assert judgment.score == 3
+        assert judgment.attribute_verdict == "match"
+        assert judgment.reasoning == "Great match."
+        assert judgment.query == "running shoes"
+        assert judgment.model == "test-model"
+        assert judgment.experiment == "exp-1"
+        assert judgment.query_type == "broad"
+        assert judgment.metadata["input_tokens"] == 100
+
+    def test_parse_batch_result_bad_score_raises(self):
+        client = _make_mock_client("unused")
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        response = LLMResponse(
+            content="SCORE: 5\nREASONING: Out of range",
+            model="test-model",
+            input_tokens=10,
+            output_tokens=10,
+        )
+
+        with pytest.raises(ValueError, match="Score must be 0, 1, 2, or 3"):
+            judge.parse_batch_result(response, "shoes", _make_result())
+
+
+class TestCorrectionJudgeBatch:
+    def test_correction_prepare_request(self):
+        client = _make_mock_client("unused")
+        judge = CorrectionJudge(client, CORRECTION_SYSTEM_PROMPT, "exp-1")
+
+        req = judge.prepare_request("corr-0", "runnign shoes", "running shoes")
+
+        assert isinstance(req, BatchRequest)
+        assert req.custom_id == "corr-0"
+        assert req.system_prompt == CORRECTION_SYSTEM_PROMPT
+        assert "runnign shoes" in req.user_prompt
+        assert "running shoes" in req.user_prompt
+
+    def test_correction_parse_batch_result(self):
+        client = _make_mock_client("unused")
+        judge = CorrectionJudge(client, CORRECTION_SYSTEM_PROMPT, "exp-1")
+
+        response = LLMResponse(
+            content="VERDICT: appropriate\nREASONING: Spelling fix.",
+            model="test-model",
+            input_tokens=80,
+            output_tokens=30,
+        )
+        cj = judge.parse_batch_result(response, "runnign shoes", "running shoes")
+
+        assert cj.verdict == "appropriate"
+        assert cj.reasoning == "Spelling fix."
+        assert cj.original_query == "runnign shoes"
+        assert cj.corrected_query == "running shoes"
+        assert cj.model == "test-model"
+        assert cj.metadata["input_tokens"] == 80

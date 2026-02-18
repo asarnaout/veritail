@@ -5,6 +5,7 @@ from __future__ import annotations
 from click.testing import CliRunner
 
 from veritail.cli import main
+from veritail.types import MetricResult
 
 
 class TestCLI:
@@ -860,3 +861,223 @@ class TestCLI:
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
         assert "0.1.0" in result.output
+
+    def test_run_batch_flag_in_help(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--help"])
+        assert result.exit_code == 0
+        assert "--batch" in result.output
+
+    def test_run_batch_rejects_base_url(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--llm-base-url",
+                    "http://localhost:11434/v1",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert "--batch cannot be used with --llm-base-url" in result.output
+
+    def test_run_batch_invokes_batch_pipeline(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        mock_metrics = [
+            MetricResult(metric_name="ndcg@10", value=0.8),
+            MetricResult(metric_name="mrr", value=0.7),
+        ]
+
+        with (
+            patch("veritail.cli.create_llm_client", return_value=mock_client),
+            patch(
+                "veritail.cli.run_batch_evaluation",
+                return_value=([], [], mock_metrics, []),
+            ) as mock_batch,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_batch.assert_called_once()
+
+    def test_run_without_batch_invokes_normal_pipeline(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "test-model",
+                ],
+            )
+
+        assert result.exit_code == 0
+        # Should have called complete() (sync path), not submit_batch()
+        mock_client.complete.assert_called()
+
+    def test_run_batch_dual_config(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_a = tmp_path / "adapter_a.py"
+        adapter_a.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+        adapter_b = tmp_path / "adapter_b.py"
+        adapter_b.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-2', title='Boot',\n"
+            "        description='A boot',\n"
+            "        category='Shoes', price=60.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        mock_metrics = [
+            MetricResult(metric_name="ndcg@10", value=0.8),
+            MetricResult(metric_name="mrr", value=0.7),
+        ]
+        dual_return = ([], [], [], [], mock_metrics, mock_metrics, [], [], [])
+
+        with (
+            patch("veritail.cli.create_llm_client", return_value=mock_client),
+            patch(
+                "veritail.cli.run_dual_batch_evaluation",
+                return_value=dual_return,
+            ) as mock_dual_batch,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_a),
+                    "--adapter",
+                    str(adapter_b),
+                    "--config-name",
+                    "a",
+                    "--config-name",
+                    "b",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_dual_batch.assert_called_once()

@@ -2,6 +2,8 @@
 
 from veritail.llm.client import (
     AnthropicClient,
+    BatchRequest,
+    BatchResult,
     GeminiClient,
     LLMClient,
     LLMResponse,
@@ -13,6 +15,8 @@ from veritail.llm.judge import RelevanceJudge
 __all__ = [
     "LLMClient",
     "LLMResponse",
+    "BatchRequest",
+    "BatchResult",
     "AnthropicClient",
     "GeminiClient",
     "OpenAIClient",

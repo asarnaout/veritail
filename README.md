@@ -145,6 +145,19 @@ veritail run \
 
 The comparison report shows metric deltas, overlap, rank correlation, and position shifts.
 
+### Batch Mode (50% cost reduction)
+
+Use `--batch` to send all LLM judgment calls through the provider's batch API. This reduces cost by 50% but takes longer (typically minutes for small batches).
+
+```bash
+veritail run --queries queries.csv --adapter adapter.py \
+    --llm-model gpt-4o --batch
+```
+
+Supported providers: OpenAI, Anthropic. Google Gemini batch support is coming soon.
+
+Not supported with local models (`--llm-base-url`).
+
 ## Vertical Guidance
 
 `--vertical` injects domain-specific scoring guidance into the judge prompt. Each vertical teaches the LLM judge what matters most in a particular ecommerce domain — the hard constraints, industry jargon, certification requirements, and category-specific nuances that generic relevance scoring would miss.
@@ -291,6 +304,7 @@ Run a single or dual-configuration evaluation.
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
 | `--sample` | *(none)* | Randomly sample N queries for a faster evaluation (deterministic seed) |
+| `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Supported for OpenAI and Anthropic. Not compatible with `--llm-base-url` |
 
 If `--config-name` is provided, pass one name per adapter.
 

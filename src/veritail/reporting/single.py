@@ -399,7 +399,8 @@ def _generate_html(
             for q, js in grouped.items()
         ]
         judgments_for_template = sorted(
-            unsorted, key=lambda x: float(x["avg_score"])  # type: ignore[arg-type]
+            unsorted,
+            key=lambda x: float(x["avg_score"]),  # type: ignore[arg-type]
         )
 
     # Score distribution
