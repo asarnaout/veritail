@@ -289,7 +289,169 @@ class TestAnthropicBatchClient:
 
 
 class TestGeminiBatchClient:
-    def test_supports_batch_false(self):
+    def _make_client(self) -> GeminiClient:
         pytest.importorskip("google.genai")
-        client = GeminiClient(model="gemini-2.5-flash")
-        assert client.supports_batch() is False
+        with patch("google.genai.Client"):
+            client = GeminiClient(model="gemini-2.5-flash")
+        client._client = MagicMock()
+        return client
+
+    def test_supports_batch_true(self):
+        client = self._make_client()
+        assert client.supports_batch() is True
+
+    def test_submit_batch(self):
+        client = self._make_client()
+
+        job = MagicMock()
+        job.name = "batches/123"
+        client._client.batches.create.return_value = job
+
+        batch_id = client.submit_batch(_make_batch_requests())
+
+        assert batch_id == "batches/123"
+        client._client.batches.create.assert_called_once()
+        call_kwargs = client._client.batches.create.call_args[1]
+        assert call_kwargs["model"] == "gemini-2.5-flash"
+        src = call_kwargs["src"]
+        assert len(src) == 2
+        assert "batches/123" in client._batch_custom_ids
+        assert client._batch_custom_ids["batches/123"] == ["req-0", "req-1"]
+
+    def test_poll_batch_running(self):
+        client = self._make_client()
+        job = MagicMock()
+        job.state.name = "JOB_STATE_RUNNING"
+        job.completion_stats.successful_count = 3
+        job.completion_stats.failed_count = 0
+        job.completion_stats.incomplete_count = 7
+        client._client.batches.get.return_value = job
+
+        status, completed, total = client.poll_batch("batches/123")
+        assert status == "in_progress"
+        assert completed == 3
+        assert total == 10
+
+    def test_poll_batch_succeeded(self):
+        client = self._make_client()
+        job = MagicMock()
+        job.state.name = "JOB_STATE_SUCCEEDED"
+        job.completion_stats.successful_count = 10
+        job.completion_stats.failed_count = 0
+        job.completion_stats.incomplete_count = 0
+        client._client.batches.get.return_value = job
+
+        status, completed, total = client.poll_batch("batches/123")
+        assert status == "completed"
+        assert completed == 10
+        assert total == 10
+
+    def test_poll_batch_failed(self):
+        client = self._make_client()
+        job = MagicMock()
+        job.state.name = "JOB_STATE_FAILED"
+        job.completion_stats = None
+        client._client.batches.get.return_value = job
+
+        status, completed, total = client.poll_batch("batches/123")
+        assert status == "failed"
+        assert completed == 0
+        assert total == 0
+
+    def test_poll_batch_expired(self):
+        client = self._make_client()
+        job = MagicMock()
+        job.state.name = "JOB_STATE_EXPIRED"
+        job.completion_stats = None
+        client._client.batches.get.return_value = job
+
+        status, completed, total = client.poll_batch("batches/123")
+        assert status == "expired"
+
+    def test_retrieve_results_success(self):
+        client = self._make_client()
+        client._batch_custom_ids["batches/123"] = ["req-0", "req-1"]
+
+        resp1 = MagicMock()
+        resp1.response.text = "SCORE: 3\nREASONING: Good"
+        resp1.response.usage_metadata.prompt_token_count = 100
+        resp1.response.usage_metadata.candidates_token_count = 50
+        resp1.error = None
+
+        resp2 = MagicMock()
+        resp2.response.text = "SCORE: 2\nREASONING: OK"
+        resp2.response.usage_metadata.prompt_token_count = 90
+        resp2.response.usage_metadata.candidates_token_count = 40
+        resp2.error = None
+
+        job = MagicMock()
+        job.dest.inlined_responses = [resp1, resp2]
+        client._client.batches.get.return_value = job
+
+        results = client.retrieve_batch_results("batches/123")
+        assert len(results) == 2
+        assert results[0].custom_id == "req-0"
+        assert results[0].response is not None
+        assert results[0].response.content == "SCORE: 3\nREASONING: Good"
+        assert results[0].response.input_tokens == 100
+        assert results[0].response.output_tokens == 50
+        assert results[0].error is None
+        assert results[1].custom_id == "req-1"
+        assert results[1].response is not None
+        assert results[1].response.content == "SCORE: 2\nREASONING: OK"
+        # Verify custom_ids were cleaned up
+        assert "batches/123" not in client._batch_custom_ids
+
+    def test_retrieve_results_with_errors(self):
+        client = self._make_client()
+        client._batch_custom_ids["batches/123"] = ["req-0", "req-1"]
+
+        resp1 = MagicMock()
+        resp1.response.text = "SCORE: 3"
+        resp1.response.usage_metadata.prompt_token_count = 100
+        resp1.response.usage_metadata.candidates_token_count = 50
+        resp1.error = None
+
+        resp2 = MagicMock()
+        resp2.response = None
+        resp2.error.message = "Safety filter triggered"
+
+        job = MagicMock()
+        job.dest.inlined_responses = [resp1, resp2]
+        client._client.batches.get.return_value = job
+
+        results = client.retrieve_batch_results("batches/123")
+        assert len(results) == 2
+        assert results[0].response is not None
+        assert results[1].response is None
+        assert results[1].error == "Safety filter triggered"
+
+    def test_retrieve_results_no_dest(self):
+        client = self._make_client()
+        job = MagicMock()
+        job.dest = None
+        client._client.batches.get.return_value = job
+
+        results = client.retrieve_batch_results("batches/123")
+        assert results == []
+
+    def test_batch_error_message(self):
+        client = self._make_client()
+        job = MagicMock()
+        job.error.message = "Rate limit exceeded"
+        job.error.details = ["Too many requests"]
+        client._client.batches.get.return_value = job
+
+        msg = client.batch_error_message("batches/123")
+        assert msg is not None
+        assert "Rate limit exceeded" in msg
+        assert "Too many requests" in msg
+
+    def test_batch_error_message_none(self):
+        client = self._make_client()
+        job = MagicMock()
+        job.error = None
+        client._client.batches.get.return_value = job
+
+        msg = client.batch_error_message("batches/123")
+        assert msg is None

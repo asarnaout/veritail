@@ -415,6 +415,7 @@ class GeminiClient(LLMClient):
         self._genai: Any = genai
         self._client: Any = genai.Client()
         self._model = model
+        self._batch_custom_ids: dict[str, list[str]] = {}
 
     def complete(
         self, system_prompt: str, user_prompt: str, *, max_tokens: int = 1024
@@ -459,7 +460,108 @@ class GeminiClient(LLMClient):
             raise RuntimeError(f"Gemini preflight check failed: {exc}") from exc
 
     def supports_batch(self) -> bool:
-        return False
+        return True
+
+    def submit_batch(self, requests: list[BatchRequest]) -> str:
+        from google.genai import types
+
+        custom_ids = [req.custom_id for req in requests]
+        inlined_requests = [
+            types.InlinedRequest(
+                contents=req.user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=req.system_prompt,
+                    max_output_tokens=req.max_tokens,
+                ),
+            )
+            for req in requests
+        ]
+        job = self._client.batches.create(
+            model=self._model,
+            src=inlined_requests,
+            config={"display_name": "veritail-batch"},
+        )
+        batch_id: str = job.name
+        self._batch_custom_ids[batch_id] = custom_ids
+        return batch_id
+
+    def poll_batch(self, batch_id: str) -> tuple[str, int, int]:
+        job = self._client.batches.get(name=batch_id)
+        state_name = job.state.name if job.state else ""
+
+        if state_name in (
+            "JOB_STATE_SUCCEEDED",
+            "JOB_STATE_PARTIALLY_SUCCEEDED",
+        ):
+            status = "completed"
+        elif state_name in ("JOB_STATE_FAILED", "JOB_STATE_CANCELLED"):
+            status = "failed"
+        elif state_name == "JOB_STATE_EXPIRED":
+            status = "expired"
+        else:
+            status = "in_progress"
+
+        stats = job.completion_stats
+        if stats:
+            completed = (stats.successful_count or 0) + (stats.failed_count or 0)
+            total = completed + (stats.incomplete_count or 0)
+        else:
+            completed = 0
+            total = 0
+        return status, completed, total
+
+    def retrieve_batch_results(self, batch_id: str) -> list[BatchResult]:
+        job = self._client.batches.get(name=batch_id)
+        custom_ids = self._batch_custom_ids.pop(batch_id, [])
+        results: list[BatchResult] = []
+
+        if not job.dest or not job.dest.inlined_responses:
+            return results
+
+        for i, inline_response in enumerate(job.dest.inlined_responses):
+            cid = custom_ids[i] if i < len(custom_ids) else f"unknown-{i}"
+            if inline_response.response:
+                response = inline_response.response
+                text: str = response.text or ""
+                usage = response.usage_metadata
+                results.append(
+                    BatchResult(
+                        custom_id=cid,
+                        response=LLMResponse(
+                            content=text,
+                            model=self._model,
+                            input_tokens=(usage.prompt_token_count or 0)
+                            if usage
+                            else 0,
+                            output_tokens=(usage.candidates_token_count or 0)
+                            if usage
+                            else 0,
+                        ),
+                    )
+                )
+            else:
+                error_msg = "Request failed"
+                if inline_response.error and inline_response.error.message:
+                    error_msg = inline_response.error.message
+                results.append(
+                    BatchResult(
+                        custom_id=cid,
+                        response=None,
+                        error=error_msg,
+                    )
+                )
+        return results
+
+    def batch_error_message(self, batch_id: str) -> str | None:
+        job = self._client.batches.get(name=batch_id)
+        if job.error:
+            parts: list[str] = []
+            if job.error.message:
+                parts.append(job.error.message)
+            if job.error.details:
+                parts.extend(job.error.details[:5])
+            return "; ".join(parts) if parts else None
+        return None
 
 
 def create_llm_client(
