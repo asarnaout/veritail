@@ -312,12 +312,14 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 | Option | Default | Description |
 |---|---|---|
 | `--output` | *(required)* | Output CSV path (must end with `.csv`) |
-| `--count` | `25` | Number of queries to generate |
+| `--count` | `25` | Target number of queries to generate (max 50, approximate — see note below) |
 | `--vertical` | *(none)* | Built-in vertical name or path to text file |
 | `--context` | *(none)* | Business context string or path to a text file |
 | `--llm-model` | *(required)* | LLM model for generation (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`) |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
+
+> **Note:** Query counts are approximate. LLMs may return slightly fewer or more queries than requested. The CLI will report the actual count generated. For larger query sets, run the command multiple times or curate queries manually.
 
 ### `veritail vertical list`
 
