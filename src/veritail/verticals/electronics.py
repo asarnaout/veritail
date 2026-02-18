@@ -22,13 +22,16 @@ are functional mismatches that guarantee a return. Treat incompatibility the way
 industrial supply treats wrong thread pitch—an immediate disqualifier unless the query \
 is genuinely open-ended.
 - **Connector, interface, and protocol precision**: USB-C vs USB-A, Lightning vs USB-C, \
-Thunderbolt vs USB-C (same connector, different capability), HDMI 2.1 vs 2.0, \
+Thunderbolt vs USB-C (same connector, different capability), HDMI 2.2 vs 2.1 vs 2.0, \
 DisplayPort vs Mini DisplayPort, SODIMM vs DIMM, M.2 2230 vs 2280, NVMe vs SATA M.2, \
 PCIe Gen 3/4/5 lane count, and CPU socket/chipset pairings are hard constraints when \
 specified or clearly implied. A "Thunderbolt 4 dock" query answered with a USB-C hub \
 lacking Thunderbolt certification is a material mismatch even though the physical \
 connector is identical. Similarly, an M.2 SATA drive shown for an "NVMe SSD" query \
-will not boot in many NVMe-only slots.
+will not boot in many NVMe-only slots. Cable certification also matters: an uncertified \
+USB-C cable may deliver only USB 2.0 speeds (480 Mbps) despite the connector being \
+physically identical to a certified 40 Gbps Thunderbolt cable—treat cable-spec queries \
+as requiring matching certification level.
 - **Model-generation and architecture specificity**: Queries naming exact models or \
 generations ("RTX 5090", "Ryzen 9 9950X", "iPhone 16 Pro Max", "Wi-Fi 7 router") \
 require exact-generation alignment. Adjacent generations are weaker matches because \
@@ -55,8 +58,9 @@ form factor is specified.
 - **Device-specific accessory exactness**: Accessories—cases, screen protectors, chargers, \
 bands, cartridges, cables, mounts—are only relevant if they match the exact device \
 model or a confirmed-compatible model range. An "Apple Watch Ultra 2 band" query must \
-return bands that fit 49 mm lug width; a "Galaxy S24 Ultra case" must not return S23 \
-Ultra cases despite near-identical names, because camera bump geometry differs. For \
+return bands that fit 49 mm lug width; a "Galaxy S25 Ultra case" must not return S24 \
+Ultra cases despite near-identical names, because camera module layout and corner \
+geometry differ. For \
 printer ink/toner, cartridge model numbers are non-negotiable—HP 63 and HP 63XL are \
 compatible with the same printers, but HP 65 is not. Penalize heavily when the result \
 is for a sibling or predecessor model with incompatible physical dimensions.
