@@ -1155,57 +1155,5 @@ def autocomplete_run(
             webbrowser.open(html_path.resolve().as_uri())
 
 
-@autocomplete.command("generate-prefixes")
-@click.option(
-    "--queries",
-    required=True,
-    type=click.Path(exists=True),
-    help="Source queries CSV file with a 'query' column.",
-)
-@click.option(
-    "--output",
-    required=True,
-    type=str,
-    help="Output prefixes CSV path.",
-)
-@click.option(
-    "--ratios",
-    default="0.3,0.5,0.7",
-    help="Comma-separated character ratios for prefix generation.",
-)
-def autocomplete_generate_prefixes(
-    queries: str,
-    output: str,
-    ratios: str,
-) -> None:
-    """Generate prefix entries from a query set at various character ratios."""
-    from veritail.autocomplete.prefixgen import generate_prefixes
-
-    try:
-        char_ratios = [float(r.strip()) for r in ratios.split(",")]
-    except ValueError:
-        raise click.UsageError(
-            f"--ratios must be comma-separated floats, got: {ratios}"
-        ) from None
-
-    for r in char_ratios:
-        if not 0.0 < r < 1.0:
-            raise click.UsageError(
-                f"Each ratio must be between 0 and 1 (exclusive), got: {r}"
-            )
-
-    try:
-        rows = generate_prefixes(queries, output, char_ratios=char_ratios)
-    except (ValueError, FileNotFoundError) as exc:
-        raise click.ClickException(str(exc)) from exc
-
-    console.print(f"[green]Generated {len(rows)} prefixes[/green] -> {output}")
-    console.print("\n[dim]Next step:[/dim]")
-    console.print(
-        f"[dim]  veritail autocomplete run --prefixes {output} "
-        f"--adapter <your_suggest_adapter.py>[/dim]"
-    )
-
-
 if __name__ == "__main__":
     main()
