@@ -3,23 +3,29 @@
 __version__ = "0.1.0"
 
 from veritail.types import (
+    AutocompleteConfig,
+    AutocompleteResponse,
     CheckResult,
     CorrectionJudgment,
     ExperimentConfig,
     JudgmentRecord,
     MetricResult,
+    PrefixEntry,
     QueryEntry,
     SearchResponse,
     SearchResult,
 )
 
 __all__ = [
-    "SearchResult",
-    "SearchResponse",
-    "QueryEntry",
-    "JudgmentRecord",
+    "AutocompleteConfig",
+    "AutocompleteResponse",
     "CheckResult",
     "CorrectionJudgment",
     "ExperimentConfig",
+    "JudgmentRecord",
     "MetricResult",
+    "PrefixEntry",
+    "QueryEntry",
+    "SearchResponse",
+    "SearchResult",
 ]

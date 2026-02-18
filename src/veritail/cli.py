@@ -146,32 +146,45 @@ def main() -> None:
     default=False,
     help="Overwrite existing files if they already exist.",
 )
+@click.option(
+    "--autocomplete",
+    is_flag=True,
+    default=False,
+    help="Also generate suggest_adapter.py and prefixes.csv.",
+)
 def init(
     target_dir: Path,
     adapter_name: str,
     queries_name: str,
     force: bool,
+    autocomplete: bool,
 ) -> None:
     """Scaffold starter adapter and query files."""
     try:
-        adapter_path, queries_path = scaffold_project(
+        created = scaffold_project(
             target_dir=target_dir,
             adapter_name=adapter_name,
             queries_name=queries_name,
             force=force,
+            autocomplete=autocomplete,
         )
     except FileExistsError as exc:
         raise click.ClickException(str(exc)) from exc
     except ValueError as exc:
         raise click.UsageError(str(exc)) from exc
 
-    console.print(f"[green]Created[/green] {adapter_path}")
-    console.print(f"[green]Created[/green] {queries_path}")
+    for p in created:
+        console.print(f"[green]Created[/green] {p}")
     console.print("\n[dim]Next step:[/dim]")
     console.print(
-        f"[dim]  veritail run --queries {queries_path.name} "
-        f"--adapter {adapter_path.name} --llm-model <model>[/dim]"
+        f"[dim]  veritail run --queries {created[1].name} "
+        f"--adapter {created[0].name} --llm-model <model>[/dim]"
     )
+    if autocomplete:
+        console.print(
+            f"[dim]  veritail autocomplete run --prefixes {created[3].name} "
+            f"--adapter {created[2].name}[/dim]"
+        )
 
 
 @main.group()
@@ -833,6 +846,365 @@ def run(
             import webbrowser
 
             webbrowser.open(html_path.resolve().as_uri())
+
+
+def _build_autocomplete_run_metadata(
+    *,
+    top_k: int,
+    sample: int | None = None,
+    total_prefixes: int | None = None,
+    adapter_path: str | None = None,
+    adapter_path_a: str | None = None,
+    adapter_path_b: str | None = None,
+) -> dict[str, object]:
+    """Build provenance metadata for autocomplete report rendering."""
+    metadata: dict[str, object] = {
+        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "top_k": top_k,
+    }
+    if sample is not None and total_prefixes is not None:
+        metadata["sample"] = f"{sample} of {total_prefixes}"
+    if adapter_path is not None:
+        metadata["adapter_path"] = adapter_path
+    if adapter_path_a is not None:
+        metadata["adapter_path_a"] = adapter_path_a
+    if adapter_path_b is not None:
+        metadata["adapter_path_b"] = adapter_path_b
+    return metadata
+
+
+@main.group()
+def autocomplete() -> None:
+    """Evaluate autocomplete / type-ahead suggestions."""
+    pass
+
+
+@autocomplete.command("run")
+@click.option(
+    "--prefixes",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to prefix set (CSV or JSON with prefix + target_query columns).",
+)
+@click.option(
+    "--adapter",
+    "adapters",
+    required=True,
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Path to suggest adapter module(s). Max 2 for A/B comparison.",
+)
+@click.option(
+    "--config-name",
+    "config_names",
+    multiple=True,
+    help="Optional name for each configuration.",
+)
+@click.option(
+    "--output-dir",
+    default="./eval-results",
+    help="Output directory for results.",
+)
+@click.option(
+    "--top-k",
+    default=10,
+    type=int,
+    help="Max suggestions to evaluate per prefix.",
+)
+@click.option(
+    "--checks",
+    "check_modules",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Path to custom check module(s).",
+)
+@click.option(
+    "--sample",
+    default=None,
+    type=int,
+    help="Randomly sample N prefixes from the prefix set.",
+)
+@click.option(
+    "--open",
+    "open_browser",
+    is_flag=True,
+    default=False,
+    help="Open the HTML report in the browser when complete.",
+)
+def autocomplete_run(
+    prefixes: str,
+    adapters: tuple[str, ...],
+    config_names: tuple[str, ...],
+    output_dir: str,
+    top_k: int,
+    check_modules: tuple[str, ...],
+    sample: int | None,
+    open_browser: bool,
+) -> None:
+    """Run autocomplete evaluation (single or dual configuration)."""
+    from veritail.autocomplete.adapter import load_suggest_adapter
+    from veritail.autocomplete.pipeline import (
+        run_autocomplete_evaluation,
+        run_dual_autocomplete_evaluation,
+    )
+    from veritail.autocomplete.queries import load_prefixes
+    from veritail.autocomplete.reporting import (
+        generate_autocomplete_comparison_report,
+        generate_autocomplete_report,
+    )
+    from veritail.types import AutocompleteConfig
+
+    if config_names and len(adapters) != len(config_names):
+        raise click.UsageError(
+            "Each --adapter must have a matching --config-name. "
+            f"Got {len(adapters)} adapter(s) and "
+            f"{len(config_names)} config name(s)."
+        )
+
+    if len(adapters) > 2:
+        raise click.UsageError("At most 2 adapter/config-name pairs are supported.")
+
+    if top_k < 1:
+        raise click.UsageError("--top-k must be >= 1.")
+
+    if not config_names:
+        config_names = _generate_config_names(adapters)
+        console.print(
+            "[dim]No --config-name provided. Using generated names: "
+            f"{', '.join(config_names)}[/dim]",
+        )
+
+    if sample is not None and sample < 1:
+        raise click.UsageError("--sample must be >= 1.")
+
+    prefix_entries = load_prefixes(prefixes)
+    total_prefixes = len(prefix_entries)
+
+    if sample is not None and sample < total_prefixes:
+        import random
+
+        rng = random.Random(42)
+        prefix_entries = rng.sample(prefix_entries, sample)
+        console.print(f"Sampled {sample} of {total_prefixes} prefixes from {prefixes}")
+    else:
+        console.print(f"Loaded {len(prefix_entries)} prefixes from {prefixes}")
+
+    # Load custom checks if any
+    custom_check_fns = None
+    if check_modules:
+        import importlib.util
+
+        custom_check_fns = []
+        for check_path in check_modules:
+            spec = importlib.util.spec_from_file_location(
+                "ac_custom_checks", check_path
+            )
+            if spec is None or spec.loader is None:
+                raise click.ClickException(
+                    f"Could not load check module from: {check_path}"
+                )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            found = 0
+            for name in sorted(dir(mod)):
+                if name.startswith("check_") and callable(getattr(mod, name)):
+                    custom_check_fns.append(getattr(mod, name))
+                    found += 1
+            if found == 0:
+                raise click.ClickException(
+                    f"Check module '{check_path}' has no check_* functions."
+                )
+            console.print(
+                f"[dim]Loaded {found} custom check(s) from {check_path}[/dim]"
+            )
+
+    if len(adapters) == 1:
+        config = AutocompleteConfig(
+            name=config_names[0],
+            adapter_path=adapters[0],
+            top_k=top_k,
+        )
+        adapter_fn = load_suggest_adapter(adapters[0])
+        checks, metrics, responses = run_autocomplete_evaluation(
+            prefix_entries, adapter_fn, config, custom_checks=custom_check_fns
+        )
+        run_metadata = _build_autocomplete_run_metadata(
+            top_k=top_k,
+            sample=sample,
+            total_prefixes=total_prefixes,
+            adapter_path=adapters[0],
+        )
+
+        report = generate_autocomplete_report(
+            metrics,
+            checks,
+            responses_by_prefix=responses,
+            prefixes=prefix_entries,
+        )
+        console.print(report)
+
+        exp_dir = Path(output_dir) / config_names[0]
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        metrics_path = exp_dir / "metrics.json"
+        metrics_path.write_text(
+            json.dumps(
+                [asdict(m) for m in metrics],
+                indent=2,
+                default=str,
+            ),
+            encoding="utf-8",
+        )
+
+        html = generate_autocomplete_report(
+            metrics,
+            checks,
+            format="html",
+            responses_by_prefix=responses,
+            prefixes=prefix_entries,
+            run_metadata=run_metadata,
+        )
+        html_path = exp_dir / "report.html"
+        html_path.write_text(html, encoding="utf-8")
+        console.print(f"[dim]HTML report -> {html_path}[/dim]")
+
+        if open_browser:
+            import webbrowser
+
+            webbrowser.open(html_path.resolve().as_uri())
+
+    else:
+        config_a = AutocompleteConfig(
+            name=config_names[0],
+            adapter_path=adapters[0],
+            top_k=top_k,
+        )
+        config_b = AutocompleteConfig(
+            name=config_names[1],
+            adapter_path=adapters[1],
+            top_k=top_k,
+        )
+        adapter_a = load_suggest_adapter(adapters[0])
+        adapter_b = load_suggest_adapter(adapters[1])
+
+        (
+            checks_a,
+            checks_b,
+            metrics_a,
+            metrics_b,
+            comparison_checks,
+        ) = run_dual_autocomplete_evaluation(
+            prefix_entries,
+            adapter_a,
+            config_a,
+            adapter_b,
+            config_b,
+            custom_checks=custom_check_fns,
+        )
+        run_metadata = _build_autocomplete_run_metadata(
+            top_k=top_k,
+            sample=sample,
+            total_prefixes=total_prefixes,
+            adapter_path_a=adapters[0],
+            adapter_path_b=adapters[1],
+        )
+
+        report = generate_autocomplete_comparison_report(
+            metrics_a,
+            metrics_b,
+            comparison_checks,
+            config_names[0],
+            config_names[1],
+        )
+        console.print(report)
+
+        for cfg_name, cfg_metrics in [
+            (config_names[0], metrics_a),
+            (config_names[1], metrics_b),
+        ]:
+            exp_dir = Path(output_dir) / cfg_name
+            exp_dir.mkdir(parents=True, exist_ok=True)
+            metrics_path = exp_dir / "metrics.json"
+            metrics_path.write_text(
+                json.dumps(
+                    [asdict(m) for m in cfg_metrics],
+                    indent=2,
+                    default=str,
+                ),
+                encoding="utf-8",
+            )
+
+        html = generate_autocomplete_comparison_report(
+            metrics_a,
+            metrics_b,
+            comparison_checks,
+            config_names[0],
+            config_names[1],
+            format="html",
+            run_metadata=run_metadata,
+        )
+        cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
+        html_path = Path(output_dir) / cmp_dir / "report.html"
+        html_path.parent.mkdir(parents=True, exist_ok=True)
+        html_path.write_text(html, encoding="utf-8")
+        console.print(f"[dim]HTML report -> {html_path}[/dim]")
+
+        if open_browser:
+            import webbrowser
+
+            webbrowser.open(html_path.resolve().as_uri())
+
+
+@autocomplete.command("generate-prefixes")
+@click.option(
+    "--queries",
+    required=True,
+    type=click.Path(exists=True),
+    help="Source queries CSV file with a 'query' column.",
+)
+@click.option(
+    "--output",
+    required=True,
+    type=str,
+    help="Output prefixes CSV path.",
+)
+@click.option(
+    "--ratios",
+    default="0.3,0.5,0.7",
+    help="Comma-separated character ratios for prefix generation.",
+)
+def autocomplete_generate_prefixes(
+    queries: str,
+    output: str,
+    ratios: str,
+) -> None:
+    """Generate prefix entries from a query set at various character ratios."""
+    from veritail.autocomplete.prefixgen import generate_prefixes
+
+    try:
+        char_ratios = [float(r.strip()) for r in ratios.split(",")]
+    except ValueError:
+        raise click.UsageError(
+            f"--ratios must be comma-separated floats, got: {ratios}"
+        ) from None
+
+    for r in char_ratios:
+        if not 0.0 < r < 1.0:
+            raise click.UsageError(
+                f"Each ratio must be between 0 and 1 (exclusive), got: {r}"
+            )
+
+    try:
+        rows = generate_prefixes(queries, output, char_ratios=char_ratios)
+    except (ValueError, FileNotFoundError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    console.print(f"[green]Generated {len(rows)} prefixes[/green] -> {output}")
+    console.print("\n[dim]Next step:[/dim]")
+    console.print(
+        f"[dim]  veritail autocomplete run --prefixes {output} "
+        f"--adapter <your_suggest_adapter.py>[/dim]"
+    )
 
 
 if __name__ == "__main__":

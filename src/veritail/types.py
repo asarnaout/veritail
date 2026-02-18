@@ -99,3 +99,29 @@ class MetricResult:
     by_query_type: dict[str, float] = field(default_factory=dict)
     query_count: int | None = None  # queries that contributed to the aggregate
     total_queries: int | None = None  # total queries in the evaluation
+
+
+@dataclass
+class AutocompleteResponse:
+    """Wrapper returned by autocomplete adapters."""
+
+    suggestions: list[str]
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class PrefixEntry:
+    """A prefix from the input prefix set."""
+
+    prefix: str
+    target_query: str
+    type: str | None = None  # short_prefix | mid_prefix | long_prefix
+
+
+@dataclass
+class AutocompleteConfig:
+    """Configuration for one autocomplete evaluation run."""
+
+    name: str
+    adapter_path: str
+    top_k: int = 10
