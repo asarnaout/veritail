@@ -5,11 +5,13 @@ from __future__ import annotations
 import csv
 import json
 import re
+import warnings
 from pathlib import Path
 
 from veritail.llm.client import LLMClient
 
 DEFAULT_QUERY_COUNT = 25
+MAX_QUERY_COUNT = 50
 _GENERATION_MAX_TOKENS = 4096
 
 QUERY_TYPES = ["navigational", "broad", "long_tail", "attribute", "edge_case"]
@@ -209,7 +211,9 @@ def generate_queries(
     Args:
         llm_client: Configured LLM client.
         output_path: Destination CSV path.
-        count: Number of queries to generate.
+        count: Target number of queries to generate (approximate — LLMs may
+            return slightly more or fewer). Must be between 1 and
+            :data:`MAX_QUERY_COUNT`.
         vertical: Built-in vertical name or text file path.
         context: Business context string or file path.
 
@@ -217,8 +221,16 @@ def generate_queries(
         List of generated query dicts.
 
     Raises:
-        ValueError: If neither vertical nor context is provided.
+        ValueError: If neither vertical nor context is provided, or if
+            *count* exceeds :data:`MAX_QUERY_COUNT`.
     """
+    if count > MAX_QUERY_COUNT:
+        raise ValueError(
+            f"--count must be <= {MAX_QUERY_COUNT}. "
+            "For larger query sets, run the command multiple times "
+            "or curate queries manually."
+        )
+
     if not vertical and not context:
         raise ValueError(
             "At least one of --vertical or --context is required "
@@ -251,6 +263,15 @@ def generate_queries(
     )
 
     queries = _parse_response(response.content)
+
+    if len(queries) != count:
+        warnings.warn(
+            f"Requested {count} queries but the LLM returned {len(queries)}. "
+            "This is expected — LLM output counts are approximate. "
+            "Review the output and supplement manually if needed.",
+            stacklevel=2,
+        )
+
     _write_csv(queries, output_path)
 
     return queries

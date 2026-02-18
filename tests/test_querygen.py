@@ -10,6 +10,7 @@ from click.testing import CliRunner
 from veritail.cli import main
 from veritail.llm.client import LLMClient, LLMResponse
 from veritail.querygen import (
+    MAX_QUERY_COUNT,
     QUERY_TYPES,
     _compute_distribution,
     _parse_response,
@@ -325,6 +326,76 @@ class TestGenerateQueries:
         call_kwargs = client.complete.call_args.kwargs
         assert call_kwargs["max_tokens"] == 4096
 
+    def test_rejects_count_above_max(self, tmp_path):
+        import pytest
+
+        client = self._make_mock_client([])
+        out = tmp_path / "queries.csv"
+
+        with pytest.raises(ValueError, match=f"<= {MAX_QUERY_COUNT}"):
+            generate_queries(
+                llm_client=client,
+                output_path=out,
+                count=MAX_QUERY_COUNT + 1,
+                vertical="electronics",
+            )
+
+    def test_accepts_count_at_max(self, tmp_path):
+        fake_queries = [
+            {"query": "test", "type": "broad", "category": "X"},
+        ]
+        client = self._make_mock_client(fake_queries)
+        out = tmp_path / "queries.csv"
+
+        result = generate_queries(
+            llm_client=client,
+            output_path=out,
+            count=MAX_QUERY_COUNT,
+            vertical="electronics",
+        )
+        assert len(result) == 1
+
+    def test_warns_on_count_mismatch(self, tmp_path):
+        import warnings as _warnings
+
+        fake_queries = [
+            {"query": "shoes", "type": "broad", "category": "Footwear"},
+            {"query": "boots", "type": "broad", "category": "Footwear"},
+        ]
+        client = self._make_mock_client(fake_queries)
+        out = tmp_path / "queries.csv"
+
+        with _warnings.catch_warnings(record=True) as w:
+            _warnings.simplefilter("always")
+            generate_queries(
+                llm_client=client,
+                output_path=out,
+                count=10,
+                vertical="electronics",
+            )
+            assert len(w) == 1
+            assert "Requested 10" in str(w[0].message)
+            assert "returned 2" in str(w[0].message)
+
+    def test_no_warning_when_count_matches(self, tmp_path):
+        import warnings as _warnings
+
+        fake_queries = [
+            {"query": f"query{i}", "type": "broad", "category": "X"} for i in range(5)
+        ]
+        client = self._make_mock_client(fake_queries)
+        out = tmp_path / "queries.csv"
+
+        with _warnings.catch_warnings(record=True) as w:
+            _warnings.simplefilter("always")
+            generate_queries(
+                llm_client=client,
+                output_path=out,
+                count=5,
+                vertical="electronics",
+            )
+            assert len(w) == 0
+
 
 # ---------------------------------------------------------------------------
 # TestGenerateQueriesCLI
@@ -409,6 +480,26 @@ class TestGenerateQueriesCLI:
         )
         assert result.exit_code != 0
         assert "--count must be >= 1" in result.output
+
+    def test_rejects_count_above_max(self, tmp_path):
+        out = tmp_path / "queries.csv"
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "generate-queries",
+                "--output",
+                str(out),
+                "--vertical",
+                "electronics",
+                "--llm-model",
+                "test-model",
+                "--count",
+                "51",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "--count must be <= 50" in result.output
 
     def test_rejects_non_csv_output(self, tmp_path):
         out = tmp_path / "queries.json"
@@ -513,6 +604,31 @@ class TestGenerateQueriesCLI:
         )
         assert result.exit_code != 0
         assert "Missing option '--llm-model'" in result.output
+
+    def test_shows_mismatch_in_output(self, tmp_path):
+        mock_client = self._make_mock_client()
+        out = tmp_path / "queries.csv"
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "generate-queries",
+                    "--output",
+                    str(out),
+                    "--vertical",
+                    "electronics",
+                    "--llm-model",
+                    "test-model",
+                    "--count",
+                    "10",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "Generated 2 queries" in result.output
+        assert "requested 10" in result.output
 
     def test_help(self):
         runner = CliRunner()

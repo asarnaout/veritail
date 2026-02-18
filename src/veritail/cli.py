@@ -215,7 +215,10 @@ def vertical_show(name: str) -> None:
     "--count",
     default=25,
     type=int,
-    help="Number of queries to generate.",
+    help=(
+        "Target number of queries to generate (approximate — LLMs may "
+        "return slightly fewer). Max 50."
+    ),
 )
 @click.option(
     "--vertical",
@@ -267,6 +270,12 @@ def generate_queries_cmd(
     if count < 1:
         raise click.UsageError("--count must be >= 1.")
 
+    if count > 50:
+        raise click.UsageError(
+            "--count must be <= 50. For larger query sets, "
+            "run the command multiple times or curate queries manually."
+        )
+
     if not output.endswith(".csv"):
         raise click.UsageError("--output must end with .csv.")
 
@@ -297,7 +306,15 @@ def generate_queries_cmd(
     except (ValueError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
 
-    console.print(f"[green]Generated {len(queries)} queries[/green] -> {output_path}")
+    if len(queries) != count:
+        console.print(
+            f"[green]Generated {len(queries)} queries[/green] "
+            f"[yellow](requested {count})[/yellow] -> {output_path}"
+        )
+    else:
+        console.print(
+            f"[green]Generated {len(queries)} queries[/green] -> {output_path}"
+        )
     console.print("\n[dim]Next step:[/dim]")
     console.print(
         f"[dim]  veritail run --queries {output_path} "
