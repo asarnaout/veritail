@@ -95,11 +95,25 @@ CHECK_DISPLAY_NAMES: dict[str, str] = {
     "duplicate": "duplicate (flagged pairs)",
 }
 
+# Display order for the deterministic checks table.  Checks not listed
+# here (e.g. custom checks) are appended alphabetically at the end.
+CHECK_ORDER: list[str] = [
+    "duplicate",
+    "out_of_stock_prominence",
+    "price_outlier",
+    "result_count",
+    "zero_results",
+    "title_length",
+    "text_overlap",
+    "correction_vocabulary",
+    "unnecessary_correction",
+]
+
 
 def _summarize_checks(
     checks: list[CheckResult],
-) -> dict[str, dict[str, str | int | bool]]:
-    """Build a display-ready check summary for reports."""
+) -> list[tuple[str, dict[str, str | int | bool]]]:
+    """Build a display-ready, ordered check summary for reports."""
     summary: dict[str, dict[str, str | int | bool]] = {}
     for c in checks:
         if c.check_name not in summary:
@@ -122,7 +136,13 @@ def _summarize_checks(
         counts["passed_is_na"] = is_failure_only
         counts["passed_display"] = "n/a" if is_failure_only else str(passed)
 
-    return summary
+    order_index = {name: i for i, name in enumerate(CHECK_ORDER)}
+    fallback = len(CHECK_ORDER)
+    ordered = sorted(
+        summary.items(),
+        key=lambda item: (order_index.get(item[0], fallback), item[0]),
+    )
+    return ordered
 
 
 def generate_single_report(
@@ -252,7 +272,7 @@ def _generate_terminal(
 
     check_summary = _summarize_checks(checks)
 
-    for _, counts in sorted(check_summary.items()):
+    for _, counts in check_summary:
         check_table.add_row(
             str(counts["display_name"]),
             str(counts["passed_display"]),

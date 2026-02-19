@@ -238,7 +238,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for name, counts in check_summary.items() | sort %}
+            {% for name, counts in check_summary %}
             <tr>
                 <td>
                   {{ counts.display_name }}
