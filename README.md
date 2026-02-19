@@ -343,7 +343,6 @@ All checks are deterministic and run without an LLM.
 | `duplicate_suggestion` | Exact duplicate suggestions (case-insensitive) |
 | `prefix_coherence` | Suggestion neither starts with the prefix nor shares a token with it |
 | `offensive_content` | Suggestion contains a blocked term (requires blocklist) |
-| `near_duplicate` | Near-duplicate suggestions (Levenshtein distance ≤ 2 and < 30% of max length) |
 | `encoding_issues` | HTML entities, control characters, or leading/trailing whitespace |
 | `length_anomaly` | Suggestion shorter than 2 characters or longer than 80 characters |
 | `latency` | Adapter response time exceeds threshold (default 200 ms) |

@@ -29,7 +29,6 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
     "offensive_content": "Flags suggestions containing blocked terms",
     "suggestion_overlap": "Jaccard overlap of suggestions between two configurations",
     "rank_agreement": "Spearman rank correlation of shared suggestions",
-    "near_duplicate": "Detects near-duplicate suggestions via edit distance",
     "encoding_issues": (
         "Flags HTML entities, control characters, and leading/trailing whitespace"
     ),

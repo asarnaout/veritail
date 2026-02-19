@@ -8,7 +8,6 @@ from veritail.autocomplete.checks import (
     check_encoding_issues,
     check_latency,
     check_length_anomalies,
-    check_near_duplicates,
     check_offensive_content,
     check_prefix_coherence,
 )
@@ -97,31 +96,6 @@ class TestOffensiveContent:
         )
         assert len(results) == 1
         assert not results[0].passed
-
-
-class TestNearDuplicates:
-    def test_no_near_duplicates(self) -> None:
-        results = check_near_duplicates("run", ["running shoes", "basketball"])
-        assert len(results) == 0
-
-    def test_near_duplicate_detected(self) -> None:
-        results = check_near_duplicates("run", ["running shoes", "running shoe"])
-        assert len(results) == 1
-        assert not results[0].passed
-        assert results[0].check_name == "near_duplicate"
-
-    def test_exact_duplicates_ignored(self) -> None:
-        # Exact duplicates are handled by check_duplicate_suggestions
-        results = check_near_duplicates("run", ["running", "running"])
-        assert len(results) == 0
-
-    def test_empty_list(self) -> None:
-        results = check_near_duplicates("run", [])
-        assert len(results) == 0
-
-    def test_single_suggestion(self) -> None:
-        results = check_near_duplicates("run", ["running shoes"])
-        assert len(results) == 0
 
 
 class TestEncodingIssues:

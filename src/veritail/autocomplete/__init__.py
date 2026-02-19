@@ -10,7 +10,6 @@ from veritail.autocomplete.checks import (
     check_encoding_issues,
     check_latency,
     check_length_anomalies,
-    check_near_duplicates,
     check_offensive_content,
     check_prefix_coherence,
 )
@@ -34,7 +33,6 @@ def run_autocomplete_checks(
         checks.extend(check_duplicate_suggestions(prefix, suggestions))
         checks.extend(check_prefix_coherence(prefix, suggestions))
         checks.extend(check_offensive_content(prefix, suggestions))
-        checks.extend(check_near_duplicates(prefix, suggestions))
         checks.extend(check_encoding_issues(prefix, suggestions))
         checks.extend(check_length_anomalies(prefix, suggestions))
 

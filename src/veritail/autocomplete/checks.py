@@ -125,55 +125,6 @@ def check_offensive_content(
     return checks
 
 
-def _edit_distance(a: str, b: str) -> int:
-    """Compute Levenshtein edit distance between two strings."""
-    if len(a) < len(b):
-        return _edit_distance(b, a)
-    if len(b) == 0:
-        return len(a)
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a):
-        curr = [i + 1] + [0] * len(b)
-        for j, cb in enumerate(b):
-            curr[j + 1] = min(
-                prev[j + 1] + 1,
-                curr[j] + 1,
-                prev[j] + (0 if ca == cb else 1),
-            )
-        prev = curr
-    return prev[len(b)]
-
-
-def check_near_duplicates(prefix: str, suggestions: list[str]) -> list[CheckResult]:
-    """Detect near-duplicate suggestions via edit distance."""
-    checks: list[CheckResult] = []
-    normalized = [s.lower().strip() for s in suggestions]
-    for i in range(len(normalized)):
-        for j in range(i + 1, len(normalized)):
-            if normalized[i] == normalized[j]:
-                continue  # exact dupes handled by check_duplicate_suggestions
-            max_len = max(len(normalized[i]), len(normalized[j]))
-            if max_len == 0:
-                continue
-            dist = _edit_distance(normalized[i], normalized[j])
-            if dist <= 2 and dist / max_len < 0.3:
-                checks.append(
-                    CheckResult(
-                        check_name="near_duplicate",
-                        query=prefix,
-                        product_id=None,
-                        passed=False,
-                        detail=(
-                            f"Near-duplicate suggestions: "
-                            f"'{suggestions[i]}' and '{suggestions[j]}' "
-                            f"(edit distance {dist})"
-                        ),
-                        severity="warning",
-                    )
-                )
-    return checks
-
-
 _HTML_ENTITY_RE = re.compile(r"&[a-zA-Z]+;|&#\d+;|&#x[0-9a-fA-F]+;")
 
 
