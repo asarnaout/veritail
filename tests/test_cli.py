@@ -1348,3 +1348,201 @@ class TestCLI:
         result = runner.invoke(main, ["run", "--help"])
         assert result.exit_code == 0
         assert "--autocomplete-llm" in result.output
+
+    def test_batch_autocomplete_llm_invokes_batch_pipeline(self, tmp_path):
+        """--batch --autocomplete-llm routes to batch pipeline."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+        from veritail.types import SuggestionJudgment
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        mock_judgment = SuggestionJudgment(
+            prefix="run",
+            suggestions=["running shoes"],
+            relevance_score=3,
+            diversity_score=2,
+            flagged_suggestions=[],
+            reasoning="Good.",
+            model="test-model",
+            experiment="test",
+        )
+
+        with (
+            patch("veritail.cli.create_llm_client", return_value=mock_client),
+            patch(
+                "veritail.autocomplete.pipeline.run_autocomplete_batch_llm_evaluation",
+                return_value=[mock_judgment],
+            ) as mock_batch,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--autocomplete-llm",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_batch.assert_called_once()
+
+    def test_autocomplete_llm_without_batch_invokes_sync(self, tmp_path):
+        """Without --batch, autocomplete-llm uses sync pipeline."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="RELEVANCE: 3\nDIVERSITY: 2\nFLAGGED: none\nREASONING: Good.",
+            model="test-model",
+            input_tokens=10,
+            output_tokens=10,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--autocomplete-llm",
+                ],
+            )
+
+        assert result.exit_code == 0
+        # Sync path calls complete(), not submit_batch()
+        mock_client.complete.assert_called()
+        mock_client.submit_batch.assert_not_called()
+
+    def test_batch_autocomplete_llm_rejects_base_url(self, tmp_path):
+        """--batch --autocomplete-llm --llm-base-url → error."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--autocomplete-llm",
+                    "--batch",
+                    "--llm-base-url",
+                    "http://localhost:11434/v1",
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert "--batch cannot be used with --llm-base-url" in result.output
+
+    def test_batch_autocomplete_llm_validates_supports_batch(self, tmp_path):
+        """Autocomplete-only --batch with unsupported model → error."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = False
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--autocomplete-llm",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert "does not support batch operations" in result.output

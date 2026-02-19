@@ -26,15 +26,21 @@ class BatchCheckpoint:
     correction_context: dict[str, dict[str, Any]] | None = None
 
 
-def _checkpoint_path(output_dir: str, experiment: str) -> Path:
-    return Path(output_dir) / experiment / "checkpoint.json"
+def _checkpoint_path(
+    output_dir: str, experiment: str, *, filename: str = "checkpoint.json"
+) -> Path:
+    return Path(output_dir) / experiment / filename
 
 
 def save_checkpoint(
-    output_dir: str, experiment: str, checkpoint: BatchCheckpoint
+    output_dir: str,
+    experiment: str,
+    checkpoint: BatchCheckpoint,
+    *,
+    filename: str = "checkpoint.json",
 ) -> None:
     """Atomically write checkpoint to disk (write tmp, then rename)."""
-    path = _checkpoint_path(output_dir, experiment)
+    path = _checkpoint_path(output_dir, experiment, filename=filename)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(".tmp")
     with open(tmp_path, "w", encoding="utf-8") as f:
@@ -43,9 +49,11 @@ def save_checkpoint(
     os.replace(tmp_path, path)
 
 
-def load_checkpoint(output_dir: str, experiment: str) -> BatchCheckpoint | None:
+def load_checkpoint(
+    output_dir: str, experiment: str, *, filename: str = "checkpoint.json"
+) -> BatchCheckpoint | None:
     """Load a checkpoint from disk, or return None if absent."""
-    path = _checkpoint_path(output_dir, experiment)
+    path = _checkpoint_path(output_dir, experiment, filename=filename)
     if not path.exists():
         return None
     with open(path, encoding="utf-8") as f:
@@ -53,9 +61,11 @@ def load_checkpoint(output_dir: str, experiment: str) -> BatchCheckpoint | None:
     return BatchCheckpoint(**data)
 
 
-def clear_checkpoint(output_dir: str, experiment: str) -> None:
+def clear_checkpoint(
+    output_dir: str, experiment: str, *, filename: str = "checkpoint.json"
+) -> None:
     """Remove the checkpoint file after a successful run."""
-    path = _checkpoint_path(output_dir, experiment)
+    path = _checkpoint_path(output_dir, experiment, filename=filename)
     if path.exists():
         path.unlink()
 

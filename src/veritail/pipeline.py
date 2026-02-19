@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import asdict
@@ -11,6 +10,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 from veritail.backends import EvalBackend
+from veritail.batch_utils import poll_until_done
 from veritail.checkpoint import (
     BatchCheckpoint,
     clear_checkpoint,
@@ -645,35 +645,21 @@ def run_batch_evaluation(
         )
 
     # Phase 3: Poll for completion
-    with Progress(console=console) as progress:
-        poll_task = progress.add_task(
-            "[cyan]Waiting for batch completion...",
-            total=len(request_context),
+    try:
+        poll_until_done(
+            llm_client,
+            batch_id,
+            expected_total=len(request_context),
+            poll_interval=poll_interval,
         )
-        while True:
-            status, completed, total = llm_client.poll_batch(batch_id)
-            progress.update(
-                poll_task, completed=completed, total=total or len(request_context)
+    except RuntimeError as exc:
+        clear_checkpoint(output_dir, config.name)
+        msg = str(exc)
+        if resume:
+            msg += (
+                " Checkpoint cleared — re-run without --resume to start a fresh batch."
             )
-
-            if status == "completed":
-                break
-            if status in ("failed", "expired"):
-                clear_checkpoint(output_dir, config.name)
-                detail = llm_client.batch_error_message(batch_id)
-                msg = f"Batch {batch_id} {status}."
-                if detail:
-                    msg += f" Error: {detail}"
-                else:
-                    msg += " Check your provider's dashboard for details."
-                if resume:
-                    msg += (
-                        " Checkpoint cleared — re-run without --resume "
-                        "to start a fresh batch."
-                    )
-                raise RuntimeError(msg)
-
-            time.sleep(poll_interval)
+        raise RuntimeError(msg) from exc
 
     # Phase 4: Retrieve and map results
     console.print("[cyan]Retrieving batch results...[/cyan]")
@@ -760,31 +746,13 @@ def run_batch_evaluation(
         )
         corr_batch_id = llm_client.submit_batch(corr_requests)
 
-        with Progress(console=console) as progress:
-            corr_poll_task = progress.add_task(
-                "[cyan]Waiting for correction batch...",
-                total=len(corr_requests),
-            )
-            while True:
-                status, completed, total = llm_client.poll_batch(corr_batch_id)
-                progress.update(
-                    corr_poll_task,
-                    completed=completed,
-                    total=total or len(corr_requests),
-                )
-
-                if status == "completed":
-                    break
-                if status in ("failed", "expired"):
-                    detail = llm_client.batch_error_message(corr_batch_id)
-                    msg = f"Correction batch {corr_batch_id} {status}."
-                    if detail:
-                        msg += f" Error: {detail}"
-                    else:
-                        msg += " Check your provider's dashboard for details."
-                    raise RuntimeError(msg)
-
-                time.sleep(poll_interval)
+        poll_until_done(
+            llm_client,
+            corr_batch_id,
+            expected_total=len(corr_requests),
+            poll_interval=poll_interval,
+            label="Waiting for correction batch...",
+        )
 
         corr_results = llm_client.retrieve_batch_results(corr_batch_id)
         corr_results_by_id = {r.custom_id: r for r in corr_results}

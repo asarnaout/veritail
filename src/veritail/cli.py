@@ -1025,6 +1025,19 @@ def run(
                     except RuntimeError as exc:
                         raise click.ClickException(str(exc)) from exc
 
+                    if use_batch:
+                        if llm_base_url is not None:
+                            raise click.UsageError(
+                                "--batch cannot be used with --llm-base-url. "
+                                "Batch APIs are only available for cloud providers "
+                                "(OpenAI, Anthropic, Gemini)."
+                            )
+                        if not llm_client.supports_batch():
+                            raise click.UsageError(
+                                f"The model '{llm_model}' does not support "
+                                f"batch operations."
+                            )
+
                 # Build system prompt with vertical/context prefix
                 ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
                 prefix_parts: list[str] = []
@@ -1040,9 +1053,25 @@ def run(
                 ac_judge = SuggestionJudge(
                     llm_client, ac_system_prompt, config_names[0]
                 )
-                ac_suggestion_judgments = run_autocomplete_llm_evaluation(
-                    prefix_entries, ac_responses, ac_judge, ac_config
-                )
+                if use_batch:
+                    from veritail.autocomplete.pipeline import (
+                        run_autocomplete_batch_llm_evaluation,
+                    )
+
+                    ac_suggestion_judgments = run_autocomplete_batch_llm_evaluation(
+                        prefix_entries,
+                        ac_responses,
+                        ac_judge,
+                        ac_config,
+                        llm_client,
+                        poll_interval=60,
+                        resume=use_resume,
+                        output_dir=output_dir,
+                    )
+                else:
+                    ac_suggestion_judgments = run_autocomplete_llm_evaluation(
+                        prefix_entries, ac_responses, ac_judge, ac_config
+                    )
 
                 # Write suggestion-judgments.jsonl
                 exp_dir = Path(output_dir) / config_names[0]

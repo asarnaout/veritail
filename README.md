@@ -150,7 +150,7 @@ The comparison report shows metric deltas, overlap, rank correlation, and positi
 
 ### Batch Mode (50% cost reduction)
 
-Use `--batch` to send all LLM judgment calls through the provider's batch API. This reduces cost by 50% but takes longer (typically minutes for small batches). Veritail polls for completion every 60 seconds. The polling calls are free management API requests and do not consume tokens or incur additional charges.
+Use `--batch` to send all LLM judgment calls through the provider's batch API. This reduces cost by 50% but takes longer (typically minutes for small batches). Works with both search relevance judgments and autocomplete LLM evaluation (`--autocomplete-llm`). Veritail polls for completion every 60 seconds. The polling calls are free management API requests and do not consume tokens or incur additional charges.
 
 ```bash
 veritail run --queries queries.csv --adapter adapter.py \
@@ -420,6 +420,13 @@ veritail run \
   --adapter adapter.py \
   --autocomplete-llm \
   --llm-model gpt-4o
+
+# Batch mode (50% cheaper, slower)
+veritail run \
+  --autocomplete prefixes.csv \
+  --adapter adapter.py \
+  --autocomplete-llm \
+  --llm-model gpt-4o --batch
 ```
 
 **What it evaluates** (per prefix):
@@ -458,9 +465,9 @@ Run a single or dual-configuration evaluation.
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable) |
 | `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
-| `--autocomplete-llm` | off | Enable LLM-based semantic evaluation for autocomplete suggestions. Requires `--llm-model` and `--autocomplete`. Not supported with dual-adapter comparison |
+| `--autocomplete-llm` | off | Enable LLM-based semantic evaluation for autocomplete suggestions. Requires `--llm-model` and `--autocomplete`. Compatible with `--batch`. Not supported with dual-adapter comparison |
 | `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
-| `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
+| `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Works with both search and `--autocomplete-llm`. Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
 
 If `--config-name` is provided, pass one name per adapter.
 
