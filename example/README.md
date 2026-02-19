@@ -23,7 +23,7 @@ This folder contains working examples for a **home improvement** retailer to hel
 
 3. **Run the autocomplete evaluation:**
    ```bash
-   veritail autocomplete run \
+   veritail run \
      --prefixes example/prefixes.csv \
      --adapter example/suggest_adapter.py \
      --config-name "suggest-test" \

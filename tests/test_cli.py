@@ -835,7 +835,7 @@ class TestCLI:
         assert result.exit_code != 0
         assert "API key is invalid" in result.output
 
-    def test_run_requires_llm_model(self, tmp_path):
+    def test_run_requires_llm_model_for_search(self, tmp_path):
         queries_file = tmp_path / "queries.csv"
         queries_file.write_text("query\nshoes\n")
 
@@ -854,7 +854,7 @@ class TestCLI:
             ],
         )
         assert result.exit_code != 0
-        assert "Missing option '--llm-model'" in result.output
+        assert "--llm-model is required when --queries is provided" in result.output
 
     def test_version(self):
         runner = CliRunner()
@@ -1081,3 +1081,160 @@ class TestCLI:
 
         assert result.exit_code == 0
         mock_dual_batch.assert_called_once()
+
+    def test_run_requires_queries_or_prefixes(self, tmp_path):
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "test-model",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "Provide --queries, --prefixes, or both" in result.output
+
+    def test_run_autocomplete_only(self, tmp_path):
+        """--prefixes + --adapter with suggest() works without --llm-model."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--prefixes",
+                str(prefixes_file),
+                "--adapter",
+                str(adapter_file),
+                "--config-name",
+                "ac-test",
+                "--output-dir",
+                str(tmp_path / "results"),
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Autocomplete HTML report" in result.output
+        assert (tmp_path / "results" / "ac-test" / "autocomplete-report.html").exists()
+
+    def test_run_adapter_missing_suggest(self, tmp_path):
+        """--prefixes provided but adapter lacks suggest() -> clear error."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--prefixes",
+                str(prefixes_file),
+                "--adapter",
+                str(adapter_file),
+            ],
+        )
+        assert result.exit_code != 0
+        assert "suggest()" in result.output
+
+    def test_run_help_shows_prefixes_option(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--help"])
+        assert result.exit_code == 0
+        assert "--prefixes" in result.output
+        assert "--suggest-checks" in result.output
+
+    def test_run_both_search_and_autocomplete(self, tmp_path):
+        """--queries + --prefixes + --adapter (with both functions) works."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult, AutocompleteResponse\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--prefixes",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "both-test",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "test-model",
+                ],
+            )
+
+        assert result.exit_code == 0
+        exp_dir = tmp_path / "results" / "both-test"
+        assert (exp_dir / "report.html").exists()
+        assert (exp_dir / "autocomplete-report.html").exists()
+
+    def test_init_autocomplete_creates_unified_adapter(self, tmp_path):
+        """init --autocomplete generates adapter.py with both search() and suggest()."""
+        runner = CliRunner()
+        result = runner.invoke(main, ["init", "--dir", str(tmp_path), "--autocomplete"])
+
+        assert result.exit_code == 0
+
+        adapter_path = tmp_path / "adapter.py"
+        prefixes_path = tmp_path / "prefixes.csv"
+
+        assert adapter_path.exists()
+        assert prefixes_path.exists()
+        # No separate suggest_adapter.py
+        assert not (tmp_path / "suggest_adapter.py").exists()
+
+        adapter_text = adapter_path.read_text(encoding="utf-8")
+        assert "def search(query: str) -> SearchResponse:" in adapter_text
+        assert "def suggest(prefix: str) -> AutocompleteResponse:" in adapter_text

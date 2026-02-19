@@ -55,8 +55,8 @@ veritail init --autocomplete
 ```
 
 This additionally generates:
-- `suggest_adapter.py` with a skeleton for autocomplete suggestions (maps to `AutocompleteResponse`)
 - `prefixes.csv` with example prefixes and type annotations (`short_prefix`, `mid_prefix`, `long_prefix`)
+- Adds a `suggest()` function to `adapter.py` alongside `search()`
 
 By default, existing files are not overwritten. Use `--force` to overwrite.
 
@@ -311,10 +311,10 @@ headphones w,long_prefix
 
 ### Suggest adapter
 
-Create a Python module that exposes a `suggest` function:
+Add a `suggest` function to your adapter module (or create a separate adapter file):
 
 ```python
-# suggest_adapter.py
+# adapter.py (or suggest_adapter.py)
 from veritail import AutocompleteResponse
 
 
@@ -324,10 +324,12 @@ def suggest(prefix: str) -> AutocompleteResponse:
     # Or simply: return results  (a bare list[str] is also accepted)
 ```
 
+If your adapter only has `suggest()`, search evaluation is skipped (no `--llm-model` needed).
+
 ### Quick start
 
 ```bash
-veritail autocomplete run \
+veritail run \
   --prefixes prefixes.csv \
   --adapter suggest_adapter.py \
   --open
@@ -352,7 +354,7 @@ All checks are deterministic and run without an LLM.
 Pass two adapters to run an A/B comparison:
 
 ```bash
-veritail autocomplete run \
+veritail run \
   --prefixes prefixes.csv \
   --adapter suggest_v1.py --config-name v1 \
   --adapter suggest_v2.py --config-name v2
@@ -388,10 +390,10 @@ def check_brand_prefix(prefix: str, suggestions: list[str]) -> list[CheckResult]
 ```
 
 ```bash
-veritail autocomplete run \
+veritail run \
   --prefixes prefixes.csv \
   --adapter suggest_adapter.py \
-  --checks my_autocomplete_checks.py
+  --suggest-checks my_autocomplete_checks.py
 ```
 
 ### Output
@@ -407,10 +409,11 @@ Run a single or dual-configuration evaluation.
 
 | Option | Default | Description |
 |---|---|---|
-| `--queries` | *(required)* | Path to query set (`.csv` or `.json`) |
+| `--queries` | *(optional)* | Path to query set (`.csv` or `.json`). At least one of `--queries` or `--prefixes` is required |
+| `--prefixes` | *(optional)* | Path to autocomplete prefix set (`.csv` or `.json`). At least one of `--queries` or `--prefixes` is required |
 | `--adapter` | *(required)* | Path to adapter module (up to 2) |
 | `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
-| `--llm-model` | *(required)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`) |
+| `--llm-model` | *(conditional)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`). Required when `--queries` is provided |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:11434/v1` for Ollama) |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
 | `--rubric` | `ecommerce-default` | Rubric name or custom rubric file path |
@@ -420,8 +423,9 @@ Run a single or dual-configuration evaluation.
 | `--open` | off | Open HTML report in browser |
 | `--context` | *(none)* | Business context for LLM judge — business identity, customer base, query interpretation guidance. Accepts a string or a path to a text file |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
-| `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
-| `--sample` | *(none)* | Randomly sample N queries for a faster evaluation (deterministic seed) |
+| `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable) |
+| `--suggest-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
+| `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
 | `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
 
 If `--config-name` is provided, pass one name per adapter.
@@ -436,7 +440,7 @@ Scaffold starter files for a new project.
 | `--adapter-name` | `adapter.py` | Adapter filename (must end with `.py`) |
 | `--queries-name` | `queries.csv` | Query set filename (must end with `.csv`) |
 | `--force` | off | Overwrite existing files |
-| `--autocomplete` | off | Also generate `suggest_adapter.py` and `prefixes.csv` |
+| `--autocomplete` | off | Also generate `prefixes.csv` and add `suggest()` to the adapter |
 
 ### `veritail generate-queries`
 
@@ -457,21 +461,6 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 ### `veritail vertical list`
 
 List all built-in verticals.
-
-### `veritail autocomplete run`
-
-Run autocomplete evaluation (single or dual configuration).
-
-| Option | Default | Description |
-|---|---|---|
-| `--prefixes` | *(required)* | Path to prefix set (`.csv` or `.json` with a `prefix` column, optional `type`) |
-| `--adapter` | *(required)* | Path to suggest adapter module (up to 2 for A/B comparison) |
-| `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
-| `--output-dir` | `./eval-results` | Output directory for results |
-| `--top-k` | *(all)* | Max suggestions to evaluate per prefix |
-| `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
-| `--sample` | *(none)* | Randomly sample N prefixes from the prefix set |
-| `--open` | off | Open the HTML report in the browser when complete |
 
 ### `veritail vertical show <name>`
 
