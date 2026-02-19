@@ -149,27 +149,19 @@ def main() -> None:
     default=False,
     help="Overwrite existing files if they already exist.",
 )
-@click.option(
-    "--autocomplete",
-    is_flag=True,
-    default=False,
-    help="Also generate prefixes.csv and add suggest() to the adapter.",
-)
 def init(
     target_dir: Path,
     adapter_name: str,
     queries_name: str,
     force: bool,
-    autocomplete: bool,
 ) -> None:
-    """Scaffold starter adapter and query files."""
+    """Scaffold starter adapter, query, and prefix files."""
     try:
         created = scaffold_project(
             target_dir=target_dir,
             adapter_name=adapter_name,
             queries_name=queries_name,
             force=force,
-            autocomplete=autocomplete,
         )
     except FileExistsError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -178,17 +170,26 @@ def init(
 
     for p in created:
         console.print(f"[green]Created[/green] {p}")
-    console.print("\n[dim]Next step:[/dim]")
+    adapter = created[0].name
+    queries = created[1].name
+    prefixes = created[2].name
+    console.print("\n[dim]Next steps:[/dim]")
     console.print(
-        f"[dim]  veritail run --queries {created[1].name} "
-        f"--adapter {created[0].name} --llm-model <model>[/dim]"
+        f"[dim]  Search evaluation:[/dim]\n"
+        f"[dim]    veritail run --queries {queries} "
+        f"--adapter {adapter} --llm-model <model>[/dim]"
     )
-    if autocomplete:
-        console.print(
-            f"[dim]  veritail run --queries {created[1].name} "
-            f"--prefixes {created[2].name} "
-            f"--adapter {created[0].name} --llm-model <model>[/dim]"
-        )
+    console.print(
+        f"[dim]  Autocomplete evaluation (no LLM needed):[/dim]\n"
+        f"[dim]    veritail run --autocomplete {prefixes} "
+        f"--adapter {adapter}[/dim]"
+    )
+    console.print(
+        f"[dim]  Both:[/dim]\n"
+        f"[dim]    veritail run --queries {queries} "
+        f"--autocomplete {prefixes} "
+        f"--adapter {adapter} --llm-model <model>[/dim]"
+    )
 
 
 @main.group()
@@ -370,7 +371,8 @@ def generate_queries_cmd(
     ),
 )
 @click.option(
-    "--prefixes",
+    "--autocomplete",
+    "autocomplete_prefixes",
     required=False,
     default=None,
     type=click.Path(exists=True),
@@ -466,8 +468,8 @@ def generate_queries_cmd(
     help="Path to custom check module(s) with check_* functions.",
 )
 @click.option(
-    "--suggest-checks",
-    "suggest_check_modules",
+    "--autocomplete-checks",
+    "autocomplete_check_modules",
     multiple=True,
     type=click.Path(exists=True),
     help="Path to custom autocomplete check module(s) with check_* functions.",
@@ -497,7 +499,7 @@ def generate_queries_cmd(
 )
 def run(
     queries: str | None,
-    prefixes: str | None,
+    autocomplete_prefixes: str | None,
     adapters: tuple[str, ...],
     config_names: tuple[str, ...],
     llm_model: str | None,
@@ -512,15 +514,15 @@ def run(
     context: str | None,
     vertical: str | None,
     check_modules: tuple[str, ...],
-    suggest_check_modules: tuple[str, ...],
+    autocomplete_check_modules: tuple[str, ...],
     sample: int | None,
     use_batch: bool,
     use_resume: bool,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
-    if not queries and not prefixes:
+    if not queries and not autocomplete_prefixes:
         raise click.UsageError(
-            "Provide --queries, --prefixes, or both.\n\n"
+            "Provide --queries, --autocomplete, or both.\n\n"
             "Option 1 - scaffold starter files (adapter + sample queries):\n"
             "  veritail init\n\n"
             "Option 2 - generate domain-aware queries with an LLM:\n"
@@ -609,8 +611,8 @@ def run(
                         "arguments to match the previous run."
                     )
 
-    # ---- Validate suggest adapter availability if prefixes requested ----
-    if prefixes:
+    # ---- Validate suggest adapter availability if autocomplete requested ----
+    if autocomplete_prefixes:
         from veritail.autocomplete.adapter import load_suggest_adapter
 
         for adapter_path in adapters:
@@ -618,7 +620,7 @@ def run(
                 load_suggest_adapter(adapter_path)
             except AttributeError:
                 raise click.UsageError(
-                    f"--prefixes requires a suggest() function in adapter "
+                    f"--autocomplete requires a suggest() function in adapter "
                     f"'{adapter_path}', but none was found."
                 )
 
@@ -886,7 +888,7 @@ def run(
             html_paths.append(html_path)
 
     # ---- Autocomplete evaluation ----
-    if prefixes:
+    if autocomplete_prefixes:
         from veritail.autocomplete.adapter import load_suggest_adapter
         from veritail.autocomplete.pipeline import (
             run_autocomplete_evaluation,
@@ -899,7 +901,7 @@ def run(
         )
         from veritail.types import AutocompleteConfig
 
-        prefix_entries = load_prefixes(prefixes)
+        prefix_entries = load_prefixes(autocomplete_prefixes)
         total_prefixes = len(prefix_entries)
 
         if sample is not None and sample < total_prefixes:
@@ -908,18 +910,21 @@ def run(
             rng = random.Random(42)
             prefix_entries = rng.sample(prefix_entries, sample)
             console.print(
-                f"Sampled {sample} of {total_prefixes} prefixes from {prefixes}"
+                f"Sampled {sample} of {total_prefixes} prefixes from "
+                f"{autocomplete_prefixes}"
             )
         else:
-            console.print(f"Loaded {len(prefix_entries)} prefixes from {prefixes}")
+            console.print(
+                f"Loaded {len(prefix_entries)} prefixes from {autocomplete_prefixes}"
+            )
 
-        # Load suggest-specific custom checks
+        # Load autocomplete-specific custom checks
         ac_custom_check_fns = None
-        if suggest_check_modules:
+        if autocomplete_check_modules:
             import importlib.util
 
             ac_custom_check_fns = []
-            for check_path in suggest_check_modules:
+            for check_path in autocomplete_check_modules:
                 spec = importlib.util.spec_from_file_location(
                     "ac_custom_checks", check_path
                 )
@@ -939,7 +944,7 @@ def run(
                         f"Check module '{check_path}' has no check_* functions."
                     )
                 console.print(
-                    f"[dim]Loaded {found} suggest check(s) from {check_path}[/dim]"
+                    f"[dim]Loaded {found} autocomplete check(s) from {check_path}[/dim]"
                 )
 
         ac_run_metadata = _build_run_metadata(

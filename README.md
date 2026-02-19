@@ -45,18 +45,9 @@ veritail init
 ```
 
 This generates:
-- `adapter.py` with a real HTTP request skeleton (endpoint, auth header, timeout, JSON parsing, mapping to `SearchResult`)
+- `adapter.py` with a real HTTP request skeleton for both `search()` and `suggest()` (endpoint, auth header, timeout, JSON parsing)
 - `queries.csv` with all four query types (`broad`, `navigational`, `long_tail`, `attribute`)
-
-Add `--autocomplete` to also generate autocomplete starter files:
-
-```bash
-veritail init --autocomplete
-```
-
-This additionally generates:
 - `prefixes.csv` with example prefixes and type annotations (`short_prefix`, `mid_prefix`, `long_prefix`)
-- Adds a `suggest()` function to `adapter.py` alongside `search()`
 
 By default, existing files are not overwritten. Use `--force` to overwrite.
 
@@ -311,10 +302,10 @@ headphones w,long_prefix
 
 ### Suggest adapter
 
-Add a `suggest` function to your adapter module (or create a separate adapter file):
+Add a `suggest` function to your adapter module:
 
 ```python
-# adapter.py (or suggest_adapter.py)
+# adapter.py
 from veritail import AutocompleteResponse
 
 
@@ -330,8 +321,8 @@ If your adapter only has `suggest()`, search evaluation is skipped (no `--llm-mo
 
 ```bash
 veritail run \
-  --prefixes prefixes.csv \
-  --adapter suggest_adapter.py \
+  --autocomplete prefixes.csv \
+  --adapter adapter.py \
   --open
 ```
 
@@ -355,9 +346,9 @@ Pass two adapters to run an A/B comparison:
 
 ```bash
 veritail run \
-  --prefixes prefixes.csv \
-  --adapter suggest_v1.py --config-name v1 \
-  --adapter suggest_v2.py --config-name v2
+  --autocomplete prefixes.csv \
+  --adapter adapter_v1.py --config-name v1 \
+  --adapter adapter_v2.py --config-name v2
 ```
 
 In addition to per-adapter checks, comparison mode adds:
@@ -366,7 +357,7 @@ In addition to per-adapter checks, comparison mode adds:
 
 ### Custom checks
 
-Add domain-specific checks with `--checks`. Each `check_*` function receives `(prefix: str, suggestions: list[str])` and returns `list[CheckResult]`:
+Add domain-specific checks with `--autocomplete-checks`. Each `check_*` function receives `(prefix: str, suggestions: list[str])` and returns `list[CheckResult]`:
 
 ```python
 # my_autocomplete_checks.py
@@ -391,9 +382,9 @@ def check_brand_prefix(prefix: str, suggestions: list[str]) -> list[CheckResult]
 
 ```bash
 veritail run \
-  --prefixes prefixes.csv \
-  --adapter suggest_adapter.py \
-  --suggest-checks my_autocomplete_checks.py
+  --autocomplete prefixes.csv \
+  --adapter adapter.py \
+  --autocomplete-checks my_autocomplete_checks.py
 ```
 
 ### Output
@@ -409,8 +400,8 @@ Run a single or dual-configuration evaluation.
 
 | Option | Default | Description |
 |---|---|---|
-| `--queries` | *(optional)* | Path to query set (`.csv` or `.json`). At least one of `--queries` or `--prefixes` is required |
-| `--prefixes` | *(optional)* | Path to autocomplete prefix set (`.csv` or `.json`). At least one of `--queries` or `--prefixes` is required |
+| `--queries` | *(optional)* | Path to query set (`.csv` or `.json`). At least one of `--queries` or `--autocomplete` is required |
+| `--autocomplete` | *(optional)* | Path to autocomplete prefix set (`.csv` or `.json`). At least one of `--queries` or `--autocomplete` is required |
 | `--adapter` | *(required)* | Path to adapter module (up to 2) |
 | `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
 | `--llm-model` | *(conditional)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`). Required when `--queries` is provided |
@@ -424,7 +415,7 @@ Run a single or dual-configuration evaluation.
 | `--context` | *(none)* | Business context for LLM judge — business identity, customer base, query interpretation guidance. Accepts a string or a path to a text file |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable) |
-| `--suggest-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
+| `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
 | `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
 | `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
 
@@ -440,7 +431,6 @@ Scaffold starter files for a new project.
 | `--adapter-name` | `adapter.py` | Adapter filename (must end with `.py`) |
 | `--queries-name` | `queries.csv` | Query set filename (must end with `.csv`) |
 | `--force` | off | Overwrite existing files |
-| `--autocomplete` | off | Also generate `prefixes.csv` and add `suggest()` to the adapter |
 
 ### `veritail generate-queries`
 
