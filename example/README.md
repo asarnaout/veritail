@@ -25,7 +25,7 @@ This folder contains working examples for a **home improvement** retailer to hel
    ```bash
    veritail run \
      --prefixes example/prefixes.csv \
-     --adapter example/suggest_adapter.py \
+     --adapter example/example_adapter.py \
      --config-name "suggest-test" \
      --open
    ```
@@ -41,9 +41,8 @@ This folder contains working examples for a **home improvement** retailer to hel
 ## Files
 
 - **`example_queries.csv`** - 25 home improvement queries across 4 types (broad, navigational, attribute, long_tail)
-- **`example_adapter.py`** - Mock search adapter with realistic home improvement product data (5 results per query)
+- **`example_adapter.py`** - Mock adapter with both `search()` and `suggest()` functions, realistic home improvement product data (5 results per query) and autocomplete suggestions
 - **`prefixes.csv`** - 18 autocomplete prefixes across 3 length tiers (short, mid, long)
-- **`suggest_adapter.py`** - Mock autocomplete adapter with home improvement suggestions
 - **`.env.example`** - Template for API keys (copy to `.env`)
 
 ## What the Example Covers
