@@ -46,21 +46,21 @@ veritail init
 
 This generates:
 - `adapter.py` with a real HTTP request skeleton for both `search()` and `suggest()` (endpoint, auth header, timeout, JSON parsing)
-- `queries.csv` with all four query types (`broad`, `navigational`, `long_tail`, `attribute`)
-- `prefixes.csv` with example prefixes and type annotations (`short_prefix`, `mid_prefix`, `long_prefix`)
+- `queries.csv` with example search queries (query types are automatically classified by the LLM during evaluation)
+- `prefixes.csv` with example prefixes (prefix types are automatically inferred from character count)
 
 By default, existing files are not overwritten. Use `--force` to overwrite.
 
 ### 3. Create a query set (manual option)
 
 ```csv
-query,type,category
-red running shoes,attribute,Shoes
-wireless earbuds,broad,Electronics
-nike air max 90,navigational,Shoes
+query
+red running shoes
+wireless earbuds
+nike air max 90
 ```
 
-`type` and `category` are optional, but they improve analysis quality.
+Optional columns: `type` (navigational, broad, long_tail, attribute) and `category`. When omitted, `type` is automatically classified by the LLM judge before evaluation.
 
 ### 4. Generate queries with an LLM (alternative)
 
@@ -290,14 +290,14 @@ veritail includes a standalone autocomplete (type-ahead) evaluation mode. It run
 
 ### Prefix set format
 
-Provide a CSV or JSON file with a `prefix` column. An optional `type` column categorizes prefixes for reporting:
+Provide a CSV or JSON file with a `prefix` column. Prefix types are automatically inferred from character count (short/mid/long), or you can provide an optional `type` column to override:
 
 ```csv
-prefix,type
-he,short_prefix
-hea,short_prefix
-headph,mid_prefix
-headphones w,long_prefix
+prefix
+he
+hea
+headph
+headphones w
 ```
 
 ### Suggest adapter

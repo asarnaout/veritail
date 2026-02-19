@@ -105,11 +105,11 @@ def search(query: str) -> SearchResponse:
 """
 
 QUERIES_TEMPLATE = """\
-query,type,category
-running shoes,broad,Shoes
-nike air max 90,navigational,Shoes
-waterproof trail running shoes size 10,long_tail,Shoes
-red running shoes,attribute,Shoes
+query
+running shoes
+nike air max 90
+waterproof trail running shoes size 10
+red running shoes
 """
 
 SUGGEST_FUNCTION_TEMPLATE = """
@@ -163,13 +163,13 @@ def suggest(prefix: str) -> AutocompleteResponse:
 """
 
 PREFIXES_TEMPLATE = """\
-prefix,type
-run,short_prefix
-runnin,mid_prefix
-running sh,long_prefix
-nike,short_prefix
-nike air,mid_prefix
-nike air max,long_prefix
+prefix
+run
+runnin
+running sh
+nike
+nike air
+nike air max
 """
 
 

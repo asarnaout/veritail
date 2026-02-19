@@ -9,6 +9,22 @@ from pathlib import Path
 from veritail.types import PrefixEntry
 
 
+def _infer_prefix_type(prefix: str) -> str:
+    """Infer a prefix type from its character count.
+
+    Thresholds:
+        len <= 2  -> "short_prefix"
+        3 <= len <= 9  -> "mid_prefix"
+        len >= 10 -> "long_prefix"
+    """
+    n = len(prefix)
+    if n <= 2:
+        return "short_prefix"
+    if n <= 9:
+        return "mid_prefix"
+    return "long_prefix"
+
+
 def load_prefixes(path: str) -> list[PrefixEntry]:
     """Load a prefix set from a CSV or JSON file.
 
@@ -42,10 +58,12 @@ def _load_csv(path: Path) -> list[PrefixEntry]:
             prefix = row["prefix"].strip()
             if not prefix:
                 continue
+            raw_type = row.get("type", "").strip() or None
+            inferred = raw_type if raw_type is not None else _infer_prefix_type(prefix)
             entries.append(
                 PrefixEntry(
                     prefix=prefix,
-                    type=row.get("type", "").strip() or None,
+                    type=inferred,
                 )
             )
     if not entries:
@@ -70,10 +88,11 @@ def _load_json(path: Path) -> list[PrefixEntry]:
         prefix = str(item["prefix"]).strip()
         if not prefix:
             continue
+        raw_type = item.get("type")
         entries.append(
             PrefixEntry(
                 prefix=prefix,
-                type=item.get("type"),
+                type=raw_type if raw_type is not None else _infer_prefix_type(prefix),
             )
         )
     if not entries:

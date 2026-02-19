@@ -29,6 +29,7 @@ from veritail.checks.correction import (
     check_correction_vocabulary,
     check_unnecessary_correction,
 )
+from veritail.llm.classifier import classify_query_type
 from veritail.llm.client import BatchRequest, LLMClient
 from veritail.llm.judge import CORRECTION_SYSTEM_PROMPT, CorrectionJudge, RelevanceJudge
 from veritail.metrics.ir import compute_all_metrics
@@ -44,6 +45,39 @@ from veritail.types import (
 )
 
 console = Console()
+
+
+def _classify_missing_query_types(
+    queries: list[QueryEntry],
+    llm_client: LLMClient,
+    context: str | None,
+    vertical: str | None,
+) -> None:
+    """Pre-pass: classify queries that have no type using a single LLM call each.
+
+    Mutates query_entry.type in-place for entries where type is None.
+    """
+    missing = [(i, q) for i, q in enumerate(queries) if q.type is None]
+    if not missing:
+        return
+
+    console.print(f"[cyan]Classifying {len(missing)} query type(s) via LLM...[/cyan]")
+    classified = 0
+    with Progress(console=console) as progress:
+        task = progress.add_task(
+            "[cyan]Classifying query types...",
+            total=len(missing),
+        )
+        for _i, query_entry in missing:
+            inferred = classify_query_type(
+                llm_client, query_entry.query, context=context, vertical=vertical
+            )
+            if inferred is not None:
+                query_entry.type = inferred
+                classified += 1
+            progress.advance(task)
+
+    console.print(f"[dim]Classified {classified}/{len(missing)} queries[/dim]")
 
 
 def run_evaluation(
@@ -118,6 +152,9 @@ def run_evaluation(
         )
     except Exception as e:
         console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
+
+    # Pre-pass: classify query types that are missing
+    _classify_missing_query_types(queries, llm_client, context, vertical)
 
     all_judgments: list[JudgmentRecord] = []
     all_checks: list[CheckResult] = []
@@ -498,6 +535,9 @@ def run_batch_evaluation(
         )
     except Exception as e:
         console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
+
+    # Pre-pass: classify query types that are missing
+    _classify_missing_query_types(queries, llm_client, context, vertical)
 
     # Check for existing checkpoint when resuming
     saved_checkpoint: BatchCheckpoint | None = None

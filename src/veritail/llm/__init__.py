@@ -1,5 +1,6 @@
 """LLM client and relevance judgment."""
 
+from veritail.llm.classifier import classify_query_type
 from veritail.llm.client import (
     AnthropicClient,
     BatchRequest,
@@ -20,6 +21,7 @@ __all__ = [
     "AnthropicClient",
     "GeminiClient",
     "OpenAIClient",
+    "classify_query_type",
     "create_llm_client",
     "RelevanceJudge",
 ]

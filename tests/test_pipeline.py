@@ -254,7 +254,7 @@ class TestRunEvaluation:
         assert "## Vertical: Foodservice" in system_prompt_used
 
     def test_adapter_error_handled(self, tmp_path):
-        queries = [QueryEntry(query="error query")]
+        queries = [QueryEntry(query="error query", type="broad")]
 
         def failing_adapter(query: str):
             raise RuntimeError("API down")
@@ -822,6 +822,65 @@ class TestRunEvaluation:
         assert "appropriate" in verdicts
         assert "error" in verdicts
 
+    def test_prepass_classification(self, tmp_path):
+        """Queries without type get classified before evaluation."""
+        queries = [
+            QueryEntry(query="nike air max"),  # type is None
+        ]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = Mock(spec=LLMClient)
+        # First call: classifier, then 3 relevance judgments
+        llm_client.complete.side_effect = [
+            LLMResponse(
+                content="QUERY_TYPE: navigational",
+                model="test",
+                input_tokens=10,
+                output_tokens=10,
+            ),
+            LLMResponse(
+                content="SCORE: 3\nATTRIBUTES: match\nREASONING: Excellent",
+                model="test",
+                input_tokens=100,
+                output_tokens=50,
+            ),
+            LLMResponse(
+                content="SCORE: 2\nATTRIBUTES: partial\nREASONING: Good",
+                model="test",
+                input_tokens=100,
+                output_tokens=50,
+            ),
+            LLMResponse(
+                content="SCORE: 1\nATTRIBUTES: mismatch\nREASONING: Marginal",
+                model="test",
+                input_tokens=100,
+                output_tokens=50,
+            ),
+        ]
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+        )
+
+        # Query type should have been classified
+        assert queries[0].type == "navigational"
+        # Metrics should have by_type breakdown
+        ndcg = next(m for m in metrics if m.metric_name == "ndcg@10")
+        assert "navigational" in ndcg.by_query_type
+
 
 def _make_mock_batch_llm_client(responses: list[str]) -> LLMClient:
     """Create a mock LLM client with batch support.
@@ -914,7 +973,7 @@ class TestRunBatchEvaluation:
 
     def test_batch_zero_requests(self, tmp_path):
         """All adapters fail → empty judgments, zero-filled metrics."""
-        queries = [QueryEntry(query="error query")]
+        queries = [QueryEntry(query="error query", type="broad")]
 
         def failing_adapter(query: str):
             raise RuntimeError("API down")
