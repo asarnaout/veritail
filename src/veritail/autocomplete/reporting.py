@@ -14,6 +14,7 @@ from veritail.types import (
     AutocompleteResponse,
     CheckResult,
     PrefixEntry,
+    SuggestionJudgment,
 )
 
 _JINJA_ENV = Environment(
@@ -69,6 +70,7 @@ def generate_autocomplete_report(
     prefixes: list[PrefixEntry] | None = None,
     run_metadata: Mapping[str, object] | None = None,
     sibling_report: str | None = None,
+    suggestion_judgments: list[SuggestionJudgment] | None = None,
 ) -> str:
     """Generate a report for a single autocomplete evaluation.
 
@@ -79,15 +81,23 @@ def generate_autocomplete_report(
         prefixes: Optional list of prefix entries.
         run_metadata: Optional provenance metadata.
         sibling_report: Optional relative path to a sibling report.
+        suggestion_judgments: Optional LLM suggestion judgments.
 
     Returns:
         Formatted report string.
     """
     if format == "html":
         return _generate_html(
-            checks, responses_by_prefix, prefixes, run_metadata, sibling_report
+            checks,
+            responses_by_prefix,
+            prefixes,
+            run_metadata,
+            sibling_report,
+            suggestion_judgments,
         )
-    return _generate_terminal(checks, responses_by_prefix, prefixes)
+    return _generate_terminal(
+        checks, responses_by_prefix, prefixes, suggestion_judgments
+    )
 
 
 def generate_autocomplete_comparison_report(
@@ -120,6 +130,7 @@ def _generate_terminal(
     checks: list[CheckResult],
     responses_by_prefix: dict[int, AutocompleteResponse] | None = None,
     prefixes: list[PrefixEntry] | None = None,
+    suggestion_judgments: list[SuggestionJudgment] | None = None,
 ) -> str:
     """Generate a rich-formatted terminal report."""
     con = Console(file=StringIO(), force_terminal=True, width=100)
@@ -154,14 +165,86 @@ def _generate_terminal(
             con.print(f"[dim]  ... and {len(failed_checks) - 20} more[/dim]")
         con.print(fail_table)
 
+    # LLM Suggestion Quality
+    if suggestion_judgments is not None:
+        con.print("\n")
+        avg_rel = (
+            sum(j.relevance_score for j in suggestion_judgments)
+            / len(suggestion_judgments)
+            if suggestion_judgments
+            else 0.0
+        )
+        avg_div = (
+            sum(j.diversity_score for j in suggestion_judgments)
+            / len(suggestion_judgments)
+            if suggestion_judgments
+            else 0.0
+        )
+        total_flagged = sum(len(j.flagged_suggestions) for j in suggestion_judgments)
+
+        llm_table = Table(title="LLM Suggestion Quality", show_header=True)
+        llm_table.add_column("Metric", style="cyan")
+        llm_table.add_column("Value", justify="right")
+        llm_table.add_row("Avg Relevance", f"{avg_rel:.2f}")
+        llm_table.add_row("Avg Diversity", f"{avg_div:.2f}")
+        llm_table.add_row("Prefixes Evaluated", str(len(suggestion_judgments)))
+        llm_table.add_row("Total Flagged", str(total_flagged))
+        con.print(llm_table)
+
+        # Flagged suggestions detail
+        flagged_judgments = [j for j in suggestion_judgments if j.flagged_suggestions]
+        if flagged_judgments:
+            con.print("\n")
+            flag_table = Table(title="Flagged Suggestions", show_header=True)
+            flag_table.add_column("Prefix", style="cyan")
+            flag_table.add_column("Flagged")
+            flag_table.add_column("Reasoning", style="dim")
+            for j in flagged_judgments[:20]:
+                flag_table.add_row(
+                    j.prefix,
+                    ", ".join(j.flagged_suggestions),
+                    j.reasoning,
+                )
+            if len(flagged_judgments) > 20:
+                con.print(f"[dim]  ... and {len(flagged_judgments) - 20} more[/dim]")
+            con.print(flag_table)
+
+        # Lowest relevance scores
+        sorted_by_rel = sorted(suggestion_judgments, key=lambda j: j.relevance_score)
+        lowest = sorted_by_rel[:5]
+        if lowest:
+            con.print("\n")
+            low_table = Table(title="Lowest Relevance Scores", show_header=True)
+            low_table.add_column("Prefix", style="cyan")
+            low_table.add_column("Rel", justify="right")
+            low_table.add_column("Div", justify="right")
+            low_table.add_column("Reasoning", style="dim")
+            for j in lowest:
+                low_table.add_row(
+                    j.prefix,
+                    str(j.relevance_score),
+                    str(j.diversity_score),
+                    j.reasoning,
+                )
+            con.print(low_table)
+
     # Per-prefix drill-down
     if prefixes and responses_by_prefix:
+        # Build judgment lookup by prefix
+        judgment_by_prefix: dict[str, SuggestionJudgment] = {}
+        if suggestion_judgments:
+            for j in suggestion_judgments:
+                judgment_by_prefix[j.prefix] = j
+
         con.print("\n")
         drill_table = Table(title="Per-Prefix Results", show_header=True)
         drill_table.add_column("Prefix", style="cyan")
         drill_table.add_column("Type", style="dim")
         drill_table.add_column("Suggestions", style="dim")
         drill_table.add_column("Failed Checks", justify="right", style="red")
+        if suggestion_judgments is not None:
+            drill_table.add_column("Rel", justify="right")
+            drill_table.add_column("Div", justify="right")
 
         prefix_failures: dict[str, int] = {}
         for c in checks:
@@ -174,12 +257,17 @@ def _generate_terminal(
             if resp and len(resp.suggestions) > 5:
                 sug_str += f" (+{len(resp.suggestions) - 5} more)"
             fail_count = prefix_failures.get(entry.prefix, 0)
-            drill_table.add_row(
+            row: list[str] = [
                 entry.prefix,
                 entry.type or "",
                 sug_str,
                 str(fail_count) if fail_count else "",
-            )
+            ]
+            if suggestion_judgments is not None:
+                sj = judgment_by_prefix.get(entry.prefix)
+                row.append(str(sj.relevance_score) if sj else "")
+                row.append(str(sj.diversity_score) if sj else "")
+            drill_table.add_row(*row)
         con.print(drill_table)
 
     assert isinstance(con.file, StringIO)
@@ -241,6 +329,7 @@ def _generate_html(
     prefixes: list[PrefixEntry] | None = None,
     run_metadata: Mapping[str, object] | None = None,
     sibling_report: str | None = None,
+    suggestion_judgments: list[SuggestionJudgment] | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     tmpl_dir = Path(__file__).resolve().parent.parent / "reporting" / "templates"
@@ -249,6 +338,12 @@ def _generate_html(
     template = _JINJA_ENV.from_string(template_str)
 
     check_summary = _summarize_checks(checks)
+
+    # Build judgment lookup by prefix
+    judgment_by_prefix: dict[str, SuggestionJudgment] = {}
+    if suggestion_judgments:
+        for j in suggestion_judgments:
+            judgment_by_prefix[j.prefix] = j
 
     # Per-prefix drill-down
     prefix_details: list[dict[str, object]] = []
@@ -260,23 +355,67 @@ def _generate_html(
     if prefixes and responses_by_prefix:
         for i, entry in enumerate(prefixes):
             resp = responses_by_prefix.get(i)
-            prefix_details.append(
-                {
-                    "prefix": entry.prefix,
-                    "type": entry.type or "",
-                    "suggestions": resp.suggestions if resp else [],
-                    "failed_checks": [
-                        {"name": c.check_name, "detail": c.detail}
-                        for c in prefix_failures.get(entry.prefix, [])
-                    ],
-                }
-            )
+            detail: dict[str, object] = {
+                "prefix": entry.prefix,
+                "type": entry.type or "",
+                "suggestions": resp.suggestions if resp else [],
+                "failed_checks": [
+                    {"name": c.check_name, "detail": c.detail}
+                    for c in prefix_failures.get(entry.prefix, [])
+                ],
+            }
+            sj = judgment_by_prefix.get(entry.prefix)
+            if sj:
+                detail["relevance_score"] = sj.relevance_score
+                detail["diversity_score"] = sj.diversity_score
+                detail["flagged_suggestions"] = sj.flagged_suggestions
+                detail["llm_reasoning"] = sj.reasoning
+            else:
+                detail["relevance_score"] = None
+                detail["diversity_score"] = None
+                detail["flagged_suggestions"] = []
+                detail["llm_reasoning"] = ""
+            prefix_details.append(detail)
+
+    # LLM summary
+    llm_summary: dict[str, object] | None = None
+    if suggestion_judgments is not None:
+        avg_rel = (
+            sum(j.relevance_score for j in suggestion_judgments)
+            / len(suggestion_judgments)
+            if suggestion_judgments
+            else 0.0
+        )
+        avg_div = (
+            sum(j.diversity_score for j in suggestion_judgments)
+            / len(suggestion_judgments)
+            if suggestion_judgments
+            else 0.0
+        )
+        total_flagged = sum(len(j.flagged_suggestions) for j in suggestion_judgments)
+        flagged_details = [
+            {
+                "prefix": j.prefix,
+                "flagged": j.flagged_suggestions,
+                "reasoning": j.reasoning,
+            }
+            for j in suggestion_judgments
+            if j.flagged_suggestions
+        ]
+        llm_summary = {
+            "avg_relevance": f"{avg_rel:.2f}",
+            "avg_diversity": f"{avg_div:.2f}",
+            "count": len(suggestion_judgments),
+            "total_flagged": total_flagged,
+            "flagged_details": flagged_details,
+        }
 
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
         key_to_label = [
             ("generated_at_utc", "Timestamp (UTC)"),
             ("top_k", "Top-K"),
+            ("llm_model", "LLM Model"),
             ("adapter_path", "Adapter Path"),
             ("adapter_path_a", "Adapter Path (A)"),
             ("adapter_path_b", "Adapter Path (B)"),
@@ -292,6 +431,7 @@ def _generate_html(
         check_descriptions=CHECK_DESCRIPTIONS,
         run_metadata_rows=metadata_rows,
         sibling_report=sibling_report,
+        llm_summary=llm_summary,
     )
 
 

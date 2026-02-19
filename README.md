@@ -7,7 +7,7 @@ veritail runs four evaluation layers together:
 - Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
 - IR metrics (NDCG, MRR, MAP, Precision, attribute match)
 - Autocorrect evaluation (catches intent-altering or unnecessary query corrections)
-- Autocomplete evaluation (deterministic quality checks for type-ahead suggestions — no LLM needed)
+- Autocomplete evaluation (deterministic quality checks for type-ahead suggestions, with optional LLM-based semantic evaluation)
 
 It includes 14 built-in ecommerce verticals (automotive, beauty, electronics, fashion, foodservice, furniture, groceries, home improvement, industrial, marketplace, medical, office supplies, pet supplies, and sporting goods) for domain-aware LLM judging, and supports custom vertical context and rubrics.
 Built for rapid search iteration: compare baseline vs candidate, inspect regressions, and decide from per-query evidence.
@@ -392,6 +392,48 @@ veritail run \
 - **Terminal report**: check pass/fail summary, per-prefix drill-down
 - **HTML report**: standalone report with per-prefix detail (open with `--open`)
 
+### LLM-based semantic evaluation (opt-in)
+
+Deterministic checks catch mechanical failures but cannot evaluate whether suggestions are semantically relevant to the user's intent, diverse across shopping intents, or appropriate for the store's vertical. Add `--autocomplete-llm` to enable LLM-based evaluation.
+
+```bash
+# Autocomplete-only with LLM evaluation
+veritail run \
+  --autocomplete prefixes.csv \
+  --adapter adapter.py \
+  --autocomplete-llm \
+  --llm-model gpt-4o
+
+# With vertical and business context
+veritail run \
+  --autocomplete prefixes.csv \
+  --adapter adapter.py \
+  --autocomplete-llm \
+  --llm-model gpt-4o \
+  --vertical home-improvement \
+  --context "Big-box home improvement retailer"
+
+# Combined with search evaluation
+veritail run \
+  --queries queries.csv \
+  --autocomplete prefixes.csv \
+  --adapter adapter.py \
+  --autocomplete-llm \
+  --llm-model gpt-4o
+```
+
+**What it evaluates** (per prefix):
+- **Relevance** (0-3): Do suggestions match the likely shopping intent?
+- **Diversity** (0-3): Do suggestions cover different categories and use cases?
+- **Flagged suggestions**: Individual suggestions that are unrelated, offensive, or duplicative
+
+**Output:**
+- Console: LLM Suggestion Quality summary, flagged suggestions detail, lowest relevance scores
+- HTML report: LLM summary table, flagged details, per-prefix relevance/diversity scores
+- `suggestion-judgments.jsonl` written alongside other evaluation artifacts
+
+**Cost:** One LLM call per prefix. A run with 100 prefixes makes 100 calls (prefixes with empty suggestions are skipped).
+
 ## CLI Reference
 
 ### `veritail run`
@@ -416,6 +458,7 @@ Run a single or dual-configuration evaluation.
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable) |
 | `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
+| `--autocomplete-llm` | off | Enable LLM-based semantic evaluation for autocomplete suggestions. Requires `--llm-model` and `--autocomplete`. Not supported with dual-adapter comparison |
 | `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
 | `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
 

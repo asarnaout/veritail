@@ -1239,3 +1239,112 @@ class TestCLI:
         assert "Autocomplete evaluation (no LLM needed):" in result.output
         assert "Both:" in result.output
         assert "--autocomplete prefixes.csv" in result.output
+
+    def test_autocomplete_llm_requires_autocomplete(self, tmp_path):
+        """--autocomplete-llm without --autocomplete -> error."""
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "test-model",
+                "--autocomplete-llm",
+                "--queries",
+                str(tmp_path / "q.csv"),
+            ],
+        )
+        # The --queries file doesn't exist so click will error on that first;
+        # use a real file for the query path to reach our validation.
+        queries_file = tmp_path / "q.csv"
+        queries_file.write_text("query\nshoes\n")
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "test-model",
+                "--autocomplete-llm",
+                "--queries",
+                str(queries_file),
+            ],
+        )
+        assert result.exit_code != 0
+        assert "--autocomplete-llm requires --autocomplete" in result.output
+
+    def test_autocomplete_llm_requires_llm_model(self, tmp_path):
+        """--autocomplete-llm without --llm-model -> error."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--autocomplete",
+                str(prefixes_file),
+                "--adapter",
+                str(adapter_file),
+                "--autocomplete-llm",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "--autocomplete-llm requires --llm-model" in result.output
+
+    def test_autocomplete_llm_rejects_dual_adapter(self, tmp_path):
+        """--autocomplete-llm with 2 adapters -> error."""
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_a = tmp_path / "adapter_a.py"
+        adapter_a.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['a'])\n"
+        )
+        adapter_b = tmp_path / "adapter_b.py"
+        adapter_b.write_text(
+            "from veritail.types import AutocompleteResponse\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['b'])\n"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--autocomplete",
+                str(prefixes_file),
+                "--adapter",
+                str(adapter_a),
+                "--adapter",
+                str(adapter_b),
+                "--llm-model",
+                "test-model",
+                "--autocomplete-llm",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "not supported with dual-adapter" in result.output
+
+    def test_run_help_shows_autocomplete_llm(self):
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", "--help"])
+        assert result.exit_code == 0
+        assert "--autocomplete-llm" in result.output

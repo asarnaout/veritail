@@ -123,6 +123,46 @@
     </table></div>
     {% endif %}
 
+    {% if llm_summary %}
+    <h2>LLM Suggestion Quality</h2>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Avg Relevance</td><td class="metric-value">{{ llm_summary.avg_relevance }}</td></tr>
+            <tr><td>Avg Diversity</td><td class="metric-value">{{ llm_summary.avg_diversity }}</td></tr>
+            <tr><td>Prefixes Evaluated</td><td class="metric-value">{{ llm_summary.count }}</td></tr>
+            <tr><td>Total Flagged</td><td class="metric-value {% if llm_summary.total_flagged > 0 %}negative{% endif %}">{{ llm_summary.total_flagged }}</td></tr>
+        </tbody>
+    </table></div>
+
+    {% if llm_summary.flagged_details %}
+    <h2>Flagged Suggestions</h2>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Prefix</th>
+                <th>Flagged Items</th>
+                <th>Reasoning</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fd in llm_summary.flagged_details %}
+            <tr>
+                <td>{{ fd.prefix }}</td>
+                <td>{{ fd.flagged | join(', ') }}</td>
+                <td style="font-size:13px; color:#6b7280;">{{ fd.reasoning }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% endif %}
+    {% endif %}
+
     {% if prefix_details %}
     <h2>Per-Prefix Details</h2>
     <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
@@ -139,6 +179,7 @@
         <span style="color:#6b7280; font-size:13px; font-weight:normal;">
           {{ item.suggestions|length }} suggestions
           {% if item.failed_checks %}&middot; <span style="color:#dc2626;">{{ item.failed_checks|length }} failed</span>{% endif %}
+          {% if item.relevance_score is not none %}&middot; <span style="{% if item.relevance_score >= 2 %}color:#16a34a{% elif item.relevance_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Rel:{{ item.relevance_score }}</span> <span style="{% if item.diversity_score >= 2 %}color:#16a34a{% elif item.diversity_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Div:{{ item.diversity_score }}</span>{% endif %}
         </span>
       </summary>
       <div class="card" style="margin-top:4px; border-radius:0 0 8px 8px;">
@@ -156,6 +197,19 @@
           {% for fc in item.failed_checks %}
           <div class="failed-check">&#x2717; {{ fc.name }}: {{ fc.detail }}</div>
           {% endfor %}
+        </div>
+        {% endif %}
+        {% if item.relevance_score is not none %}
+        <div style="margin-top:12px; border-top:1px solid #eee; padding-top:8px;">
+          <span style="font-size:13px; font-weight:600;">LLM Scores:</span>
+          <span style="margin-left:8px; font-size:13px; {% if item.relevance_score >= 2 %}color:#16a34a{% elif item.relevance_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Relevance: {{ item.relevance_score }}/3</span>
+          <span style="margin-left:12px; font-size:13px; {% if item.diversity_score >= 2 %}color:#16a34a{% elif item.diversity_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Diversity: {{ item.diversity_score }}/3</span>
+          {% if item.flagged_suggestions %}
+          <div style="margin-top:6px; font-size:13px; color:#dc2626;">Flagged: {{ item.flagged_suggestions | join(', ') }}</div>
+          {% endif %}
+          {% if item.llm_reasoning %}
+          <div style="margin-top:6px; font-size:13px; color:#6b7280;">{{ item.llm_reasoning }}</div>
+          {% endif %}
         </div>
         {% endif %}
       </div>

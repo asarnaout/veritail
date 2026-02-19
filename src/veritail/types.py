@@ -124,3 +124,18 @@ class AutocompleteConfig:
     name: str
     adapter_path: str
     top_k: int = 10
+
+
+@dataclass
+class SuggestionJudgment:
+    """LLM semantic judgment for a set of autocomplete suggestions."""
+
+    prefix: str
+    suggestions: list[str]
+    relevance_score: int  # 0-3
+    diversity_score: int  # 0-3
+    flagged_suggestions: list[str]
+    reasoning: str
+    model: str
+    experiment: str
+    metadata: dict[str, Any] = field(default_factory=dict)

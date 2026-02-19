@@ -475,6 +475,16 @@ def generate_queries_cmd(
     help="Path to custom autocomplete check module(s) with check_* functions.",
 )
 @click.option(
+    "--autocomplete-llm",
+    "autocomplete_llm",
+    is_flag=True,
+    default=False,
+    help=(
+        "Enable LLM-based semantic evaluation for autocomplete suggestions. "
+        "Requires --llm-model."
+    ),
+)
+@click.option(
     "--sample",
     default=None,
     type=int,
@@ -515,6 +525,7 @@ def run(
     vertical: str | None,
     check_modules: tuple[str, ...],
     autocomplete_check_modules: tuple[str, ...],
+    autocomplete_llm: bool,
     sample: int | None,
     use_batch: bool,
     use_resume: bool,
@@ -560,6 +571,17 @@ def run(
 
     if top_k < 1:
         raise click.UsageError("--top-k must be >= 1.")
+
+    if autocomplete_llm and not autocomplete_prefixes:
+        raise click.UsageError("--autocomplete-llm requires --autocomplete.")
+
+    if autocomplete_llm and not llm_model:
+        raise click.UsageError("--autocomplete-llm requires --llm-model.")
+
+    if autocomplete_llm and len(adapters) > 1:
+        raise click.UsageError(
+            "--autocomplete-llm is not supported with dual-adapter comparison."
+        )
 
     if not config_names:
         config_names = _generate_config_names(adapters)
@@ -629,6 +651,16 @@ def run(
     search_sibling = "autocomplete-report.html" if autocomplete_prefixes else None
     ac_sibling = "report.html" if queries else None
 
+    # ---- Resolve context and vertical (shared by search and autocomplete) ----
+    if context and Path(context).is_file():
+        context = Path(context).read_text(encoding="utf-8").rstrip()
+
+    vertical_context: str | None = None
+    if vertical:
+        from veritail.verticals import load_vertical
+
+        vertical_context = load_vertical(vertical)
+
     # ---- Search evaluation ----
     html_paths: list[Path] = []
 
@@ -648,15 +680,6 @@ def run(
             console.print(f"Loaded {len(query_entries)} queries from {queries}")
 
         rubric_data = load_rubric(rubric)
-
-        if context and Path(context).is_file():
-            context = Path(context).read_text(encoding="utf-8").rstrip()
-
-        vertical_context: str | None = None
-        if vertical:
-            from veritail.verticals import load_vertical
-
-            vertical_context = load_vertical(vertical)
 
         custom_check_fns: list[CustomCheckFn] | None = None
         if check_modules:
@@ -963,6 +986,9 @@ def run(
             adapter_path_b=adapters[1] if len(adapters) == 2 else None,
         )
 
+        if autocomplete_llm and llm_model:
+            ac_run_metadata["llm_model"] = llm_model
+
         if len(adapters) == 1:
             ac_config = AutocompleteConfig(
                 name=config_names[0],
@@ -977,10 +1003,67 @@ def run(
                 custom_checks=ac_custom_check_fns,
             )
 
+            # ---- LLM suggestion evaluation (opt-in) ----
+            ac_suggestion_judgments = None
+            if autocomplete_llm and llm_model:
+                from veritail.autocomplete.judge import (
+                    SUGGESTION_SYSTEM_PROMPT,
+                    SuggestionJudge,
+                )
+                from veritail.autocomplete.pipeline import (
+                    run_autocomplete_llm_evaluation,
+                )
+
+                # Create LLM client if not already created (search eval creates it)
+                if not queries:
+                    _warn_custom_model(llm_model, llm_base_url)
+                    llm_client = create_llm_client(
+                        llm_model, base_url=llm_base_url, api_key=llm_api_key
+                    )
+                    try:
+                        llm_client.preflight_check()
+                    except RuntimeError as exc:
+                        raise click.ClickException(str(exc)) from exc
+
+                # Build system prompt with vertical/context prefix
+                ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
+                prefix_parts: list[str] = []
+                if vertical_context:
+                    prefix_parts.append(f"## Store Vertical\n{vertical_context}")
+                if context:
+                    prefix_parts.append(f"## Business Context\n{context}")
+                if prefix_parts:
+                    ac_system_prompt = (
+                        "\n\n".join(prefix_parts) + "\n\n" + ac_system_prompt
+                    )
+
+                ac_judge = SuggestionJudge(
+                    llm_client, ac_system_prompt, config_names[0]
+                )
+                ac_suggestion_judgments = run_autocomplete_llm_evaluation(
+                    prefix_entries, ac_responses, ac_judge, ac_config
+                )
+
+                # Write suggestion-judgments.jsonl
+                exp_dir = Path(output_dir) / config_names[0]
+                exp_dir.mkdir(parents=True, exist_ok=True)
+                sj_path = exp_dir / "suggestion-judgments.jsonl"
+                from dataclasses import asdict as _asdict
+
+                sj_path.write_text(
+                    "\n".join(
+                        json.dumps(_asdict(sj), default=str)
+                        for sj in ac_suggestion_judgments
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
             ac_report = generate_autocomplete_report(
                 ac_checks,
                 responses_by_prefix=ac_responses,
                 prefixes=prefix_entries,
+                suggestion_judgments=ac_suggestion_judgments,
             )
             console.print(ac_report)
 
@@ -994,6 +1077,7 @@ def run(
                 prefixes=prefix_entries,
                 run_metadata=ac_run_metadata,
                 sibling_report=ac_sibling,
+                suggestion_judgments=ac_suggestion_judgments,
             )
             ac_html_path = exp_dir / "autocomplete-report.html"
             ac_html_path.write_text(ac_html, encoding="utf-8")

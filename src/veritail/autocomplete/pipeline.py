@@ -13,11 +13,13 @@ from veritail.autocomplete.comparison import (
     check_rank_agreement,
     check_suggestion_overlap,
 )
+from veritail.autocomplete.judge import SuggestionJudge
 from veritail.types import (
     AutocompleteConfig,
     AutocompleteResponse,
     CheckResult,
     PrefixEntry,
+    SuggestionJudgment,
 )
 
 console = Console()
@@ -109,3 +111,61 @@ def run_dual_autocomplete_evaluation(
         )
 
     return checks_a, checks_b, comparison_checks
+
+
+def run_autocomplete_llm_evaluation(
+    prefixes: list[PrefixEntry],
+    responses_by_prefix: dict[int, AutocompleteResponse],
+    judge: SuggestionJudge,
+    config: AutocompleteConfig,
+) -> list[SuggestionJudgment]:
+    """Run LLM-based semantic evaluation on autocomplete suggestions.
+
+    One LLM call per prefix. Skips prefixes with empty suggestions.
+
+    Args:
+        prefixes: The prefix entries to evaluate.
+        responses_by_prefix: Mapping of prefix index to adapter responses.
+        judge: A SuggestionJudge instance for LLM evaluation.
+        config: Autocomplete configuration.
+
+    Returns:
+        List of SuggestionJudgment results.
+    """
+
+    judgments: list[SuggestionJudgment] = []
+
+    with Progress(console=console) as progress:
+        task = progress.add_task(
+            f"[cyan]LLM judging '{config.name}'...", total=len(prefixes)
+        )
+        for i, entry in enumerate(prefixes):
+            resp = responses_by_prefix.get(i)
+            if not resp or not resp.suggestions:
+                progress.advance(task)
+                continue
+
+            try:
+                sj = judge.judge(entry.prefix, resp.suggestions)
+                judgments.append(sj)
+            except Exception as exc:
+                console.print(
+                    f"[yellow]LLM judge error for prefix "
+                    f"'{entry.prefix}': {exc}[/yellow]"
+                )
+                judgments.append(
+                    SuggestionJudgment(
+                        prefix=entry.prefix,
+                        suggestions=resp.suggestions,
+                        relevance_score=0,
+                        diversity_score=0,
+                        flagged_suggestions=[],
+                        reasoning="",
+                        model="",
+                        experiment=config.name,
+                        metadata={"error": str(exc)},
+                    )
+                )
+            progress.advance(task)
+
+    return judgments
