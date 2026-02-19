@@ -210,7 +210,12 @@
             <tr>
                 <th>Metric</th>
                 {% for qt in query_types %}
-                <th>{{ qt }}</th>
+                <th>
+                  {{ query_type_display_names.get(qt, qt) }}
+                  {% if query_type_descriptions and query_type_descriptions.get(qt) %}
+                  <span class="tip" data-tip="{{ query_type_descriptions[qt] }}">?</span>
+                  {% endif %}
+                </th>
                 {% endfor %}
             </tr>
         </thead>

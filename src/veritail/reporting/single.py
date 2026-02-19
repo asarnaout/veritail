@@ -54,6 +54,26 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
     ),
 }
 
+QUERY_TYPE_DISPLAY_NAMES: dict[str, str] = {
+    "long_tail": "long-tail",
+}
+
+QUERY_TYPE_DESCRIPTIONS: dict[str, str] = {
+    "attribute": (
+        "Queries that filter by a specific product attribute "
+        "such as color, size, material, or brand"
+    ),
+    "broad": (
+        "General category queries with wide intent that could match many products"
+    ),
+    "long_tail": (
+        "Highly specific, multi-word queries that target a narrow set of products"
+    ),
+    "navigational": (
+        "Queries searching for a specific brand, product line, or known item by name"
+    ),
+}
+
 CHECK_DESCRIPTIONS: dict[str, str] = {
     "zero_results": ("Fails when a query returns no results at all"),
     "result_count": (
@@ -251,12 +271,14 @@ def _generate_terminal(
         for m in type_metrics:
             all_types.update(m.by_query_type.keys())
 
-        for qt in sorted(all_types):
-            type_table.add_column(qt, justify="right")
+        sorted_types = sorted(all_types)
+        for qt in sorted_types:
+            display = QUERY_TYPE_DISPLAY_NAMES.get(qt, qt)
+            type_table.add_column(display, justify="right")
 
         for m in type_metrics:
             row = [m.metric_name]
-            for qt in sorted(all_types):
+            for qt in sorted_types:
                 val = m.by_query_type.get(qt)
                 row.append(f"{val:.4f}" if val is not None else "-")
             type_table.add_row(*row)
@@ -525,5 +547,7 @@ def _generate_html(
         position_chart=position_chart,
         type_metrics=type_metrics,
         query_types=query_types,
+        query_type_display_names=QUERY_TYPE_DISPLAY_NAMES,
+        query_type_descriptions=QUERY_TYPE_DESCRIPTIONS,
         sibling_report=sibling_report,
     )
