@@ -1,72 +1,76 @@
 # Example Usage
 
-This folder contains working examples to help you get started with veritail.
+This folder contains working examples for a **home improvement** retailer to help you get started with veritail. The mock adapters return hardcoded product data — replace them with real API calls to your search endpoint.
 
 ## Quick Start
 
 1. **Set up API keys:**
    ```bash
-   cp .env.example .env
+   cp example/.env.example example/.env
    # Edit .env and add your actual API keys
    ```
 
-2. **Run the evaluation:**
+2. **Run the search evaluation:**
    ```bash
    # From the project root
    veritail run \
      --queries example/example_queries.csv \
      --adapter example/example_adapter.py \
-     --config-name "my-test" \
+     --vertical home-improvement \
+     --config-name "home-improvement-test" \
      --llm-model gpt-4o
    ```
 
-3. **View results:**
-   - Terminal will show a summary report with IR metrics
-   - Detailed results are saved in `eval-results/my-test/`
+3. **Run the autocomplete evaluation:**
+   ```bash
+   veritail autocomplete run \
+     --prefixes example/prefixes.csv \
+     --adapter example/suggest_adapter.py \
+     --config-name "suggest-test" \
+     --open
+   ```
+
+4. **View results:**
+   - Terminal will show a summary report with IR metrics and check results
+   - Detailed results are saved in `eval-results/<config-name>/`
      - `judgments.jsonl` - All LLM judgments
      - `config.json` - Experiment configuration
+     - `metrics.json` - Computed IR metrics
      - `report.html` - Detailed HTML report
 
 ## Files
 
-- **`example_queries.csv`** - Sample query set with 4 queries
-- **`example_adapter.py`** - Mock search adapter that returns fake products
+- **`example_queries.csv`** - 25 home improvement queries across 4 types (broad, navigational, attribute, long_tail)
+- **`example_adapter.py`** - Mock search adapter with realistic home improvement product data (5 results per query)
+- **`prefixes.csv`** - 18 autocomplete prefixes across 3 length tiers (short, mid, long)
+- **`suggest_adapter.py`** - Mock autocomplete adapter with home improvement suggestions
 - **`.env.example`** - Template for API keys (copy to `.env`)
 
-## Customizing the Adapter
+## What the Example Covers
 
-To connect to your real search engine, edit `example_adapter.py`:
+The mock catalog spans major home improvement categories:
 
-```python
-from veritail.types import SearchResponse, SearchResult
+- **Electrical** — wire (Romex), GFCI outlets, ceiling fans, LED recessed lights, exhaust fans
+- **Plumbing** — faucets, toilets, PEX tubing, copper fittings, PVC cement
+- **Tools** — drills, circular saws, tile saws, PEX crimp tools
+- **Lumber** — pressure-treated posts
+- **Fasteners** — deck screws, drywall anchors, structural hardware (Simpson Strong-Tie)
+- **Building Materials** — insulation, vinyl plank flooring
+- **Paint** — interior paint, exterior deck stain
+- **Hardware** — cabinet pulls
 
-def search(query: str) -> SearchResponse:
-    # Replace mock data with actual API calls
-    response = requests.get(f"https://your-api.com/search?q={query}")
-    products = response.json()
-
-    # Convert to SearchResult objects
-    results = []
-    for i, product in enumerate(products):
-        results.append(SearchResult(
-            product_id=product["id"],
-            title=product["title"],
-            description=product["description"],
-            category=product["category"],
-            price=product["price"],
-            position=i,
-            attributes=product.get("attributes", {}),
-            in_stock=product.get("in_stock", True),
-        ))
-    return SearchResponse(results=results)
-```
+Each query returns 5 products, including intentional relevance signals for the LLM judge to evaluate:
+- **Near misses** (e.g., wrong size, wrong finish color)
+- **Wrong category** (e.g., a roller cover returned for an "interior paint" query)
+- **Competitor brand** for navigational queries (e.g., Milwaukee result for a "dewalt 20v drill" query)
+- **Accessory vs primary product** confusion (e.g., a blade returned for a "tile saw" query)
+- **Out-of-stock items** in results
 
 ## Supported LLM Models
 
 **OpenAI:**
 - `gpt-4o` (recommended)
 - `gpt-4o-mini`
-- `gpt-4-turbo`
 
 **Claude (Anthropic)** — `pip install veritail[anthropic]`:
 - `claude-sonnet-4-5`
@@ -81,6 +85,7 @@ def search(query: str) -> SearchResponse:
 veritail run \
   --queries example/example_queries.csv \
   --adapter example/example_adapter.py \
+  --vertical home-improvement \
   --llm-model qwen3:14b \
   --llm-base-url http://localhost:11434/v1 \
   --llm-api-key not-needed
