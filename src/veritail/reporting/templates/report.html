@@ -33,6 +33,11 @@
 <body>
     {% if is_comparison %}
     <h1>Search Evaluation Comparison: {{ config_a }} vs {{ config_b }}</h1>
+    {% if sibling_report %}
+    <div class="card" style="background: #f0f4ff; border-left: 4px solid #4f6bed; padding: 12px 16px; margin-bottom: 24px;">
+        This run also evaluated autocomplete. <a href="{{ sibling_report }}" style="color: #4f6bed; font-weight: 600;">View Autocomplete Report &rarr;</a>
+    </div>
+    {% endif %}
 
     <h2>Metrics Comparison</h2>
     <div class="table-wrap"><table>
@@ -91,6 +96,11 @@
 
     {% else %}
     <h1>Search Evaluation Report</h1>
+    {% if sibling_report %}
+    <div class="card" style="background: #f0f4ff; border-left: 4px solid #4f6bed; padding: 12px 16px; margin-bottom: 24px;">
+        This run also evaluated autocomplete. <a href="{{ sibling_report }}" style="color: #4f6bed; font-weight: 600;">View Autocomplete Report &rarr;</a>
+    </div>
+    {% endif %}
 
     <h2>IR Metrics</h2>
     <div class="table-wrap"><table>

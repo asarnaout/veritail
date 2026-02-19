@@ -624,6 +624,11 @@ def run(
                     f"'{adapter_path}', but none was found."
                 )
 
+    # ---- Determine cross-link siblings ----
+    # When both search and autocomplete run, their HTML reports link to each other.
+    search_sibling = "autocomplete-report.html" if autocomplete_prefixes else None
+    ac_sibling = "report.html" if queries else None
+
     # ---- Search evaluation ----
     html_paths: list[Path] = []
 
@@ -768,6 +773,7 @@ def run(
                 format="html",
                 run_metadata=run_metadata,
                 correction_judgments=correction_judgments or None,
+                sibling_report=search_sibling,
             )
             html_path = exp_dir / "report.html"
             html_path.write_text(html, encoding="utf-8")
@@ -879,6 +885,7 @@ def run(
                 run_metadata=run_metadata,
                 correction_judgments_a=corrections_a or None,
                 correction_judgments_b=corrections_b or None,
+                sibling_report=search_sibling,
             )
             cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
             html_path = Path(output_dir) / cmp_dir / "report.html"
@@ -986,6 +993,7 @@ def run(
                 responses_by_prefix=ac_responses,
                 prefixes=prefix_entries,
                 run_metadata=ac_run_metadata,
+                sibling_report=ac_sibling,
             )
             ac_html_path = exp_dir / "autocomplete-report.html"
             ac_html_path.write_text(ac_html, encoding="utf-8")
@@ -1034,6 +1042,7 @@ def run(
                 config_names[1],
                 format="html",
                 run_metadata=ac_run_metadata,
+                sibling_report=ac_sibling,
             )
             cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
             ac_html_path = Path(output_dir) / cmp_dir / "autocomplete-report.html"
@@ -1042,12 +1051,13 @@ def run(
             console.print(f"[dim]Autocomplete HTML report -> {ac_html_path}[/dim]")
             html_paths.append(ac_html_path)
 
-    # ---- Open reports in browser ----
+    # ---- Open report in browser ----
     if open_browser and html_paths:
         import webbrowser
 
-        for hp in html_paths:
-            webbrowser.open(hp.resolve().as_uri())
+        # Open only the first (primary) report — the cross-link banner
+        # lets the user navigate to the sibling report from within it.
+        webbrowser.open(html_paths[0].resolve().as_uri())
 
 
 if __name__ == "__main__":

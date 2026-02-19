@@ -136,6 +136,7 @@ def generate_single_report(
     judgments: list[JudgmentRecord] | None = None,
     run_metadata: Mapping[str, object] | None = None,
     correction_judgments: list[CorrectionJudgment] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate a report for a single evaluation configuration.
 
@@ -145,13 +146,20 @@ def generate_single_report(
         format: "terminal" for rich console output, "html" for HTML file
         judgments: Optional list of per-product LLM judgments (used in HTML output)
         correction_judgments: Optional list of correction judgments
+        sibling_report: Optional relative path to a sibling report (e.g.
+            autocomplete-report.html) to render as a cross-link banner.
 
     Returns:
         Formatted report string.
     """
     if format == "html":
         return _generate_html(
-            metrics, checks, judgments, run_metadata, correction_judgments
+            metrics,
+            checks,
+            judgments,
+            run_metadata,
+            correction_judgments,
+            sibling_report=sibling_report,
         )
     return _generate_terminal(
         metrics, checks, correction_judgments, judgments=judgments
@@ -321,6 +329,7 @@ def _generate_html(
     judgments: list[JudgmentRecord] | None = None,
     run_metadata: Mapping[str, object] | None = None,
     correction_judgments: list[CorrectionJudgment] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -456,4 +465,5 @@ def _generate_html(
         ndcg_stats=ndcg_stats,
         type_metrics=type_metrics,
         query_types=query_types,
+        sibling_report=sibling_report,
     )

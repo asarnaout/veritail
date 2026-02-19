@@ -27,6 +27,7 @@ def generate_comparison_report(
     run_metadata: Mapping[str, object] | None = None,
     correction_judgments_a: list[CorrectionJudgment] | None = None,
     correction_judgments_b: list[CorrectionJudgment] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate a comparison report for two evaluation configurations.
 
@@ -39,6 +40,7 @@ def generate_comparison_report(
         format: "terminal" or "html"
         correction_judgments_a: Optional correction judgments for config A
         correction_judgments_b: Optional correction judgments for config B
+        sibling_report: Optional relative path to a sibling report.
 
     Returns:
         Formatted report string.
@@ -51,6 +53,7 @@ def generate_comparison_report(
             config_a,
             config_b,
             run_metadata=run_metadata,
+            sibling_report=sibling_report,
         )
     return _generate_terminal(
         metrics_a,
@@ -260,6 +263,7 @@ def _generate_html(
     config_a: str,
     config_b: str,
     run_metadata: Mapping[str, object] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate an HTML comparison report."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -318,4 +322,5 @@ def _generate_html(
         comparison_data=comparison_data,
         shift_checks=shift_checks[:10],
         run_metadata_rows=metadata_rows,
+        sibling_report=sibling_report,
     )

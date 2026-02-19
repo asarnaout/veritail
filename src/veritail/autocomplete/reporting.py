@@ -68,6 +68,7 @@ def generate_autocomplete_report(
     responses_by_prefix: dict[int, AutocompleteResponse] | None = None,
     prefixes: list[PrefixEntry] | None = None,
     run_metadata: Mapping[str, object] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate a report for a single autocomplete evaluation.
 
@@ -77,12 +78,15 @@ def generate_autocomplete_report(
         responses_by_prefix: Optional mapping of prefix index to responses.
         prefixes: Optional list of prefix entries.
         run_metadata: Optional provenance metadata.
+        sibling_report: Optional relative path to a sibling report.
 
     Returns:
         Formatted report string.
     """
     if format == "html":
-        return _generate_html(checks, responses_by_prefix, prefixes, run_metadata)
+        return _generate_html(
+            checks, responses_by_prefix, prefixes, run_metadata, sibling_report
+        )
     return _generate_terminal(checks, responses_by_prefix, prefixes)
 
 
@@ -94,11 +98,18 @@ def generate_autocomplete_comparison_report(
     config_b: str,
     format: str = "terminal",
     run_metadata: Mapping[str, object] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate a comparison report for two autocomplete configurations."""
     if format == "html":
         return _generate_comparison_html(
-            checks_a, checks_b, comparison_checks, config_a, config_b, run_metadata
+            checks_a,
+            checks_b,
+            comparison_checks,
+            config_a,
+            config_b,
+            run_metadata,
+            sibling_report,
         )
     return _generate_comparison_terminal(
         checks_a, checks_b, comparison_checks, config_a, config_b
@@ -229,6 +240,7 @@ def _generate_html(
     responses_by_prefix: dict[int, AutocompleteResponse] | None = None,
     prefixes: list[PrefixEntry] | None = None,
     run_metadata: Mapping[str, object] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     tmpl_dir = Path(__file__).resolve().parent.parent / "reporting" / "templates"
@@ -279,6 +291,7 @@ def _generate_html(
         prefix_details=prefix_details,
         check_descriptions=CHECK_DESCRIPTIONS,
         run_metadata_rows=metadata_rows,
+        sibling_report=sibling_report,
     )
 
 
@@ -289,6 +302,7 @@ def _generate_comparison_html(
     config_a: str,
     config_b: str,
     run_metadata: Mapping[str, object] | None = None,
+    sibling_report: str | None = None,
 ) -> str:
     """Generate an HTML comparison report."""
     tmpl_dir = Path(__file__).resolve().parent.parent / "reporting" / "templates"
@@ -337,4 +351,5 @@ def _generate_comparison_html(
         check_comparison=check_comparison,
         overlap_checks=overlap_checks[:10],
         run_metadata_rows=metadata_rows,
+        sibling_report=sibling_report,
     )
