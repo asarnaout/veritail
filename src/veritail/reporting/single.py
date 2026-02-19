@@ -60,10 +60,6 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
         "Fails when a query returns fewer results than "
         "the expected minimum (default: 3)"
     ),
-    "category_alignment": (
-        "Checks if each result's category matches the "
-        "expected or majority category in the result set"
-    ),
     "text_overlap": (
         "Measures keyword overlap between the query and "
         "each result's title, category, and description"

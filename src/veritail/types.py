@@ -70,7 +70,7 @@ class JudgmentRecord:
 class CheckResult:
     """Result of one deterministic quality check."""
 
-    check_name: str  # e.g. "category_alignment"
+    check_name: str  # e.g. "text_overlap"
     query: str
     product_id: str | None  # None for query-level checks
     passed: bool

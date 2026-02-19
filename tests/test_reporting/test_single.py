@@ -45,18 +45,18 @@ def _make_checks() -> list[CheckResult]:
             detail="OK",
         ),
         CheckResult(
-            check_name="category_alignment",
+            check_name="text_overlap",
             query="shoes",
             product_id="SKU-1",
             passed=True,
             detail="OK",
         ),
         CheckResult(
-            check_name="category_alignment",
+            check_name="text_overlap",
             query="shoes",
             product_id="SKU-2",
             passed=False,
-            detail="Mismatch",
+            detail="Low overlap",
         ),
     ]
 
@@ -71,7 +71,7 @@ class TestGenerateSingleReport:
     def test_terminal_report_contains_checks(self):
         report = generate_single_report(_make_metrics(), _make_checks())
         assert "zero_results" in report
-        assert "category_alignment" in report
+        assert "text_overlap" in report
 
     def test_duplicate_check_displays_as_failure_only_in_terminal(self):
         checks = [
@@ -136,7 +136,7 @@ class TestGenerateSingleReport:
     def test_html_check_tooltips(self):
         report = generate_single_report(_make_metrics(), _make_checks(), format="html")
         assert 'data-tip="Fails when a query returns no results at all"' in report
-        assert 'data-tip="Checks if each result' in report
+        assert 'data-tip="Measures keyword overlap' in report
 
     def test_terminal_report_corrections_table(self):
         corrections = [

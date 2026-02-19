@@ -1,14 +1,13 @@
 """Tests for result-level deterministic checks."""
 
 from veritail.checks.result_level import (
-    check_category_alignment,
     check_duplicates,
     check_out_of_stock_prominence,
     check_price_outliers,
     check_text_overlap,
     check_title_length,
 )
-from veritail.types import QueryEntry, SearchResult
+from veritail.types import SearchResult
 
 
 def _make_result(
@@ -29,41 +28,6 @@ def _make_result(
         position=position,
         attributes=attributes or {},
     )
-
-
-class TestCategoryAlignment:
-    def test_matching_expected_category(self):
-        query = QueryEntry(query="running shoes", category="Shoes > Running")
-        results = [_make_result(category="Shoes > Running")]
-        checks = check_category_alignment(query, results)
-        assert len(checks) == 1
-        assert checks[0].passed
-
-    def test_mismatching_expected_category(self):
-        query = QueryEntry(query="running shoes", category="Shoes > Running")
-        results = [_make_result(category="Electronics > Headphones")]
-        checks = check_category_alignment(query, results)
-        assert len(checks) == 1
-        assert not checks[0].passed
-
-    def test_majority_category_no_expected(self):
-        query = QueryEntry(query="running shoes")
-        results = [
-            _make_result("SKU-1", category="Shoes > Running"),
-            _make_result("SKU-2", category="Shoes > Casual"),
-            _make_result("SKU-3", category="Electronics > Headphones"),
-        ]
-        checks = check_category_alignment(query, results)
-        # 2 shoes, 1 electronics -> shoes is majority
-        shoes_checks = [c for c in checks if c.passed]
-        mismatched = [c for c in checks if not c.passed]
-        assert len(shoes_checks) == 2
-        assert len(mismatched) == 1
-
-    def test_empty_results(self):
-        query = QueryEntry(query="running shoes", category="Shoes")
-        checks = check_category_alignment(query, [])
-        assert len(checks) == 0
 
 
 class TestTextOverlap:

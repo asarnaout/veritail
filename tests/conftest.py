@@ -87,10 +87,10 @@ def sample_judgment(sample_search_result: SearchResult) -> JudgmentRecord:
 @pytest.fixture
 def sample_check_result() -> CheckResult:
     return CheckResult(
-        check_name="category_alignment",
+        check_name="text_overlap",
         query="running shoes",
         product_id="SKU-001",
         passed=True,
-        detail="Product is in expected category",
+        detail="Good text overlap with query",
         severity="info",
     )

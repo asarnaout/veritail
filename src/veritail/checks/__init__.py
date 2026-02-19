@@ -6,7 +6,6 @@ from collections.abc import Callable
 
 from veritail.checks.query_level import check_result_count, check_zero_results
 from veritail.checks.result_level import (
-    check_category_alignment,
     check_duplicates,
     check_out_of_stock_prominence,
     check_price_outliers,
@@ -32,7 +31,6 @@ def run_all_checks(
 
     # Result-level checks (only if we have results)
     if results:
-        checks.extend(check_category_alignment(query, results))
         checks.extend(check_text_overlap(query.query, results))
         checks.extend(check_price_outliers(query.query, results))
         checks.extend(check_duplicates(query.query, results))
@@ -50,7 +48,6 @@ def run_all_checks(
 __all__ = [
     "check_zero_results",
     "check_result_count",
-    "check_category_alignment",
     "check_text_overlap",
     "check_price_outliers",
     "check_duplicates",

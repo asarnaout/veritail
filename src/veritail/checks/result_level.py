@@ -3,85 +3,14 @@
 from __future__ import annotations
 
 import re
-from collections import Counter
 from difflib import SequenceMatcher
 
-from veritail.types import CheckResult, QueryEntry, SearchResult
+from veritail.types import CheckResult, SearchResult
 
 
 def _tokenize(text: str) -> set[str]:
     """Lowercase and split text into word tokens."""
     return set(re.findall(r"\w+", text.lower()))
-
-
-def check_category_alignment(
-    query: QueryEntry,
-    results: list[SearchResult],
-) -> list[CheckResult]:
-    """Check if results are in a consistent or expected category.
-
-    If the query has an expected category, checks each result against it.
-    Otherwise, checks each result against the majority category in the result set.
-    """
-    checks: list[CheckResult] = []
-
-    if query.category:
-        # Check against expected category
-        expected = query.category.lower()
-        for result in results:
-            result_cat = result.category.lower()
-            # Check if the result category contains or matches the expected category
-            aligned = expected in result_cat or result_cat in expected
-            checks.append(
-                CheckResult(
-                    check_name="category_alignment",
-                    query=query.query,
-                    product_id=result.product_id,
-                    passed=aligned,
-                    detail=(
-                        f"Category '{result.category}' "
-                        f"matches expected '{query.category}'"
-                        if aligned
-                        else (
-                            f"Category '{result.category}' does not "
-                            f"match expected '{query.category}'"
-                        )
-                    ),
-                    severity="info" if aligned else "warning",
-                )
-            )
-    else:
-        # Check against majority category
-        categories = [r.category for r in results]
-        if not categories:
-            return checks
-
-        # Find the most common top-level category
-        top_level = [c.split(">")[0].strip().lower() for c in categories]
-        majority_cat = Counter(top_level).most_common(1)[0][0]
-
-        for result in results:
-            result_top = result.category.split(">")[0].strip().lower()
-            aligned = result_top == majority_cat
-            checks.append(
-                CheckResult(
-                    check_name="category_alignment",
-                    query=query.query,
-                    product_id=result.product_id,
-                    passed=aligned,
-                    detail=(
-                        f"Category '{result.category}' matches majority category"
-                        if aligned
-                        else (
-                            f"Category '{result.category}' "
-                            "differs from majority category"
-                        )
-                    ),
-                    severity="info" if aligned else "warning",
-                )
-            )
-
-    return checks
 
 
 def _jaccard(tokens_a: set[str], tokens_b: set[str]) -> float:

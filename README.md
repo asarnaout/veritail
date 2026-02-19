@@ -239,7 +239,6 @@ Default rubric criteria:
 - low result count warning (`< 3`)
 
 **Result-level**
-- category alignment
 - text overlap (Jaccard)
 - price outlier detection (IQR)
 - near-duplicate detection (title similarity threshold)
