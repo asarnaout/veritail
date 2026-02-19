@@ -1,19 +1,19 @@
-prefix,type
-dr,short_prefix
-pe,short_prefix
-fa,short_prefix
-dec,short_prefix
-pex,mid_prefix
-gfci,mid_prefix
-drill,mid_prefix
-cedar,mid_prefix
-romex,mid_prefix
-insula,mid_prefix
-dewalt,mid_prefix
-toilet,mid_prefix
-pressure treated,long_prefix
-brushed nickel cabinet,long_prefix
-led recessed light 6 inch,long_prefix
-milwaukee m18 impact driver,long_prefix
-kohler toilet elongated,long_prefix
-self drilling drywall anchor,long_prefix
+prefix
+dr
+pe
+fa
+dec
+pex
+gfci
+drill
+cedar
+romex
+insula
+dewalt
+toilet
+pressure treated
+brushed nickel cabinet
+led recessed light 6 inch
+milwaukee m18 impact driver
+kohler toilet elongated
+self drilling drywall anchor

@@ -1,26 +1,26 @@
-query,type,category
-12/2 romex wire 250 ft,attribute,Electrical > Wire
-brushed nickel cabinet pulls,attribute,Hardware > Cabinet Hardware
-pressure treated 4x4 post 8ft,attribute,Lumber > Treated Lumber
-matte black bathroom faucet,attribute,Plumbing > Faucets
-dewalt 20v drill,navigational,Tools > Power Tools
-pex crimp tool,navigational,Tools > Plumbing Tools
-kohler toilet,navigational,Plumbing > Toilets
-milwaukee m18 battery,navigational,Tools > Batteries
-deck screws,broad,Fasteners > Screws
-kitchen faucet,broad,Plumbing > Faucets
-intrior paint,broad,Paint > Interior Paint
-ceiling fan,broad,Electrical > Lighting & Fans
-3/4 inch copper 90 degree elbow,long_tail,Plumbing > Fittings
-gfci outlet 20 amp white,long_tail,Electrical > Outlets
-self drilling drywall anchors,long_tail,Fasteners > Anchors
-led recessed light 6 inch retrofit,long_tail,Electrical > Lighting
-bathroom exhaust fan with light,broad,Electrical > Ventilation
-r-13 fiberglass insulation,attribute,Building Materials > Insulation
-pvc cement blue medium body,attribute,Plumbing > Adhesives
-simpson strong tie joist hanger 2x10,long_tail,Building Materials > Structural Hardware
-tile saw,broad,Tools > Power Tools
-vinyl plank flooring,broad,Flooring > Vinyl
-cordless circular saw,broad,Tools > Power Tools
-outdoor deck stain,broad,Paint > Exterior Stain
-1/2 inch pex tubing 100ft red,long_tail,Plumbing > PEX Tubing
+query
+12/2 romex wire 250 ft
+brushed nickel cabinet pulls
+pressure treated 4x4 post 8ft
+matte black bathroom faucet
+dewalt 20v drill
+pex crimp tool
+kohler toilet
+milwaukee m18 battery
+deck screws
+kitchen faucet
+intrior paint
+ceiling fan
+3/4 inch copper 90 degree elbow
+gfci outlet 20 amp white
+self drilling drywall anchors
+led recessed light 6 inch retrofit
+bathroom exhaust fan with light
+r-13 fiberglass insulation
+pvc cement blue medium body
+simpson strong tie joist hanger 2x10
+tile saw
+vinyl plank flooring
+cordless circular saw
+outdoor deck stain
+1/2 inch pex tubing 100ft red

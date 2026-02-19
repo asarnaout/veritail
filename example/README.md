@@ -40,9 +40,9 @@ This folder contains working examples for a **home improvement** retailer to hel
 
 ## Files
 
-- **`queries.csv`** - 25 home improvement queries across 4 types (broad, navigational, attribute, long_tail). The `type` and `category` columns are optional; when omitted, types are auto-classified by the LLM.
+- **`queries.csv`** - 25 home improvement queries (types are auto-classified by the LLM during evaluation)
 - **`adapter.py`** - Mock adapter with both `search()` and `suggest()` functions, realistic home improvement product data (5 results per query) and autocomplete suggestions
-- **`prefixes.csv`** - 18 autocomplete prefixes across 3 length tiers (short, mid, long). The `type` column is optional; when omitted, types are inferred from prefix length.
+- **`prefixes.csv`** - 18 autocomplete prefixes (types are auto-inferred from prefix length)
 - **`.env.example`** - Template for API keys (copy to `.env`)
 
 ## What the Example Covers
