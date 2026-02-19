@@ -7,6 +7,7 @@ veritail runs four evaluation layers together:
 - Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
 - IR metrics (NDCG, MRR, MAP, Precision, attribute match)
 - Autocorrect evaluation (catches intent-altering or unnecessary query corrections)
+- Autocomplete evaluation (deterministic quality checks for type-ahead suggestions — no LLM needed)
 
 It includes 14 built-in ecommerce verticals (automotive, beauty, electronics, fashion, foodservice, furniture, groceries, home improvement, industrial, marketplace, medical, office supplies, pet supplies, and sporting goods) for domain-aware LLM judging, and supports custom vertical context and rubrics.
 Built for rapid search iteration: compare baseline vs candidate, inspect regressions, and decide from per-query evidence.
@@ -46,6 +47,16 @@ veritail init
 This generates:
 - `adapter.py` with a real HTTP request skeleton (endpoint, auth header, timeout, JSON parsing, mapping to `SearchResult`)
 - `queries.csv` with all four query types (`broad`, `navigational`, `long_tail`, `attribute`)
+
+Add `--autocomplete` to also generate autocomplete starter files:
+
+```bash
+veritail init --autocomplete
+```
+
+This additionally generates:
+- `suggest_adapter.py` with a skeleton for autocomplete suggestions (maps to `AutocompleteResponse`)
+- `prefixes.csv` with example prefixes and type annotations (`short_prefix`, `mid_prefix`, `long_prefix`)
 
 By default, existing files are not overwritten. Use `--force` to overwrite.
 
@@ -282,6 +293,113 @@ When your search engine corrects queries (autocorrect / "did you mean"), veritai
 
 **Cost:** One extra LLM call per corrected query (not per result). If your adapter corrects 15 of 50 queries, that's 15 extra calls.
 
+## Autocomplete Evaluation
+
+veritail includes a standalone autocomplete (type-ahead) evaluation mode. It runs deterministic quality checks against your suggestion engine — no LLM needed, no API keys required.
+
+### Prefix set format
+
+Provide a CSV or JSON file with a `prefix` column. An optional `type` column categorizes prefixes for reporting:
+
+```csv
+prefix,type
+he,short_prefix
+hea,short_prefix
+headph,mid_prefix
+headphones w,long_prefix
+```
+
+### Suggest adapter
+
+Create a Python module that exposes a `suggest` function:
+
+```python
+# suggest_adapter.py
+from veritail import AutocompleteResponse
+
+
+def suggest(prefix: str) -> AutocompleteResponse:
+    results = my_autocomplete_api.suggest(prefix)
+    return AutocompleteResponse(suggestions=results)
+    # Or simply: return results  (a bare list[str] is also accepted)
+```
+
+### Quick start
+
+```bash
+veritail autocomplete run \
+  --prefixes prefixes.csv \
+  --adapter suggest_adapter.py \
+  --open
+```
+
+### Built-in checks
+
+All checks are deterministic and run without an LLM.
+
+| Check | What it catches |
+|---|---|
+| `empty_suggestions` | Prefix returned zero suggestions |
+| `duplicate_suggestion` | Exact duplicate suggestions (case-insensitive) |
+| `prefix_coherence` | Suggestion neither starts with the prefix nor shares a token with it |
+| `offensive_content` | Suggestion contains a blocked term (requires blocklist) |
+| `near_duplicate` | Near-duplicate suggestions (Levenshtein distance ≤ 2 and < 30% of max length) |
+| `encoding_issues` | HTML entities, control characters, or leading/trailing whitespace |
+| `length_anomaly` | Suggestion shorter than 2 characters or longer than 80 characters |
+| `latency` | Adapter response time exceeds threshold (default 200 ms) |
+
+### Comparison mode
+
+Pass two adapters to run an A/B comparison:
+
+```bash
+veritail autocomplete run \
+  --prefixes prefixes.csv \
+  --adapter suggest_v1.py --config-name v1 \
+  --adapter suggest_v2.py --config-name v2
+```
+
+In addition to per-adapter checks, comparison mode adds:
+- **suggestion_overlap**: Jaccard index of normalized suggestions between configurations
+- **rank_agreement**: Spearman rank correlation for shared suggestions
+
+### Custom checks
+
+Add domain-specific checks with `--checks`. Each `check_*` function receives `(prefix: str, suggestions: list[str])` and returns `list[CheckResult]`:
+
+```python
+# my_autocomplete_checks.py
+from veritail.types import CheckResult
+
+
+def check_brand_prefix(prefix: str, suggestions: list[str]) -> list[CheckResult]:
+    """Flag suggestions that don't preserve a known brand prefix."""
+    checks = []
+    for s in suggestions:
+        if prefix.lower() in ("sony", "sam") and not s.lower().startswith(prefix.lower()):
+            checks.append(
+                CheckResult(
+                    check_name="brand_prefix",
+                    query=prefix,
+                    passed=False,
+                    detail=f"'{s}' does not start with brand prefix '{prefix}'",
+                )
+            )
+    return checks
+```
+
+```bash
+veritail autocomplete run \
+  --prefixes prefixes.csv \
+  --adapter suggest_adapter.py \
+  --checks my_autocomplete_checks.py
+```
+
+### Output
+
+- **Terminal report**: check pass/fail summary, per-prefix drill-down
+- **HTML report**: standalone report with per-prefix detail (open with `--open`)
+
 ## CLI Reference
 
 ### `veritail run`
@@ -319,6 +437,7 @@ Scaffold starter files for a new project.
 | `--adapter-name` | `adapter.py` | Adapter filename (must end with `.py`) |
 | `--queries-name` | `queries.csv` | Query set filename (must end with `.csv`) |
 | `--force` | off | Overwrite existing files |
+| `--autocomplete` | off | Also generate `suggest_adapter.py` and `prefixes.csv` |
 
 ### `veritail generate-queries`
 
@@ -339,6 +458,21 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 ### `veritail vertical list`
 
 List all built-in verticals.
+
+### `veritail autocomplete run`
+
+Run autocomplete evaluation (single or dual configuration).
+
+| Option | Default | Description |
+|---|---|---|
+| `--prefixes` | *(required)* | Path to prefix set (`.csv` or `.json` with a `prefix` column, optional `type`) |
+| `--adapter` | *(required)* | Path to suggest adapter module (up to 2 for A/B comparison) |
+| `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
+| `--output-dir` | `./eval-results` | Output directory for results |
+| `--top-k` | *(all)* | Max suggestions to evaluate per prefix |
+| `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions (repeatable) |
+| `--sample` | *(none)* | Randomly sample N prefixes from the prefix set |
+| `--open` | off | Open the HTML report in the browser when complete |
 
 ### `veritail vertical show <name>`
 
