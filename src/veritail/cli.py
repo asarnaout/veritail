@@ -180,9 +180,9 @@ def init(
         f"--adapter {adapter} --llm-model <model>[/dim]"
     )
     console.print(
-        f"[dim]  Autocomplete evaluation (no LLM needed):[/dim]\n"
+        f"[dim]  Autocomplete evaluation:[/dim]\n"
         f"[dim]    veritail run --autocomplete {prefixes} "
-        f"--adapter {adapter}[/dim]"
+        f"--adapter {adapter} --llm-model <model>[/dim]"
     )
     console.print(
         f"[dim]  Both:[/dim]\n"
@@ -475,16 +475,6 @@ def generate_queries_cmd(
     help="Path to custom autocomplete check module(s) with check_* functions.",
 )
 @click.option(
-    "--autocomplete-llm",
-    "autocomplete_llm",
-    is_flag=True,
-    default=False,
-    help=(
-        "Enable LLM-based semantic evaluation for autocomplete suggestions. "
-        "Requires --llm-model."
-    ),
-)
-@click.option(
     "--sample",
     default=None,
     type=int,
@@ -525,7 +515,6 @@ def run(
     vertical: str | None,
     check_modules: tuple[str, ...],
     autocomplete_check_modules: tuple[str, ...],
-    autocomplete_llm: bool,
     sample: int | None,
     use_batch: bool,
     use_resume: bool,
@@ -572,16 +561,8 @@ def run(
     if top_k < 1:
         raise click.UsageError("--top-k must be >= 1.")
 
-    if autocomplete_llm and not autocomplete_prefixes:
-        raise click.UsageError("--autocomplete-llm requires --autocomplete.")
-
-    if autocomplete_llm and not llm_model:
-        raise click.UsageError("--autocomplete-llm requires --llm-model.")
-
-    if autocomplete_llm and len(adapters) > 1:
-        raise click.UsageError(
-            "--autocomplete-llm is not supported with dual-adapter comparison."
-        )
+    if autocomplete_prefixes and len(adapters) == 1 and not llm_model:
+        raise click.UsageError("--llm-model is required for autocomplete evaluation.")
 
     if not config_names:
         config_names = _generate_config_names(adapters)
@@ -986,10 +967,8 @@ def run(
             adapter_path_b=adapters[1] if len(adapters) == 2 else None,
         )
 
-        if autocomplete_llm and llm_model:
-            ac_run_metadata["llm_model"] = llm_model
-
         if len(adapters) == 1:
+            ac_run_metadata["llm_model"] = llm_model
             ac_config = AutocompleteConfig(
                 name=config_names[0],
                 adapter_path=adapters[0],
@@ -1003,90 +982,85 @@ def run(
                 custom_checks=ac_custom_check_fns,
             )
 
-            # ---- LLM suggestion evaluation (opt-in) ----
-            ac_suggestion_judgments = None
-            if autocomplete_llm and llm_model:
-                from veritail.autocomplete.judge import (
-                    SUGGESTION_SYSTEM_PROMPT,
-                    SuggestionJudge,
+            # ---- LLM suggestion evaluation ----
+            from veritail.autocomplete.judge import (
+                SUGGESTION_SYSTEM_PROMPT,
+                SuggestionJudge,
+            )
+            from veritail.autocomplete.pipeline import (
+                run_autocomplete_llm_evaluation,
+            )
+
+            # Create LLM client if not already created (search eval creates it)
+            assert llm_model is not None  # validated above
+            if not queries:
+                _warn_custom_model(llm_model, llm_base_url)
+                llm_client = create_llm_client(
+                    llm_model, base_url=llm_base_url, api_key=llm_api_key
                 )
-                from veritail.autocomplete.pipeline import (
-                    run_autocomplete_llm_evaluation,
-                )
+                try:
+                    llm_client.preflight_check()
+                except RuntimeError as exc:
+                    raise click.ClickException(str(exc)) from exc
 
-                # Create LLM client if not already created (search eval creates it)
-                if not queries:
-                    _warn_custom_model(llm_model, llm_base_url)
-                    llm_client = create_llm_client(
-                        llm_model, base_url=llm_base_url, api_key=llm_api_key
-                    )
-                    try:
-                        llm_client.preflight_check()
-                    except RuntimeError as exc:
-                        raise click.ClickException(str(exc)) from exc
-
-                    if use_batch:
-                        if llm_base_url is not None:
-                            raise click.UsageError(
-                                "--batch cannot be used with --llm-base-url. "
-                                "Batch APIs are only available for cloud providers "
-                                "(OpenAI, Anthropic, Gemini)."
-                            )
-                        if not llm_client.supports_batch():
-                            raise click.UsageError(
-                                f"The model '{llm_model}' does not support "
-                                f"batch operations."
-                            )
-
-                # Build system prompt with vertical/context prefix
-                ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
-                prefix_parts: list[str] = []
-                if vertical_context:
-                    prefix_parts.append(f"## Store Vertical\n{vertical_context}")
-                if context:
-                    prefix_parts.append(f"## Business Context\n{context}")
-                if prefix_parts:
-                    ac_system_prompt = (
-                        "\n\n".join(prefix_parts) + "\n\n" + ac_system_prompt
-                    )
-
-                ac_judge = SuggestionJudge(
-                    llm_client, ac_system_prompt, config_names[0]
-                )
                 if use_batch:
-                    from veritail.autocomplete.pipeline import (
-                        run_autocomplete_batch_llm_evaluation,
-                    )
+                    if llm_base_url is not None:
+                        raise click.UsageError(
+                            "--batch cannot be used with --llm-base-url. "
+                            "Batch APIs are only available for cloud providers "
+                            "(OpenAI, Anthropic, Gemini)."
+                        )
+                    if not llm_client.supports_batch():
+                        raise click.UsageError(
+                            f"The model '{llm_model}' does not support "
+                            f"batch operations."
+                        )
 
-                    ac_suggestion_judgments = run_autocomplete_batch_llm_evaluation(
-                        prefix_entries,
-                        ac_responses,
-                        ac_judge,
-                        ac_config,
-                        llm_client,
-                        poll_interval=60,
-                        resume=use_resume,
-                        output_dir=output_dir,
-                    )
-                else:
-                    ac_suggestion_judgments = run_autocomplete_llm_evaluation(
-                        prefix_entries, ac_responses, ac_judge, ac_config
-                    )
+            # Build system prompt with vertical/context prefix
+            ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
+            prefix_parts: list[str] = []
+            if vertical_context:
+                prefix_parts.append(f"## Store Vertical\n{vertical_context}")
+            if context:
+                prefix_parts.append(f"## Business Context\n{context}")
+            if prefix_parts:
+                ac_system_prompt = "\n\n".join(prefix_parts) + "\n\n" + ac_system_prompt
 
-                # Write suggestion-judgments.jsonl
-                exp_dir = Path(output_dir) / config_names[0]
-                exp_dir.mkdir(parents=True, exist_ok=True)
-                sj_path = exp_dir / "suggestion-judgments.jsonl"
-                from dataclasses import asdict as _asdict
-
-                sj_path.write_text(
-                    "\n".join(
-                        json.dumps(_asdict(sj), default=str)
-                        for sj in ac_suggestion_judgments
-                    )
-                    + "\n",
-                    encoding="utf-8",
+            ac_judge = SuggestionJudge(llm_client, ac_system_prompt, config_names[0])
+            if use_batch:
+                from veritail.autocomplete.pipeline import (
+                    run_autocomplete_batch_llm_evaluation,
                 )
+
+                ac_suggestion_judgments = run_autocomplete_batch_llm_evaluation(
+                    prefix_entries,
+                    ac_responses,
+                    ac_judge,
+                    ac_config,
+                    llm_client,
+                    poll_interval=60,
+                    resume=use_resume,
+                    output_dir=output_dir,
+                )
+            else:
+                ac_suggestion_judgments = run_autocomplete_llm_evaluation(
+                    prefix_entries, ac_responses, ac_judge, ac_config
+                )
+
+            # Write suggestion-judgments.jsonl
+            exp_dir = Path(output_dir) / config_names[0]
+            exp_dir.mkdir(parents=True, exist_ok=True)
+            sj_path = exp_dir / "suggestion-judgments.jsonl"
+            from dataclasses import asdict as _asdict
+
+            sj_path.write_text(
+                "\n".join(
+                    json.dumps(_asdict(sj), default=str)
+                    for sj in ac_suggestion_judgments
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
             ac_report = generate_autocomplete_report(
                 ac_checks,

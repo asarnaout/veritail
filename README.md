@@ -7,7 +7,7 @@ veritail runs four evaluation layers together:
 - Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
 - IR metrics (NDCG, MRR, MAP, Precision, attribute match)
 - Autocorrect evaluation (catches intent-altering or unnecessary query corrections)
-- Autocomplete evaluation (deterministic quality checks for type-ahead suggestions, with optional LLM-based semantic evaluation)
+- Autocomplete evaluation (deterministic quality checks and LLM-based semantic evaluation for type-ahead suggestions)
 
 It includes 14 built-in ecommerce verticals (automotive, beauty, electronics, fashion, foodservice, furniture, groceries, home improvement, industrial, marketplace, medical, office supplies, pet supplies, and sporting goods) for domain-aware LLM judging, and supports custom vertical context and rubrics.
 Built for rapid search iteration: compare baseline vs candidate, inspect regressions, and decide from per-query evidence.
@@ -150,7 +150,7 @@ The comparison report shows metric deltas, overlap, rank correlation, and positi
 
 ### Batch Mode (50% cost reduction)
 
-Use `--batch` to send all LLM judgment calls through the provider's batch API. This reduces cost by 50% but takes longer (typically minutes for small batches). Works with both search relevance judgments and autocomplete LLM evaluation (`--autocomplete-llm`). Veritail polls for completion every 60 seconds. The polling calls are free management API requests and do not consume tokens or incur additional charges.
+Use `--batch` to send all LLM judgment calls through the provider's batch API. This reduces cost by 50% but takes longer (typically minutes for small batches). Works with both search relevance judgments and autocomplete LLM evaluation. Veritail polls for completion every 60 seconds. The polling calls are free management API requests and do not consume tokens or incur additional charges.
 
 ```bash
 veritail run --queries queries.csv --adapter adapter.py \
@@ -285,7 +285,7 @@ When your search engine corrects queries (autocorrect / "did you mean"), veritai
 
 ## Autocomplete Evaluation
 
-veritail includes a standalone autocomplete (type-ahead) evaluation mode. It runs deterministic quality checks against your suggestion engine — no LLM needed, no API keys required.
+veritail includes a standalone autocomplete (type-ahead) evaluation mode. It runs deterministic quality checks and LLM-based semantic evaluation against your suggestion engine.
 
 ### Prefix set format
 
@@ -314,7 +314,7 @@ def suggest(prefix: str) -> AutocompleteResponse:
     # Or simply: return results  (a bare list[str] is also accepted)
 ```
 
-If your adapter only has `suggest()`, search evaluation is skipped (no `--llm-model` needed).
+If your adapter only has `suggest()`, search evaluation is skipped.
 
 ### Quick start
 
@@ -322,12 +322,13 @@ If your adapter only has `suggest()`, search evaluation is skipped (no `--llm-mo
 veritail run \
   --autocomplete prefixes.csv \
   --adapter adapter.py \
+  --llm-model gpt-4o \
   --open
 ```
 
 ### Built-in checks
 
-All checks are deterministic and run without an LLM.
+All checks below are deterministic and run alongside the LLM evaluation.
 
 | Check | What it catches |
 |---|---|
@@ -391,23 +392,21 @@ veritail run \
 - **Terminal report**: check pass/fail summary, per-prefix drill-down
 - **HTML report**: standalone report with per-prefix detail (open with `--open`)
 
-### LLM-based semantic evaluation (opt-in)
+### LLM-based semantic evaluation
 
-Deterministic checks catch mechanical failures but cannot evaluate whether suggestions are semantically relevant to the user's intent, diverse across shopping intents, or appropriate for the store's vertical. Add `--autocomplete-llm` to enable LLM-based evaluation.
+In addition to deterministic checks, veritail automatically runs LLM-based semantic evaluation for single-adapter autocomplete. This evaluates whether suggestions are semantically relevant to the user's intent, diverse across shopping intents, and appropriate for the store's vertical.
 
 ```bash
 # Autocomplete-only with LLM evaluation
 veritail run \
   --autocomplete prefixes.csv \
   --adapter adapter.py \
-  --autocomplete-llm \
   --llm-model gpt-4o
 
 # With vertical and business context
 veritail run \
   --autocomplete prefixes.csv \
   --adapter adapter.py \
-  --autocomplete-llm \
   --llm-model gpt-4o \
   --vertical home-improvement \
   --context "Big-box home improvement retailer"
@@ -417,14 +416,12 @@ veritail run \
   --queries queries.csv \
   --autocomplete prefixes.csv \
   --adapter adapter.py \
-  --autocomplete-llm \
   --llm-model gpt-4o
 
 # Batch mode (50% cheaper, slower)
 veritail run \
   --autocomplete prefixes.csv \
   --adapter adapter.py \
-  --autocomplete-llm \
   --llm-model gpt-4o --batch
 ```
 
@@ -452,7 +449,7 @@ Run a single or dual-configuration evaluation.
 | `--autocomplete` | *(optional)* | Path to autocomplete prefix set (`.csv` or `.json`). At least one of `--queries` or `--autocomplete` is required |
 | `--adapter` | *(required)* | Path to adapter module (up to 2) |
 | `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
-| `--llm-model` | *(conditional)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`). Required when `--queries` is provided |
+| `--llm-model` | *(conditional)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`). Required when `--queries` or `--autocomplete` is provided (single adapter) |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:11434/v1` for Ollama) |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
 | `--rubric` | `ecommerce-default` | Rubric name or custom rubric file path |
@@ -464,9 +461,8 @@ Run a single or dual-configuration evaluation.
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable) |
 | `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
-| `--autocomplete-llm` | off | Enable LLM-based semantic evaluation for autocomplete suggestions. Requires `--llm-model` and `--autocomplete`. Compatible with `--batch`. Not supported with dual-adapter comparison |
 | `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
-| `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Works with both search and `--autocomplete-llm`. Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
+| `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Works with both search and autocomplete evaluation. Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
 
 If `--config-name` is provided, pass one name per adapter.
 

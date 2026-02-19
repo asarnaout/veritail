@@ -1109,7 +1109,7 @@ class TestCLI:
         assert "Provide --queries, --autocomplete, or both" in result.output
 
     def test_run_autocomplete_only(self, tmp_path):
-        """--autocomplete + --adapter with suggest() works without --llm-model."""
+        """--autocomplete + --adapter with suggest() + --llm-model works."""
         prefixes_file = tmp_path / "prefixes.csv"
         prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
 
@@ -1120,21 +1120,36 @@ class TestCLI:
             "    return AutocompleteResponse(suggestions=['running shoes'])\n"
         )
 
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            [
-                "run",
-                "--autocomplete",
-                str(prefixes_file),
-                "--adapter",
-                str(adapter_file),
-                "--config-name",
-                "ac-test",
-                "--output-dir",
-                str(tmp_path / "results"),
-            ],
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="RELEVANCE: 3\nDIVERSITY: 2\nFLAGGED: none\nREASONING: Good.",
+            model="test-model",
+            input_tokens=10,
+            output_tokens=10,
         )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "ac-test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                ],
+            )
         assert result.exit_code == 0
         assert "Autocomplete HTML report" in result.output
         assert (tmp_path / "results" / "ac-test" / "autocomplete-report.html").exists()
@@ -1156,6 +1171,8 @@ class TestCLI:
                 str(prefixes_file),
                 "--adapter",
                 str(adapter_file),
+                "--llm-model",
+                "gpt-4o",
             ],
         )
         assert result.exit_code != 0
@@ -1235,51 +1252,12 @@ class TestCLI:
 
         assert result.exit_code == 0
         assert "Search evaluation:" in result.output
-        assert "Autocomplete evaluation (no LLM needed):" in result.output
+        assert "Autocomplete evaluation:" in result.output
         assert "Both:" in result.output
         assert "--autocomplete prefixes.csv" in result.output
 
-    def test_autocomplete_llm_requires_autocomplete(self, tmp_path):
-        """--autocomplete-llm without --autocomplete -> error."""
-        adapter_file = tmp_path / "adapter.py"
-        adapter_file.write_text("def search(q): return []\n")
-
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            [
-                "run",
-                "--adapter",
-                str(adapter_file),
-                "--llm-model",
-                "test-model",
-                "--autocomplete-llm",
-                "--queries",
-                str(tmp_path / "q.csv"),
-            ],
-        )
-        # The --queries file doesn't exist so click will error on that first;
-        # use a real file for the query path to reach our validation.
-        queries_file = tmp_path / "q.csv"
-        queries_file.write_text("query\nshoes\n")
-        result = runner.invoke(
-            main,
-            [
-                "run",
-                "--adapter",
-                str(adapter_file),
-                "--llm-model",
-                "test-model",
-                "--autocomplete-llm",
-                "--queries",
-                str(queries_file),
-            ],
-        )
-        assert result.exit_code != 0
-        assert "--autocomplete-llm requires --autocomplete" in result.output
-
-    def test_autocomplete_llm_requires_llm_model(self, tmp_path):
-        """--autocomplete-llm without --llm-model -> error."""
+    def test_autocomplete_requires_llm_model(self, tmp_path):
+        """--autocomplete without --llm-model (single adapter) -> error."""
         prefixes_file = tmp_path / "prefixes.csv"
         prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
 
@@ -1299,57 +1277,13 @@ class TestCLI:
                 str(prefixes_file),
                 "--adapter",
                 str(adapter_file),
-                "--autocomplete-llm",
             ],
         )
         assert result.exit_code != 0
-        assert "--autocomplete-llm requires --llm-model" in result.output
-
-    def test_autocomplete_llm_rejects_dual_adapter(self, tmp_path):
-        """--autocomplete-llm with 2 adapters -> error."""
-        prefixes_file = tmp_path / "prefixes.csv"
-        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
-
-        adapter_a = tmp_path / "adapter_a.py"
-        adapter_a.write_text(
-            "from veritail.types import AutocompleteResponse\n"
-            "def suggest(prefix):\n"
-            "    return AutocompleteResponse(suggestions=['a'])\n"
-        )
-        adapter_b = tmp_path / "adapter_b.py"
-        adapter_b.write_text(
-            "from veritail.types import AutocompleteResponse\n"
-            "def suggest(prefix):\n"
-            "    return AutocompleteResponse(suggestions=['b'])\n"
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            [
-                "run",
-                "--autocomplete",
-                str(prefixes_file),
-                "--adapter",
-                str(adapter_a),
-                "--adapter",
-                str(adapter_b),
-                "--llm-model",
-                "test-model",
-                "--autocomplete-llm",
-            ],
-        )
-        assert result.exit_code != 0
-        assert "not supported with dual-adapter" in result.output
-
-    def test_run_help_shows_autocomplete_llm(self):
-        runner = CliRunner()
-        result = runner.invoke(main, ["run", "--help"])
-        assert result.exit_code == 0
-        assert "--autocomplete-llm" in result.output
+        assert "--llm-model is required for autocomplete evaluation" in result.output
 
     def test_batch_autocomplete_llm_invokes_batch_pipeline(self, tmp_path):
-        """--batch --autocomplete-llm routes to batch pipeline."""
+        """--batch autocomplete routes to batch pipeline."""
         prefixes_file = tmp_path / "prefixes.csv"
         prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
 
@@ -1401,7 +1335,6 @@ class TestCLI:
                     str(tmp_path / "results"),
                     "--llm-model",
                     "gpt-4o",
-                    "--autocomplete-llm",
                     "--batch",
                 ],
             )
@@ -1410,7 +1343,7 @@ class TestCLI:
         mock_batch.assert_called_once()
 
     def test_autocomplete_llm_without_batch_invokes_sync(self, tmp_path):
-        """Without --batch, autocomplete-llm uses sync pipeline."""
+        """Without --batch, autocomplete uses sync pipeline."""
         prefixes_file = tmp_path / "prefixes.csv"
         prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
 
@@ -1449,7 +1382,6 @@ class TestCLI:
                     str(tmp_path / "results"),
                     "--llm-model",
                     "gpt-4o",
-                    "--autocomplete-llm",
                 ],
             )
 
@@ -1459,7 +1391,7 @@ class TestCLI:
         mock_client.submit_batch.assert_not_called()
 
     def test_batch_autocomplete_llm_rejects_base_url(self, tmp_path):
-        """--batch --autocomplete-llm --llm-base-url → error."""
+        """--batch --llm-base-url → error for autocomplete."""
         prefixes_file = tmp_path / "prefixes.csv"
         prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
 
@@ -1493,7 +1425,6 @@ class TestCLI:
                     str(tmp_path / "results"),
                     "--llm-model",
                     "gpt-4o",
-                    "--autocomplete-llm",
                     "--batch",
                     "--llm-base-url",
                     "http://localhost:11434/v1",
@@ -1504,7 +1435,7 @@ class TestCLI:
         assert "--batch cannot be used with --llm-base-url" in result.output
 
     def test_batch_autocomplete_llm_validates_supports_batch(self, tmp_path):
-        """Autocomplete-only --batch with unsupported model → error."""
+        """Autocomplete --batch with unsupported model → error."""
         prefixes_file = tmp_path / "prefixes.csv"
         prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
 
@@ -1538,7 +1469,6 @@ class TestCLI:
                     str(tmp_path / "results"),
                     "--llm-model",
                     "gpt-4o",
-                    "--autocomplete-llm",
                     "--batch",
                 ],
             )
