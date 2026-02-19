@@ -776,7 +776,7 @@ _CATALOG: dict[str, list[dict]] = {
             "in_stock": True,
         },
     ],
-    "interior paint": [
+    "intrior paint": [
         {
             "product_id": "BEHR-PPG-2050-1GAL",
             "title": "BEHR ULTRA Interior Paint & Primer in One - Eggshell, Ultra Pure White, 1 Gal",
@@ -1960,6 +1960,12 @@ def search(query: str) -> SearchResponse:
         corrected_query = data.get("corrected_query")
         return SearchResponse(results=results, corrected_query=corrected_query)
     """
+    # Simulate autocorrect: map misspelled queries to corrected versions
+    corrections = {
+        "intrior paint": "interior paint",
+    }
+    corrected_query = corrections.get(query)
+
     products = _CATALOG.get(query, [])
 
     results = [
@@ -1977,7 +1983,7 @@ def search(query: str) -> SearchResponse:
         for i, p in enumerate(products)
     ]
 
-    return SearchResponse(results=results)
+    return SearchResponse(results=results, corrected_query=corrected_query)
 
 
 # ---------------------------------------------------------------------------
