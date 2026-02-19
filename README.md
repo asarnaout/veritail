@@ -1,16 +1,17 @@
 # veritail
 
-Evaluate ecommerce search relevance with one command.
+LLM-as-a-Judge evaluation for ecommerce search.
 
-veritail runs four evaluation layers together:
-- LLM relevance judgments (0-3)
-- Deterministic quality checks (e.g., low result count, near-identical results, and out-of-stock ranking issues)
-- IR metrics (NDCG, MRR, MAP, Precision, attribute match)
-- Autocorrect evaluation (catches intent-altering or unnecessary query corrections)
-- Autocomplete evaluation (deterministic quality checks and LLM-based semantic evaluation for type-ahead suggestions)
+veritail scores every query-result pair using an LLM judge, computes IR metrics from those scores, and runs deterministic quality checks — all in a single command. Run it on every release to track search quality, or compare two configurations side by side to measure the impact of a change before it ships.
 
-It includes 14 built-in ecommerce verticals (automotive, beauty, electronics, fashion, foodservice, furniture, groceries, home improvement, industrial, marketplace, medical, office supplies, pet supplies, and sporting goods) for domain-aware LLM judging, and supports custom vertical context and rubrics.
-Built for rapid search iteration: compare baseline vs candidate, inspect regressions, and decide from per-query evidence.
+Five evaluation layers:
+- **LLM-as-a-Judge scoring** — every query-result pair scored 0-3 with structured reasoning, using any cloud or local model
+- **IR metrics** — NDCG, MRR, MAP, Precision, and attribute match computed from LLM scores
+- **Deterministic quality checks** — low result counts, near-duplicate results, out-of-stock ranking issues, price outliers, and more
+- **Autocorrect evaluation** — catches intent-altering or unnecessary query corrections
+- **Autocomplete evaluation** — deterministic checks and LLM-based semantic evaluation for type-ahead suggestions
+
+Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context and rubrics.
 
 ## Preview
 
