@@ -172,6 +172,37 @@
     </div>
     {% endif %}
 
+    {% if position_chart %}
+    <h2>Average Score by Result Position</h2>
+    <div class="card">
+        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+            Bars should decrease from left to right if your ranking places the most relevant results first.
+        </p>
+        <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; display:block; margin:0 auto;" role="img" aria-label="Average score by result position chart">
+            {% for score in [0, 1, 2, 3] %}
+            <line x1="40" y1="{{ 15 + 150 - score * 50 }}" x2="680" y2="{{ 15 + 150 - score * 50 }}"
+                  stroke="#e5e7eb" stroke-width="1" {% if score > 0 %}stroke-dasharray="4,4"{% endif %} />
+            <text x="32" y="{{ 15 + 150 - score * 50 + 4 }}" text-anchor="end"
+                  fill="#9ca3af" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ score }}</text>
+            {% endfor %}
+
+            {% for bar in position_chart %}
+            <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}"
+                  rx="3" fill="{{ bar.color }}" opacity="0.85">
+                <title>Position {{ bar.position }}: avg {{ "%.2f"|format(bar.avg_score) }}/3 ({{ bar.count }} queries)</title>
+            </rect>
+            <text x="{{ bar.x + bar.width / 2 }}" y="{{ bar.label_y }}" text-anchor="middle"
+                  fill="#374151" font-size="11" font-weight="600" font-family="Menlo, monospace">{{ "%.2f"|format(bar.avg_score) }}</text>
+            <text x="{{ bar.x + bar.width / 2 }}" y="185" text-anchor="middle"
+                  fill="#6b7280" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">#{{ bar.position }}</text>
+            {% endfor %}
+
+            <line x1="40" y1="15" x2="40" y2="165" stroke="#d1d5db" stroke-width="1" />
+            <line x1="40" y1="165" x2="680" y2="165" stroke="#d1d5db" stroke-width="1" />
+        </svg>
+    </div>
+    {% endif %}
+
     {% if query_types %}
     <h2>Metrics by Query Type</h2>
     <div class="table-wrap"><table>

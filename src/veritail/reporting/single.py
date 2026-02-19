@@ -440,6 +440,49 @@ def _generate_html(
                 "stdev": statistics.stdev(pq_values),
             }
 
+    # Score by position chart
+    position_chart: list[dict[str, object]] | None = None
+    if judgments:
+        pos_scores: dict[int, list[int]] = defaultdict(list)
+        for j in judgments:
+            pos_scores[j.product.position + 1].append(j.score)
+        if len(pos_scores) >= 2:
+            sorted_positions = sorted(pos_scores.keys())
+            n = len(sorted_positions)
+            chart_inner_w = 640.0
+            chart_inner_h = 150.0
+            gap = 6.0
+            bar_w = min(56.0, max(20.0, (chart_inner_w - gap * max(1, n - 1)) / n))
+            total_w = n * bar_w + (n - 1) * gap
+            x_start = 40.0 + (chart_inner_w - total_w) / 2.0
+            bars: list[dict[str, object]] = []
+            for i, pos in enumerate(sorted_positions):
+                sc = pos_scores[pos]
+                avg = sum(sc) / len(sc)
+                bar_h = max(2.0, (avg / 3.0) * chart_inner_h)
+                if avg > 2.25:
+                    color = "#16a34a"
+                elif avg > 1.5:
+                    color = "#ca8a04"
+                elif avg > 0.75:
+                    color = "#ea580c"
+                else:
+                    color = "#dc2626"
+                bars.append(
+                    {
+                        "position": pos,
+                        "avg_score": avg,
+                        "count": len(sc),
+                        "x": round(x_start + i * (bar_w + gap), 1),
+                        "y": round(15.0 + chart_inner_h - bar_h, 1),
+                        "width": round(bar_w, 1),
+                        "height": round(bar_h, 1),
+                        "color": color,
+                        "label_y": round(15.0 + chart_inner_h - bar_h - 5, 1),
+                    }
+                )
+            position_chart = bars
+
     # Metrics by query type
     type_metrics = [m for m in metrics if m.by_query_type]
     query_types: list[str] = []
@@ -463,6 +506,7 @@ def _generate_html(
         score_total=score_total,
         score_pcts=score_pcts,
         ndcg_stats=ndcg_stats,
+        position_chart=position_chart,
         type_metrics=type_metrics,
         query_types=query_types,
         sibling_report=sibling_report,
