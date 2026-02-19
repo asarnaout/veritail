@@ -185,8 +185,8 @@ def _generate_terminal(
         llm_table = Table(title="LLM Suggestion Quality", show_header=True)
         llm_table.add_column("Metric", style="cyan")
         llm_table.add_column("Value", justify="right")
-        llm_table.add_row("Avg Relevance", f"{avg_rel:.2f}")
-        llm_table.add_row("Avg Diversity", f"{avg_div:.2f}")
+        llm_table.add_row("Avg Relevance", f"{avg_rel:.2f}/3")
+        llm_table.add_row("Avg Diversity", f"{avg_div:.2f}/3")
         llm_table.add_row("Prefixes Evaluated", str(len(suggestion_judgments)))
         llm_table.add_row("Total Flagged", str(total_flagged))
         con.print(llm_table)
@@ -403,8 +403,8 @@ def _generate_html(
             if j.flagged_suggestions
         ]
         llm_summary = {
-            "avg_relevance": f"{avg_rel:.2f}",
-            "avg_diversity": f"{avg_div:.2f}",
+            "avg_relevance": f"{avg_rel:.2f}/3",
+            "avg_diversity": f"{avg_div:.2f}/3",
             "count": len(suggestion_judgments),
             "total_flagged": total_flagged,
             "flagged_details": flagged_details,
