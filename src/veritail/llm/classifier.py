@@ -28,9 +28,44 @@ You MUST respond in exactly this format (one line, nothing else):
 QUERY_TYPE: <navigational|broad|long_tail|attribute>
 """
 
+CLASSIFICATION_MAX_TOKENS = 64
+
 _VALID_TYPES = frozenset({"navigational", "broad", "long_tail", "attribute"})
 
 _TYPE_RE = re.compile(r"(?i)QUERY_TYPE\s*[:=]\s*(\w+)")
+
+
+def build_classification_system_prompt(
+    context: str | None = None,
+    vertical: str | None = None,
+) -> str:
+    """Build the full system prompt for query type classification."""
+    system_prompt = CLASSIFICATION_SYSTEM_PROMPT
+    prefix_parts: list[str] = []
+    if context:
+        prefix_parts.append(f"## Business Context\n{context}")
+    if vertical:
+        prefix_parts.append(vertical)
+    if prefix_parts:
+        prefix = "\n\n".join(prefix_parts)
+        system_prompt = f"{prefix}\n\n{system_prompt}"
+    return system_prompt
+
+
+def parse_classification_response(content: str) -> str | None:
+    """Parse a classification response into a query type string.
+
+    Returns the type string or None if parsing fails.
+    """
+    match = _TYPE_RE.search(content)
+    if not match:
+        return None
+
+    value = match.group(1).lower()
+    if value not in _VALID_TYPES:
+        return None
+
+    return value
 
 
 def classify_query_type(
@@ -43,29 +78,14 @@ def classify_query_type(
 
     Returns the type string or None if classification fails.
     """
-    system_prompt = CLASSIFICATION_SYSTEM_PROMPT
-    prefix_parts: list[str] = []
-    if context:
-        prefix_parts.append(f"## Business Context\n{context}")
-    if vertical:
-        prefix_parts.append(vertical)
-    if prefix_parts:
-        prefix = "\n\n".join(prefix_parts)
-        system_prompt = f"{prefix}\n\n{system_prompt}"
-
+    system_prompt = build_classification_system_prompt(context, vertical)
     user_prompt = f"Query: {query}"
 
     try:
-        response = llm_client.complete(system_prompt, user_prompt, max_tokens=64)
+        response = llm_client.complete(
+            system_prompt, user_prompt, max_tokens=CLASSIFICATION_MAX_TOKENS
+        )
     except Exception:
         return None
 
-    match = _TYPE_RE.search(response.content)
-    if not match:
-        return None
-
-    value = match.group(1).lower()
-    if value not in _VALID_TYPES:
-        return None
-
-    return value
+    return parse_classification_response(response.content)

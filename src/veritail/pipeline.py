@@ -29,7 +29,12 @@ from veritail.checks.correction import (
     check_correction_vocabulary,
     check_unnecessary_correction,
 )
-from veritail.llm.classifier import classify_query_type
+from veritail.llm.classifier import (
+    CLASSIFICATION_MAX_TOKENS,
+    build_classification_system_prompt,
+    classify_query_type,
+    parse_classification_response,
+)
 from veritail.llm.client import BatchRequest, LLMClient
 from veritail.llm.judge import CORRECTION_SYSTEM_PROMPT, CorrectionJudge, RelevanceJudge
 from veritail.metrics.ir import compute_all_metrics
@@ -76,6 +81,65 @@ def _classify_missing_query_types(
                 query_entry.type = inferred
                 classified += 1
             progress.advance(task)
+
+    console.print(f"[dim]Classified {classified}/{len(missing)} queries[/dim]")
+
+
+def _classify_missing_query_types_batch(
+    queries: list[QueryEntry],
+    llm_client: LLMClient,
+    context: str | None,
+    vertical: str | None,
+    poll_interval: int,
+) -> None:
+    """Batch variant of query type classification.
+
+    Submits all untyped queries as a single batch request, polls for
+    completion, then parses and assigns types.  Falls back to the
+    synchronous path when there are no missing types.
+    """
+    missing = [(i, q) for i, q in enumerate(queries) if q.type is None]
+    if not missing:
+        return
+
+    system_prompt = build_classification_system_prompt(context, vertical)
+
+    batch_requests: list[BatchRequest] = []
+    for idx, query_entry in missing:
+        batch_requests.append(
+            BatchRequest(
+                custom_id=f"cls-{idx}",
+                system_prompt=system_prompt,
+                user_prompt=f"Query: {query_entry.query}",
+                max_tokens=CLASSIFICATION_MAX_TOKENS,
+            )
+        )
+
+    console.print(
+        f"[cyan]Submitting classification batch of "
+        f"{len(batch_requests)} requests...[/cyan]"
+    )
+    batch_id = llm_client.submit_batch(batch_requests)
+
+    poll_until_done(
+        llm_client,
+        batch_id,
+        expected_total=len(batch_requests),
+        poll_interval=poll_interval,
+        label="Waiting for classification batch...",
+    )
+
+    batch_results = llm_client.retrieve_batch_results(batch_id)
+    results_by_id = {r.custom_id: r for r in batch_results}
+
+    classified = 0
+    for idx, query_entry in missing:
+        result = results_by_id.get(f"cls-{idx}")
+        if result and result.response:
+            inferred = parse_classification_response(result.response.content)
+            if inferred is not None:
+                query_entry.type = inferred
+                classified += 1
 
     console.print(f"[dim]Classified {classified}/{len(missing)} queries[/dim]")
 
@@ -536,8 +600,10 @@ def run_batch_evaluation(
     except Exception as e:
         console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
 
-    # Pre-pass: classify query types that are missing
-    _classify_missing_query_types(queries, llm_client, context, vertical)
+    # Pre-pass: classify query types that are missing (batched)
+    _classify_missing_query_types_batch(
+        queries, llm_client, context, vertical, poll_interval
+    )
 
     # Check for existing checkpoint when resuming
     saved_checkpoint: BatchCheckpoint | None = None

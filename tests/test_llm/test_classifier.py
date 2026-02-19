@@ -6,7 +6,9 @@ from unittest.mock import Mock
 
 from veritail.llm.classifier import (
     CLASSIFICATION_SYSTEM_PROMPT,
+    build_classification_system_prompt,
     classify_query_type,
+    parse_classification_response,
 )
 from veritail.llm.client import LLMClient, LLMResponse
 
@@ -71,3 +73,45 @@ class TestClassifyQueryType:
         classify_query_type(client, "shoes")
         call_kwargs = client.complete.call_args
         assert call_kwargs[1]["max_tokens"] == 64
+
+
+class TestParseClassificationResponse:
+    def test_valid_types(self) -> None:
+        result = parse_classification_response("QUERY_TYPE: navigational")
+        assert result == "navigational"
+        assert parse_classification_response("QUERY_TYPE: broad") == "broad"
+        assert parse_classification_response("QUERY_TYPE: long_tail") == "long_tail"
+        assert parse_classification_response("QUERY_TYPE: attribute") == "attribute"
+
+    def test_case_insensitive(self) -> None:
+        assert parse_classification_response("query_type: BROAD") == "broad"
+
+    def test_invalid_type(self) -> None:
+        assert parse_classification_response("QUERY_TYPE: unknown") is None
+
+    def test_no_match(self) -> None:
+        assert parse_classification_response("This is broad.") is None
+
+
+class TestBuildClassificationSystemPrompt:
+    def test_no_context_or_vertical(self) -> None:
+        prompt = build_classification_system_prompt()
+        assert prompt == CLASSIFICATION_SYSTEM_PROMPT
+
+    def test_context_prepended(self) -> None:
+        prompt = build_classification_system_prompt(context="BBQ supplier")
+        assert prompt.startswith("## Business Context\nBBQ supplier")
+        assert CLASSIFICATION_SYSTEM_PROMPT in prompt
+
+    def test_vertical_prepended(self) -> None:
+        prompt = build_classification_system_prompt(vertical="## Vertical: Food")
+        assert "## Vertical: Food" in prompt
+        assert CLASSIFICATION_SYSTEM_PROMPT in prompt
+
+    def test_context_before_vertical(self) -> None:
+        prompt = build_classification_system_prompt(
+            context="BBQ supplier", vertical="## Vertical: Food"
+        )
+        ctx_pos = prompt.index("BBQ supplier")
+        vert_pos = prompt.index("## Vertical: Food")
+        assert ctx_pos < vert_pos

@@ -1253,3 +1253,47 @@ class TestRunBatchEvaluation:
         ndcg_sync = next(m for m in m_sync if m.metric_name == "ndcg@10")
         ndcg_batch = next(m for m in m_batch if m.metric_name == "ndcg@10")
         assert ndcg_sync.value == pytest.approx(ndcg_batch.value)
+
+    def test_batch_prepass_classification(self, tmp_path):
+        """Queries without type get classified via batch API before evaluation."""
+        queries = [
+            QueryEntry(query="nike air max"),  # type is None
+        ]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        # Classification batch + relevance batch = 2 submit_batch calls
+        responses = [
+            # Classification batch result
+            "QUERY_TYPE: navigational",
+            # Relevance batch results (3 results for 1 query)
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Excellent",
+            "SCORE: 2\nATTRIBUTES: partial\nREASONING: Good",
+            "SCORE: 1\nATTRIBUTES: mismatch\nREASONING: Marginal",
+        ]
+        llm_client = _make_mock_batch_llm_client(responses)
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        # Query type should have been classified
+        assert queries[0].type == "navigational"
+        # Two batches submitted: classification + relevance
+        assert llm_client.submit_batch.call_count == 2
+        # Metrics should have by_type breakdown
+        ndcg = next(m for m in metrics if m.metric_name == "ndcg@10")
+        assert "navigational" in ndcg.by_query_type
