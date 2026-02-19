@@ -28,6 +28,12 @@
         .tip::after { content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 8px); padding: 8px 12px; background: #1a1a2e; color: #f3f4f6; font-size: 12px; font-weight: 400; line-height: 1.4; white-space: normal; width: max-content; max-width: 280px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; }
         .tip::before { content: ""; position: absolute; left: 4px; bottom: calc(100% + 2px); border: 5px solid transparent; border-top-color: #1a1a2e; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; }
         .tip:hover::after, .tip:hover::before { opacity: 1; }
+        .pagination { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button { border: 1px solid #d1d5db; background: white; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.15s; min-width: 36px; }
+        .pagination button:hover:not(:disabled) { background: #f0f0ff; border-color: #4f6bed; color: #4f6bed; }
+        .pagination button:disabled { opacity: 0.4; cursor: default; }
+        .pagination button.active { background: #1a1a2e; color: white; border-color: #1a1a2e; font-weight: 600; }
+        .pagination .page-info { font-size: 13px; color: #6b7280; margin: 0 8px; }
     </style>
 </head>
 <body>
@@ -267,10 +273,12 @@
     <h2>Judgment Details</h2>
     <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
       Click a query to expand individual product scores and LLM reasoning.
+      Sorted by worst average score first.
     </p>
 
+    <div id="judgment-list">
     {% for item in judgments_for_template %}
-    <details style="margin-bottom:12px;">
+    <details class="paginated-item" style="margin-bottom:12px;">
       <summary style="cursor:pointer; padding:10px 16px; background:white;
                       border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);
                       font-weight:600; list-style:none; display:flex;
@@ -321,6 +329,8 @@
       </table>
     </details>
     {% endfor %}
+    </div>
+    <div id="judgment-pagination"></div>
     {% endif %}
 
     {% endif %}
@@ -336,5 +346,72 @@
         </div>
         {% endif %}
     </div>
+
+    <script>
+    (function() {
+        var PER_PAGE = 10;
+
+        function paginate(containerId, paginationId) {
+            var container = document.getElementById(containerId);
+            var paginationEl = document.getElementById(paginationId);
+            if (!container || !paginationEl) return;
+
+            var items = container.querySelectorAll('.paginated-item');
+            if (items.length <= PER_PAGE) return;
+
+            var totalPages = Math.ceil(items.length / PER_PAGE);
+            var currentPage = 1;
+
+            function showPage(page) {
+                currentPage = page;
+                var start = (page - 1) * PER_PAGE;
+                var end = start + PER_PAGE;
+                for (var i = 0; i < items.length; i++) {
+                    items[i].style.display = (i >= start && i < end) ? '' : 'none';
+                    if (i < start || i >= end) items[i].removeAttribute('open');
+                }
+                renderControls();
+                container.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }
+
+            function renderControls() {
+                var html = '';
+                html += '<button ' + (currentPage === 1 ? 'disabled' : '') + ' data-page="' + (currentPage - 1) + '">&lsaquo; Prev</button>';
+
+                var startPage = Math.max(1, currentPage - 2);
+                var endPage = Math.min(totalPages, startPage + 4);
+                if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+
+                if (startPage > 1) {
+                    html += '<button data-page="1">1</button>';
+                    if (startPage > 2) html += '<span class="page-info">&hellip;</span>';
+                }
+                for (var p = startPage; p <= endPage; p++) {
+                    html += '<button data-page="' + p + '"' + (p === currentPage ? ' class="active"' : '') + '>' + p + '</button>';
+                }
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) html += '<span class="page-info">&hellip;</span>';
+                    html += '<button data-page="' + totalPages + '">' + totalPages + '</button>';
+                }
+
+                html += '<button ' + (currentPage === totalPages ? 'disabled' : '') + ' data-page="' + (currentPage + 1) + '">Next &rsaquo;</button>';
+                html += '<span class="page-info">Showing ' + ((currentPage - 1) * PER_PAGE + 1) + '&ndash;' + Math.min(currentPage * PER_PAGE, items.length) + ' of ' + items.length + '</span>';
+                paginationEl.className = 'pagination';
+                paginationEl.innerHTML = html;
+            }
+
+            paginationEl.addEventListener('click', function(e) {
+                var btn = e.target.closest('button');
+                if (btn && !btn.disabled && btn.dataset.page) {
+                    showPage(parseInt(btn.dataset.page, 10));
+                }
+            });
+
+            showPage(1);
+        }
+
+        paginate('judgment-list', 'judgment-pagination');
+    })();
+    </script>
 </body>
 </html>
