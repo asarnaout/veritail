@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 
 from rich.console import Console
@@ -12,12 +13,10 @@ from veritail.autocomplete.comparison import (
     check_rank_agreement,
     check_suggestion_overlap,
 )
-from veritail.autocomplete.metrics import compute_autocomplete_metrics
 from veritail.types import (
     AutocompleteConfig,
     AutocompleteResponse,
     CheckResult,
-    MetricResult,
     PrefixEntry,
 )
 
@@ -31,14 +30,13 @@ def run_autocomplete_evaluation(
     custom_checks: (
         list[Callable[[str, AutocompleteResponse], list[CheckResult]]] | None
     ) = None,
-) -> tuple[list[CheckResult], list[MetricResult], dict[int, AutocompleteResponse]]:
+) -> tuple[list[CheckResult], dict[int, AutocompleteResponse]]:
     """Run a single-configuration autocomplete evaluation.
 
     For each prefix: call adapter, run checks, collect response.
-    After loop: compute metrics.
 
     Returns:
-        Tuple of (checks, metrics, responses_by_prefix).
+        Tuple of (checks, responses_by_prefix).
     """
     all_checks: list[CheckResult] = []
     responses_by_prefix: dict[int, AutocompleteResponse] = {}
@@ -48,8 +46,11 @@ def run_autocomplete_evaluation(
             f"[cyan]Evaluating '{config.name}'...", total=len(prefixes)
         )
         for i, entry in enumerate(prefixes):
+            latency_ms: float | None = None
             try:
+                t0 = time.perf_counter()
                 response = adapter(entry.prefix)
+                latency_ms = (time.perf_counter() - t0) * 1000.0
                 # Trim to top_k
                 response = AutocompleteResponse(
                     suggestions=response.suggestions[: config.top_k],
@@ -63,13 +64,15 @@ def run_autocomplete_evaluation(
                 responses_by_prefix[i] = AutocompleteResponse(suggestions=[])
 
             checks = run_autocomplete_checks(
-                entry.prefix, responses_by_prefix[i], custom_checks=custom_checks
+                entry.prefix,
+                responses_by_prefix[i],
+                custom_checks=custom_checks,
+                latency_ms=latency_ms,
             )
             all_checks.extend(checks)
             progress.advance(task)
 
-    metrics = compute_autocomplete_metrics(responses_by_prefix, prefixes)
-    return all_checks, metrics, responses_by_prefix
+    return all_checks, responses_by_prefix
 
 
 def run_dual_autocomplete_evaluation(
@@ -81,22 +84,16 @@ def run_dual_autocomplete_evaluation(
     custom_checks: (
         list[Callable[[str, AutocompleteResponse], list[CheckResult]]] | None
     ) = None,
-) -> tuple[
-    list[CheckResult],
-    list[CheckResult],
-    list[MetricResult],
-    list[MetricResult],
-    list[CheckResult],
-]:
+) -> tuple[list[CheckResult], list[CheckResult], list[CheckResult]]:
     """Run a dual-configuration autocomplete evaluation.
 
     Returns:
-        Tuple of (checks_a, checks_b, metrics_a, metrics_b, comparison_checks).
+        Tuple of (checks_a, checks_b, comparison_checks).
     """
-    checks_a, metrics_a, responses_a = run_autocomplete_evaluation(
+    checks_a, responses_a = run_autocomplete_evaluation(
         prefixes, adapter_a, config_a, custom_checks=custom_checks
     )
-    checks_b, metrics_b, responses_b = run_autocomplete_evaluation(
+    checks_b, responses_b = run_autocomplete_evaluation(
         prefixes, adapter_b, config_b, custom_checks=custom_checks
     )
 
@@ -111,4 +108,4 @@ def run_dual_autocomplete_evaluation(
             check_rank_agreement(entry.prefix, sug_a.suggestions, sug_b.suggestions)
         )
 
-    return checks_a, checks_b, metrics_a, metrics_b, comparison_checks
+    return checks_a, checks_b, comparison_checks

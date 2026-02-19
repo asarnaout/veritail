@@ -114,7 +114,6 @@ class PrefixEntry:
     """A prefix from the input prefix set."""
 
     prefix: str
-    target_query: str
     type: str | None = None  # short_prefix | mid_prefix | long_prefix
 
 

@@ -174,13 +174,13 @@ def suggest(prefix: str) -> AutocompleteResponse:
 """
 
 PREFIXES_TEMPLATE = """\
-prefix,target_query,type
-run,running shoes,short_prefix
-runnin,running shoes,mid_prefix
-running sh,running shoes,long_prefix
-nike,nike air max 90,short_prefix
-nike air,nike air max 90,mid_prefix
-nike air max,nike air max 90,long_prefix
+prefix,type
+run,short_prefix
+runnin,mid_prefix
+running sh,long_prefix
+nike,short_prefix
+nike air,mid_prefix
+nike air max,long_prefix
 """
 
 

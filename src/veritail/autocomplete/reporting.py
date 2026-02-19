@@ -13,30 +13,12 @@ from rich.table import Table
 from veritail.types import (
     AutocompleteResponse,
     CheckResult,
-    MetricResult,
     PrefixEntry,
 )
 
 _JINJA_ENV = Environment(
     autoescape=select_autoescape(("html", "xml"), default_for_string=True),
 )
-
-METRIC_DESCRIPTIONS: dict[str, str] = {
-    "mrr": (
-        "Mean Reciprocal Rank - reciprocal of the rank of the "
-        "first exact match of the target query in suggestions"
-    ),
-    "psaved": (
-        "Proportion Saved - fraction of keystrokes saved by "
-        "using the prefix instead of typing the full query"
-    ),
-    "sr@5": ("Success Rate at 5 - fraction of prefixes where target appears in top 5"),
-    "sr@10": (
-        "Success Rate at 10 - fraction of prefixes where the target appears in top 10"
-    ),
-    "esaved@5": "Expected Saved at 5 - pSaved * SR@5",
-    "esaved@10": "Expected Saved at 10 - pSaved * SR@10",
-}
 
 CHECK_DESCRIPTIONS: dict[str, str] = {
     "empty_suggestions": "Fails when a prefix returns no suggestions at all",
@@ -47,6 +29,12 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
     "offensive_content": "Flags suggestions containing blocked terms",
     "suggestion_overlap": "Jaccard overlap of suggestions between two configurations",
     "rank_agreement": "Spearman rank correlation of shared suggestions",
+    "near_duplicate": "Detects near-duplicate suggestions via edit distance",
+    "encoding_issues": (
+        "Flags HTML entities, control characters, and leading/trailing whitespace"
+    ),
+    "length_anomaly": "Flags suggestions shorter than 2 chars or longer than 80 chars",
+    "latency": "Checks whether adapter response time exceeds a threshold",
 }
 
 
@@ -76,7 +64,6 @@ def _summarize_checks(
 
 
 def generate_autocomplete_report(
-    metrics: list[MetricResult],
     checks: list[CheckResult],
     format: str = "terminal",
     responses_by_prefix: dict[int, AutocompleteResponse] | None = None,
@@ -86,7 +73,6 @@ def generate_autocomplete_report(
     """Generate a report for a single autocomplete evaluation.
 
     Args:
-        metrics: Computed autocomplete metrics.
         checks: Deterministic check results.
         format: "terminal" for rich console output, "html" for HTML file.
         responses_by_prefix: Optional mapping of prefix index to responses.
@@ -97,15 +83,13 @@ def generate_autocomplete_report(
         Formatted report string.
     """
     if format == "html":
-        return _generate_html(
-            metrics, checks, responses_by_prefix, prefixes, run_metadata
-        )
-    return _generate_terminal(metrics, checks, responses_by_prefix, prefixes)
+        return _generate_html(checks, responses_by_prefix, prefixes, run_metadata)
+    return _generate_terminal(checks, responses_by_prefix, prefixes)
 
 
 def generate_autocomplete_comparison_report(
-    metrics_a: list[MetricResult],
-    metrics_b: list[MetricResult],
+    checks_a: list[CheckResult],
+    checks_b: list[CheckResult],
     comparison_checks: list[CheckResult],
     config_a: str,
     config_b: str,
@@ -115,15 +99,14 @@ def generate_autocomplete_comparison_report(
     """Generate a comparison report for two autocomplete configurations."""
     if format == "html":
         return _generate_comparison_html(
-            metrics_a, metrics_b, comparison_checks, config_a, config_b, run_metadata
+            checks_a, checks_b, comparison_checks, config_a, config_b, run_metadata
         )
     return _generate_comparison_terminal(
-        metrics_a, metrics_b, comparison_checks, config_a, config_b
+        checks_a, checks_b, comparison_checks, config_a, config_b
     )
 
 
 def _generate_terminal(
-    metrics: list[MetricResult],
     checks: list[CheckResult],
     responses_by_prefix: dict[int, AutocompleteResponse] | None = None,
     prefixes: list[PrefixEntry] | None = None,
@@ -133,35 +116,7 @@ def _generate_terminal(
 
     con.print("\n[bold]Autocomplete Evaluation Report[/bold]\n")
 
-    # Metrics table
-    table = Table(title="Autocomplete Metrics", show_header=True)
-    table.add_column("Metric", style="cyan")
-    table.add_column("Value", justify="right")
-    for m in metrics:
-        table.add_row(m.metric_name, f"{m.value:.4f}")
-    con.print(table)
-
-    # By type breakdown
-    type_metrics = [m for m in metrics if m.by_query_type]
-    if type_metrics:
-        con.print("\n")
-        type_table = Table(title="Metrics by Prefix Type", show_header=True)
-        type_table.add_column("Metric", style="cyan")
-        all_types: set[str] = set()
-        for m in type_metrics:
-            all_types.update(m.by_query_type.keys())
-        for qt in sorted(all_types):
-            type_table.add_column(qt, justify="right")
-        for m in type_metrics:
-            row = [m.metric_name]
-            for qt in sorted(all_types):
-                val = m.by_query_type.get(qt)
-                row.append(f"{val:.4f}" if val is not None else "-")
-            type_table.add_row(*row)
-        con.print(type_table)
-
     # Checks summary
-    con.print("\n")
     check_table = Table(title="Deterministic Checks", show_header=True)
     check_table.add_column("Check", style="cyan")
     check_table.add_column("Passed", justify="right", style="green")
@@ -175,42 +130,45 @@ def _generate_terminal(
         )
     con.print(check_table)
 
-    # Worst prefixes by MRR
-    mrr_metric = next((m for m in metrics if m.metric_name == "mrr"), None)
-    if mrr_metric and mrr_metric.per_query:
+    # Failed checks detail
+    failed_checks = [c for c in checks if not c.passed]
+    if failed_checks:
         con.print("\n")
-        worst = sorted(mrr_metric.per_query.items(), key=lambda x: x[1])[:10]
-        worst_table = Table(title="Worst Performing Prefixes (MRR)", show_header=True)
-        worst_table.add_column("Prefix", style="cyan")
-        worst_table.add_column("MRR", justify="right")
-        for prefix, value in worst:
-            worst_table.add_row(prefix, f"{value:.4f}")
-        con.print(worst_table)
+        fail_table = Table(title="Failed Checks", show_header=True)
+        fail_table.add_column("Prefix", style="cyan")
+        fail_table.add_column("Check")
+        fail_table.add_column("Detail", style="dim")
+        for c in failed_checks[:20]:
+            fail_table.add_row(c.query, c.check_name, c.detail)
+        if len(failed_checks) > 20:
+            con.print(f"[dim]  ... and {len(failed_checks) - 20} more[/dim]")
+        con.print(fail_table)
 
     # Per-prefix drill-down
     if prefixes and responses_by_prefix:
         con.print("\n")
         drill_table = Table(title="Per-Prefix Results", show_header=True)
         drill_table.add_column("Prefix", style="cyan")
-        drill_table.add_column("Target Query")
-        drill_table.add_column("MRR", justify="right")
+        drill_table.add_column("Type", style="dim")
         drill_table.add_column("Suggestions", style="dim")
+        drill_table.add_column("Failed Checks", justify="right", style="red")
 
-        # Sort by MRR ascending (worst first)
-        prefix_mrr_values: list[tuple[int, float]] = []
-        for i, entry in enumerate(prefixes):
-            val = mrr_metric.per_query.get(entry.prefix, 0.0) if mrr_metric else 0.0
-            prefix_mrr_values.append((i, val))
-        prefix_mrr_values.sort(key=lambda x: x[1])
+        prefix_failures: dict[str, int] = {}
+        for c in checks:
+            if not c.passed:
+                prefix_failures[c.query] = prefix_failures.get(c.query, 0) + 1
 
-        for idx, mrr_val in prefix_mrr_values[:20]:
-            entry = prefixes[idx]
+        for idx, entry in enumerate(prefixes):
             resp = responses_by_prefix.get(idx)
             sug_str = ", ".join(resp.suggestions[:5]) if resp else "(none)"
             if resp and len(resp.suggestions) > 5:
                 sug_str += f" (+{len(resp.suggestions) - 5} more)"
+            fail_count = prefix_failures.get(entry.prefix, 0)
             drill_table.add_row(
-                entry.prefix, entry.target_query, f"{mrr_val:.4f}", sug_str
+                entry.prefix,
+                entry.type or "",
+                sug_str,
+                str(fail_count) if fail_count else "",
             )
         con.print(drill_table)
 
@@ -219,8 +177,8 @@ def _generate_terminal(
 
 
 def _generate_comparison_terminal(
-    metrics_a: list[MetricResult],
-    metrics_b: list[MetricResult],
+    checks_a: list[CheckResult],
+    checks_b: list[CheckResult],
     comparison_checks: list[CheckResult],
     config_a: str,
     config_b: str,
@@ -230,34 +188,28 @@ def _generate_comparison_terminal(
 
     con.print(f"\n[bold]Autocomplete Comparison: '{config_a}' vs '{config_b}'[/bold]\n")
 
-    table = Table(title="Metrics Comparison", show_header=True)
-    table.add_column("Metric", style="cyan")
-    table.add_column(config_a, justify="right")
-    table.add_column(config_b, justify="right")
-    table.add_column("Delta", justify="right")
-    table.add_column("% Change", justify="right")
+    # Check summaries side-by-side
+    summary_a = _summarize_checks(checks_a)
+    summary_b = _summarize_checks(checks_b)
+    all_check_names = sorted(set(summary_a.keys()) | set(summary_b.keys()))
 
-    metrics_b_lookup = {m.metric_name: m for m in metrics_b}
-    for m_a in metrics_a:
-        m_b = metrics_b_lookup.get(m_a.metric_name)
-        if m_b:
-            delta = m_b.value - m_a.value
-            pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
-            delta_str = f"{delta:+.4f}"
-            pct_str = f"{pct:+.1f}%"
-            if delta > 0:
-                delta_str = f"[green]{delta_str}[/green]"
-                pct_str = f"[green]{pct_str}[/green]"
-            elif delta < 0:
-                delta_str = f"[red]{delta_str}[/red]"
-                pct_str = f"[red]{pct_str}[/red]"
-            table.add_row(
-                m_a.metric_name,
-                f"{m_a.value:.4f}",
-                f"{m_b.value:.4f}",
-                delta_str,
-                pct_str,
-            )
+    table = Table(title="Check Summary Comparison", show_header=True)
+    table.add_column("Check", style="cyan")
+    table.add_column(f"{config_a} Passed", justify="right")
+    table.add_column(f"{config_a} Failed", justify="right", style="red")
+    table.add_column(f"{config_b} Passed", justify="right")
+    table.add_column(f"{config_b} Failed", justify="right", style="red")
+
+    for name in all_check_names:
+        sa = summary_a.get(name, {"passed_display": "-", "failed": "-"})
+        sb = summary_b.get(name, {"passed_display": "-", "failed": "-"})
+        table.add_row(
+            name,
+            str(sa["passed_display"]),
+            str(sa["failed"]),
+            str(sb["passed_display"]),
+            str(sb["failed"]),
+        )
     con.print(table)
 
     # Comparison checks summary
@@ -274,7 +226,6 @@ def _generate_comparison_terminal(
 
 
 def _generate_html(
-    metrics: list[MetricResult],
     checks: list[CheckResult],
     responses_by_prefix: dict[int, AutocompleteResponse] | None = None,
     prefixes: list[PrefixEntry] | None = None,
@@ -288,37 +239,27 @@ def _generate_html(
 
     check_summary = _summarize_checks(checks)
 
-    # Worst prefixes by MRR
-    mrr_metric = next((m for m in metrics if m.metric_name == "mrr"), None)
-    worst_prefixes: list[tuple[str, float]] = []
-    if mrr_metric and mrr_metric.per_query:
-        worst_prefixes = sorted(mrr_metric.per_query.items(), key=lambda x: x[1])[:10]
-
     # Per-prefix drill-down
     prefix_details: list[dict[str, object]] = []
+    prefix_failures: dict[str, list[CheckResult]] = {}
+    for c in checks:
+        if not c.passed:
+            prefix_failures.setdefault(c.query, []).append(c)
+
     if prefixes and responses_by_prefix:
         for i, entry in enumerate(prefixes):
             resp = responses_by_prefix.get(i)
-            mrr_val = mrr_metric.per_query.get(entry.prefix, 0.0) if mrr_metric else 0.0
             prefix_details.append(
                 {
                     "prefix": entry.prefix,
-                    "target_query": entry.target_query,
                     "type": entry.type or "",
-                    "mrr": mrr_val,
                     "suggestions": resp.suggestions if resp else [],
+                    "failed_checks": [
+                        {"name": c.check_name, "detail": c.detail}
+                        for c in prefix_failures.get(entry.prefix, [])
+                    ],
                 }
             )
-        prefix_details.sort(key=lambda x: float(str(x["mrr"])))
-
-    # By type breakdown
-    type_metrics = [m for m in metrics if m.by_query_type]
-    query_types: list[str] = []
-    if type_metrics:
-        all_types: set[str] = set()
-        for m in type_metrics:
-            all_types.update(m.by_query_type.keys())
-        query_types = sorted(all_types)
 
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
@@ -335,21 +276,16 @@ def _generate_html(
 
     return template.render(
         is_comparison=False,
-        metrics=metrics,
         check_summary=check_summary,
-        worst_prefixes=worst_prefixes,
         prefix_details=prefix_details,
-        metric_descriptions=METRIC_DESCRIPTIONS,
         check_descriptions=CHECK_DESCRIPTIONS,
         run_metadata_rows=metadata_rows,
-        type_metrics=type_metrics,
-        query_types=query_types,
     )
 
 
 def _generate_comparison_html(
-    metrics_a: list[MetricResult],
-    metrics_b: list[MetricResult],
+    checks_a: list[CheckResult],
+    checks_b: list[CheckResult],
     comparison_checks: list[CheckResult],
     config_a: str,
     config_b: str,
@@ -361,22 +297,23 @@ def _generate_comparison_html(
     template_str = template_path.read_text(encoding="utf-8")
     template = _JINJA_ENV.from_string(template_str)
 
-    metrics_b_lookup = {m.metric_name: m for m in metrics_b}
-    comparison_data = []
-    for m_a in metrics_a:
-        m_b = metrics_b_lookup.get(m_a.metric_name)
-        if m_b:
-            delta = m_b.value - m_a.value
-            pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
-            comparison_data.append(
-                {
-                    "name": m_a.metric_name,
-                    "value_a": m_a.value,
-                    "value_b": m_b.value,
-                    "delta": delta,
-                    "pct_change": pct,
-                }
-            )
+    summary_a = _summarize_checks(checks_a)
+    summary_b = _summarize_checks(checks_b)
+    all_check_names = sorted(set(summary_a.keys()) | set(summary_b.keys()))
+
+    check_comparison = []
+    for name in all_check_names:
+        sa = summary_a.get(name, {"passed_display": "-", "failed": "-"})
+        sb = summary_b.get(name, {"passed_display": "-", "failed": "-"})
+        check_comparison.append(
+            {
+                "name": name,
+                "passed_a": sa["passed_display"],
+                "failed_a": sa["failed"],
+                "passed_b": sb["passed_display"],
+                "failed_b": sb["failed"],
+            }
+        )
 
     overlap_checks = [
         c for c in comparison_checks if c.check_name == "suggestion_overlap"
@@ -398,7 +335,7 @@ def _generate_comparison_html(
         is_comparison=True,
         config_a=config_a,
         config_b=config_b,
-        comparison_data=comparison_data,
+        check_comparison=check_comparison,
         overlap_checks=overlap_checks[:10],
         run_metadata_rows=metadata_rows,
     )

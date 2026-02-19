@@ -21,31 +21,28 @@ def _make_adapter(suggestions_map: dict[str, list[str]]):
 class TestRunAutocompleteEvaluation:
     def test_happy_path(self) -> None:
         prefixes = [
-            PrefixEntry(prefix="run", target_query="running shoes"),
-            PrefixEntry(prefix="nik", target_query="nike"),
+            PrefixEntry(prefix="run"),
+            PrefixEntry(prefix="nik"),
         ]
         adapter = _make_adapter(
             {"run": ["running shoes", "runner"], "nik": ["nike", "nikon"]}
         )
         config = AutocompleteConfig(name="test", adapter_path="test.py")
 
-        checks, metrics, responses = run_autocomplete_evaluation(
-            prefixes, adapter, config
-        )
+        checks, responses = run_autocomplete_evaluation(prefixes, adapter, config)
         assert len(responses) == 2
         assert len(checks) > 0
-        assert len(metrics) > 0
 
     def test_adapter_error_resilience(self) -> None:
         prefixes = [
-            PrefixEntry(prefix="run", target_query="running shoes"),
+            PrefixEntry(prefix="run"),
         ]
 
         def failing_adapter(prefix: str) -> AutocompleteResponse:
             raise RuntimeError("API down")
 
         config = AutocompleteConfig(name="test", adapter_path="test.py")
-        checks, metrics, responses = run_autocomplete_evaluation(
+        checks, responses = run_autocomplete_evaluation(
             prefixes, failing_adapter, config
         )
         # Should not raise, should return empty suggestions
@@ -53,32 +50,28 @@ class TestRunAutocompleteEvaluation:
         assert responses[0].suggestions == []
 
     def test_top_k_trimming(self) -> None:
-        prefixes = [PrefixEntry(prefix="a", target_query="abc")]
+        prefixes = [PrefixEntry(prefix="a")]
         adapter = _make_adapter({"a": ["a1", "a2", "a3", "a4", "a5", "a6"]})
         config = AutocompleteConfig(name="test", adapter_path="test.py", top_k=3)
-        _, _, responses = run_autocomplete_evaluation(prefixes, adapter, config)
+        _, responses = run_autocomplete_evaluation(prefixes, adapter, config)
         assert len(responses[0].suggestions) == 3
 
 
 class TestRunDualAutocompleteEvaluation:
     def test_dual_eval(self) -> None:
         prefixes = [
-            PrefixEntry(prefix="run", target_query="running shoes"),
+            PrefixEntry(prefix="run"),
         ]
         adapter_a = _make_adapter({"run": ["running shoes", "runner"]})
         adapter_b = _make_adapter({"run": ["run fast", "running shoes"]})
         config_a = AutocompleteConfig(name="a", adapter_path="a.py")
         config_b = AutocompleteConfig(name="b", adapter_path="b.py")
 
-        checks_a, checks_b, metrics_a, metrics_b, comparison_checks = (
-            run_dual_autocomplete_evaluation(
-                prefixes, adapter_a, config_a, adapter_b, config_b
-            )
+        checks_a, checks_b, comparison_checks = run_dual_autocomplete_evaluation(
+            prefixes, adapter_a, config_a, adapter_b, config_b
         )
         assert len(checks_a) > 0
         assert len(checks_b) > 0
-        assert len(metrics_a) > 0
-        assert len(metrics_b) > 0
         assert len(comparison_checks) > 0
 
         # Should have both overlap and rank agreement checks

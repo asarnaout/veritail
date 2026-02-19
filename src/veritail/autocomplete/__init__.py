@@ -7,6 +7,10 @@ from collections.abc import Callable
 from veritail.autocomplete.checks import (
     check_duplicate_suggestions,
     check_empty_suggestions,
+    check_encoding_issues,
+    check_latency,
+    check_length_anomalies,
+    check_near_duplicates,
     check_offensive_content,
     check_prefix_coherence,
 )
@@ -19,6 +23,7 @@ def run_autocomplete_checks(
     custom_checks: (
         list[Callable[[str, AutocompleteResponse], list[CheckResult]]] | None
     ) = None,
+    latency_ms: float | None = None,
 ) -> list[CheckResult]:
     """Run all applicable deterministic checks for a prefix and its suggestions."""
     checks: list[CheckResult] = []
@@ -29,6 +34,12 @@ def run_autocomplete_checks(
         checks.extend(check_duplicate_suggestions(prefix, suggestions))
         checks.extend(check_prefix_coherence(prefix, suggestions))
         checks.extend(check_offensive_content(prefix, suggestions))
+        checks.extend(check_near_duplicates(prefix, suggestions))
+        checks.extend(check_encoding_issues(prefix, suggestions))
+        checks.extend(check_length_anomalies(prefix, suggestions))
+
+    if latency_ms is not None:
+        checks.append(check_latency(prefix, latency_ms))
 
     if custom_checks:
         for check_fn in custom_checks:

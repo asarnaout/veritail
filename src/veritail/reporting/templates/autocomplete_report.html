@@ -30,39 +30,38 @@
         .tip:hover::after, .tip:hover::before { opacity: 1; }
         .suggestion-list { list-style: none; padding: 0; margin: 0; }
         .suggestion-list li { display: inline-block; background: #f0f0f5; padding: 2px 8px; border-radius: 4px; margin: 2px 4px 2px 0; font-size: 13px; }
+        .failed-check { color: #dc2626; font-size: 13px; margin-top: 8px; }
     </style>
 </head>
 <body>
     {% if is_comparison %}
     <h1>Autocomplete Comparison: {{ config_a }} vs {{ config_b }}</h1>
 
-    <h2>Metrics Comparison</h2>
+    {% if check_comparison %}
+    <h2>Check Summary Comparison</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
-                <th>Metric</th>
-                <th>{{ config_a }}</th>
-                <th>{{ config_b }}</th>
-                <th>Delta</th>
-                <th>% Change</th>
+                <th>Check</th>
+                <th>{{ config_a }} Passed</th>
+                <th>{{ config_a }} Failed</th>
+                <th>{{ config_b }} Passed</th>
+                <th>{{ config_b }} Failed</th>
             </tr>
         </thead>
         <tbody>
-            {% for d in comparison_data %}
+            {% for d in check_comparison %}
             <tr>
                 <td>{{ d.name }}</td>
-                <td class="metric-value">{{ "%.4f"|format(d.value_a) }}</td>
-                <td class="metric-value">{{ "%.4f"|format(d.value_b) }}</td>
-                <td class="metric-value {% if d.delta > 0 %}positive{% elif d.delta < 0 %}negative{% else %}neutral{% endif %}">
-                    {{ "%+.4f"|format(d.delta) }}
-                </td>
-                <td class="metric-value {% if d.pct_change > 0 %}positive{% elif d.pct_change < 0 %}negative{% else %}neutral{% endif %}">
-                    {{ "%+.1f"|format(d.pct_change) }}%
-                </td>
+                <td class="positive">{{ d.passed_a }}</td>
+                <td class="{% if d.failed_a != 0 and d.failed_a != '-' %}negative{% else %}neutral{% endif %}">{{ d.failed_a }}</td>
+                <td class="positive">{{ d.passed_b }}</td>
+                <td class="{% if d.failed_b != 0 and d.failed_b != '-' %}negative{% else %}neutral{% endif %}">{{ d.failed_b }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table></div>
+    {% endif %}
 
     {% if overlap_checks %}
     <h2>Suggestion Overlap</h2>
@@ -86,53 +85,6 @@
 
     {% else %}
     <h1>Autocomplete Evaluation Report</h1>
-
-    <h2>Autocomplete Metrics</h2>
-    <div class="table-wrap"><table>
-        <thead>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for m in metrics %}
-            <tr>
-                <td>
-                  {{ m.metric_name }}
-                  {% if metric_descriptions and metric_descriptions.get(m.metric_name) %}
-                  <span class="tip" data-tip="{{ metric_descriptions[m.metric_name] }}">?</span>
-                  {% endif %}
-                </td>
-                <td class="metric-value">{{ "%.4f"|format(m.value) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table></div>
-
-    {% if query_types %}
-    <h2>Metrics by Prefix Type</h2>
-    <div class="table-wrap"><table>
-        <thead>
-            <tr>
-                <th>Metric</th>
-                {% for qt in query_types %}
-                <th>{{ qt }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for m in type_metrics %}
-            <tr>
-                <td>{{ m.metric_name }}</td>
-                {% for qt in query_types %}
-                <td class="metric-value">{% if m.by_query_type.get(qt) is not none %}{{ "%.4f"|format(m.by_query_type[qt]) }}{% else %}-{% endif %}</td>
-                {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table></div>
-    {% endif %}
 
     {% if check_summary %}
     <h2>Deterministic Checks</h2>
@@ -161,30 +113,10 @@
     </table></div>
     {% endif %}
 
-    {% if worst_prefixes %}
-    <h2>Worst Performing Prefixes (MRR)</h2>
-    <div class="table-wrap"><table>
-        <thead>
-            <tr>
-                <th>Prefix</th>
-                <th>MRR</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for prefix, value in worst_prefixes %}
-            <tr>
-                <td>{{ prefix }}</td>
-                <td class="metric-value">{{ "%.4f"|format(value) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table></div>
-    {% endif %}
-
     {% if prefix_details %}
     <h2>Per-Prefix Details</h2>
     <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
-      Click a prefix to expand its suggestions. Sorted worst-first by MRR.
+      Click a prefix to expand its suggestions and failed checks.
     </p>
 
     {% for item in prefix_details %}
@@ -193,10 +125,10 @@
                       border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);
                       font-weight:600; list-style:none; display:flex;
                       justify-content:space-between; align-items:center;">
-        <span>"{{ item.prefix }}" &rarr; {{ item.target_query }}{% if item.type %} <span style="font-weight:normal; font-size:12px; color:#9ca3af;">({{ item.type }})</span>{% endif %}</span>
+        <span>"{{ item.prefix }}"{% if item.type %} <span style="font-weight:normal; font-size:12px; color:#9ca3af;">({{ item.type }})</span>{% endif %}</span>
         <span style="color:#6b7280; font-size:13px; font-weight:normal;">
-          MRR {{ "%.4f"|format(item.mrr) }}
-          &nbsp;&middot;&nbsp; {{ item.suggestions|length }} suggestions
+          {{ item.suggestions|length }} suggestions
+          {% if item.failed_checks %}&middot; <span style="color:#dc2626;">{{ item.failed_checks|length }} failed</span>{% endif %}
         </span>
       </summary>
       <div class="card" style="margin-top:4px; border-radius:0 0 8px 8px;">
@@ -208,6 +140,13 @@
         </ul>
         {% else %}
         <span style="color:#9ca3af">No suggestions returned</span>
+        {% endif %}
+        {% if item.failed_checks %}
+        <div style="margin-top:12px; border-top:1px solid #eee; padding-top:8px;">
+          {% for fc in item.failed_checks %}
+          <div class="failed-check">&#x2717; {{ fc.name }}: {{ fc.detail }}</div>
+          {% endfor %}
+        </div>
         {% endif %}
       </div>
     </details>

@@ -9,7 +9,6 @@ from veritail.autocomplete.reporting import (
 from veritail.types import (
     AutocompleteResponse,
     CheckResult,
-    MetricResult,
     PrefixEntry,
 )
 
@@ -25,30 +24,17 @@ def _make_check(name: str, prefix: str, passed: bool) -> CheckResult:
     )
 
 
-def _make_metric(name: str, value: float) -> MetricResult:
-    return MetricResult(
-        metric_name=name,
-        value=value,
-        per_query={"run": value},
-        by_query_type={"short_prefix": value},
-    )
-
-
 class TestGenerateAutocompleteReport:
     def test_terminal_format(self) -> None:
-        metrics = [_make_metric("mrr", 0.75)]
         checks = [_make_check("empty_suggestions", "run", True)]
-        report = generate_autocomplete_report(metrics, checks, format="terminal")
+        report = generate_autocomplete_report(checks, format="terminal")
         assert "Autocomplete Evaluation Report" in report
-        assert "mrr" in report
 
     def test_terminal_with_prefix_details(self) -> None:
-        metrics = [_make_metric("mrr", 0.75)]
         checks = [_make_check("empty_suggestions", "run", True)]
-        prefixes = [PrefixEntry(prefix="run", target_query="running shoes")]
+        prefixes = [PrefixEntry(prefix="run")]
         responses = {0: AutocompleteResponse(suggestions=["running shoes"])}
         report = generate_autocomplete_report(
-            metrics,
             checks,
             format="terminal",
             responses_by_prefix=responses,
@@ -58,20 +44,16 @@ class TestGenerateAutocompleteReport:
         assert "running shoes" in report
 
     def test_html_format(self) -> None:
-        metrics = [_make_metric("mrr", 0.75)]
         checks = [_make_check("empty_suggestions", "run", True)]
-        report = generate_autocomplete_report(metrics, checks, format="html")
+        report = generate_autocomplete_report(checks, format="html")
         assert "<html" in report
         assert "Autocomplete Evaluation Report" in report
-        assert "mrr" in report
 
     def test_html_with_prefix_details(self) -> None:
-        metrics = [_make_metric("mrr", 0.75)]
         checks = [_make_check("empty_suggestions", "run", True)]
-        prefixes = [PrefixEntry(prefix="run", target_query="running shoes")]
+        prefixes = [PrefixEntry(prefix="run")]
         responses = {0: AutocompleteResponse(suggestions=["running shoes"])}
         report = generate_autocomplete_report(
-            metrics,
             checks,
             format="html",
             responses_by_prefix=responses,
@@ -83,14 +65,14 @@ class TestGenerateAutocompleteReport:
 
 class TestGenerateAutocompleteComparisonReport:
     def test_terminal_format(self) -> None:
-        metrics_a = [_make_metric("mrr", 0.5)]
-        metrics_b = [_make_metric("mrr", 0.8)]
+        checks_a = [_make_check("empty_suggestions", "run", True)]
+        checks_b = [_make_check("empty_suggestions", "run", True)]
         comparison_checks = [
             _make_check("suggestion_overlap", "run", True),
         ]
         report = generate_autocomplete_comparison_report(
-            metrics_a,
-            metrics_b,
+            checks_a,
+            checks_b,
             comparison_checks,
             "config_a",
             "config_b",
@@ -101,14 +83,14 @@ class TestGenerateAutocompleteComparisonReport:
         assert "config_b" in report
 
     def test_html_format(self) -> None:
-        metrics_a = [_make_metric("mrr", 0.5)]
-        metrics_b = [_make_metric("mrr", 0.8)]
+        checks_a = [_make_check("empty_suggestions", "run", True)]
+        checks_b = [_make_check("empty_suggestions", "run", True)]
         comparison_checks = [
             _make_check("suggestion_overlap", "run", True),
         ]
         report = generate_autocomplete_comparison_report(
-            metrics_a,
-            metrics_b,
+            checks_a,
+            checks_b,
             comparison_checks,
             "config_a",
             "config_b",

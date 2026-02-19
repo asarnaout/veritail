@@ -5,6 +5,10 @@ from __future__ import annotations
 from veritail.autocomplete.checks import (
     check_duplicate_suggestions,
     check_empty_suggestions,
+    check_encoding_issues,
+    check_latency,
+    check_length_anomalies,
+    check_near_duplicates,
     check_offensive_content,
     check_prefix_coherence,
 )
@@ -93,3 +97,113 @@ class TestOffensiveContent:
         )
         assert len(results) == 1
         assert not results[0].passed
+
+
+class TestNearDuplicates:
+    def test_no_near_duplicates(self) -> None:
+        results = check_near_duplicates("run", ["running shoes", "basketball"])
+        assert len(results) == 0
+
+    def test_near_duplicate_detected(self) -> None:
+        results = check_near_duplicates("run", ["running shoes", "running shoe"])
+        assert len(results) == 1
+        assert not results[0].passed
+        assert results[0].check_name == "near_duplicate"
+
+    def test_exact_duplicates_ignored(self) -> None:
+        # Exact duplicates are handled by check_duplicate_suggestions
+        results = check_near_duplicates("run", ["running", "running"])
+        assert len(results) == 0
+
+    def test_empty_list(self) -> None:
+        results = check_near_duplicates("run", [])
+        assert len(results) == 0
+
+    def test_single_suggestion(self) -> None:
+        results = check_near_duplicates("run", ["running shoes"])
+        assert len(results) == 0
+
+
+class TestEncodingIssues:
+    def test_clean_suggestions(self) -> None:
+        results = check_encoding_issues("run", ["running shoes", "runner"])
+        assert len(results) == 0
+
+    def test_html_entity(self) -> None:
+        results = check_encoding_issues("run", ["shoes &amp; boots"])
+        assert len(results) == 1
+        assert not results[0].passed
+        assert "HTML entities" in results[0].detail
+
+    def test_control_character(self) -> None:
+        results = check_encoding_issues("run", ["running\x00shoes"])
+        assert len(results) == 1
+        assert not results[0].passed
+        assert "control characters" in results[0].detail
+
+    def test_leading_whitespace(self) -> None:
+        results = check_encoding_issues("run", [" running shoes"])
+        assert len(results) == 1
+        assert not results[0].passed
+        assert "whitespace" in results[0].detail
+
+    def test_trailing_whitespace(self) -> None:
+        results = check_encoding_issues("run", ["running shoes "])
+        assert len(results) == 1
+        assert not results[0].passed
+
+    def test_empty_list(self) -> None:
+        results = check_encoding_issues("run", [])
+        assert len(results) == 0
+
+
+class TestLengthAnomalies:
+    def test_normal_length(self) -> None:
+        results = check_length_anomalies("run", ["running shoes"])
+        assert len(results) == 0
+
+    def test_too_short(self) -> None:
+        results = check_length_anomalies("r", ["x"])
+        assert len(results) == 1
+        assert not results[0].passed
+        assert "too short" in results[0].detail
+
+    def test_too_long(self) -> None:
+        long_suggestion = "a" * 81
+        results = check_length_anomalies("run", [long_suggestion])
+        assert len(results) == 1
+        assert not results[0].passed
+        assert "too long" in results[0].detail
+
+    def test_boundary_valid(self) -> None:
+        # 2 chars and 80 chars should pass
+        results = check_length_anomalies("r", ["ab", "a" * 80])
+        assert len(results) == 0
+
+    def test_empty_list(self) -> None:
+        results = check_length_anomalies("run", [])
+        assert len(results) == 0
+
+
+class TestLatency:
+    def test_within_threshold(self) -> None:
+        result = check_latency("run", 150.0)
+        assert result.passed
+        assert result.check_name == "latency"
+
+    def test_exceeds_threshold(self) -> None:
+        result = check_latency("run", 250.0)
+        assert not result.passed
+        assert "exceeds" in result.detail
+
+    def test_at_threshold(self) -> None:
+        result = check_latency("run", 200.0)
+        assert result.passed
+
+    def test_custom_threshold(self) -> None:
+        result = check_latency("run", 150.0, threshold_ms=100.0)
+        assert not result.passed
+
+    def test_zero_latency(self) -> None:
+        result = check_latency("run", 0.0)
+        assert result.passed

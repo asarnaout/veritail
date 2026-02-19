@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from veritail.types import CheckResult
 
@@ -122,3 +123,143 @@ def check_offensive_content(
                 )
             )
     return checks
+
+
+def _edit_distance(a: str, b: str) -> int:
+    """Compute Levenshtein edit distance between two strings."""
+    if len(a) < len(b):
+        return _edit_distance(b, a)
+    if len(b) == 0:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a):
+        curr = [i + 1] + [0] * len(b)
+        for j, cb in enumerate(b):
+            curr[j + 1] = min(
+                prev[j + 1] + 1,
+                curr[j] + 1,
+                prev[j] + (0 if ca == cb else 1),
+            )
+        prev = curr
+    return prev[len(b)]
+
+
+def check_near_duplicates(prefix: str, suggestions: list[str]) -> list[CheckResult]:
+    """Detect near-duplicate suggestions via edit distance."""
+    checks: list[CheckResult] = []
+    normalized = [s.lower().strip() for s in suggestions]
+    for i in range(len(normalized)):
+        for j in range(i + 1, len(normalized)):
+            if normalized[i] == normalized[j]:
+                continue  # exact dupes handled by check_duplicate_suggestions
+            max_len = max(len(normalized[i]), len(normalized[j]))
+            if max_len == 0:
+                continue
+            dist = _edit_distance(normalized[i], normalized[j])
+            if dist <= 2 and dist / max_len < 0.3:
+                checks.append(
+                    CheckResult(
+                        check_name="near_duplicate",
+                        query=prefix,
+                        product_id=None,
+                        passed=False,
+                        detail=(
+                            f"Near-duplicate suggestions: "
+                            f"'{suggestions[i]}' and '{suggestions[j]}' "
+                            f"(edit distance {dist})"
+                        ),
+                        severity="warning",
+                    )
+                )
+    return checks
+
+
+_HTML_ENTITY_RE = re.compile(r"&[a-zA-Z]+;|&#\d+;|&#x[0-9a-fA-F]+;")
+
+
+def check_encoding_issues(prefix: str, suggestions: list[str]) -> list[CheckResult]:
+    """Detect HTML entities, control characters, and leading/trailing whitespace."""
+    checks: list[CheckResult] = []
+    for suggestion in suggestions:
+        issues: list[str] = []
+        if _HTML_ENTITY_RE.search(suggestion):
+            issues.append("contains HTML entities")
+        if any(
+            unicodedata.category(ch).startswith("C") and ch not in ("\t",)
+            for ch in suggestion
+        ):
+            issues.append("contains control characters")
+        if suggestion != suggestion.strip():
+            issues.append("has leading/trailing whitespace")
+        if issues:
+            checks.append(
+                CheckResult(
+                    check_name="encoding_issues",
+                    query=prefix,
+                    product_id=None,
+                    passed=False,
+                    detail=(f"Suggestion '{suggestion.strip()}' {'; '.join(issues)}"),
+                    severity="warning",
+                )
+            )
+    return checks
+
+
+def check_length_anomalies(prefix: str, suggestions: list[str]) -> list[CheckResult]:
+    """Flag suggestions shorter than 2 chars or longer than 80 chars."""
+    checks: list[CheckResult] = []
+    for suggestion in suggestions:
+        length = len(suggestion.strip())
+        if length < 2:
+            checks.append(
+                CheckResult(
+                    check_name="length_anomaly",
+                    query=prefix,
+                    product_id=None,
+                    passed=False,
+                    detail=(
+                        f"Suggestion '{suggestion}' is too short "
+                        f"({length} char(s), min 2)"
+                    ),
+                    severity="warning",
+                )
+            )
+        elif length > 80:
+            checks.append(
+                CheckResult(
+                    check_name="length_anomaly",
+                    query=prefix,
+                    product_id=None,
+                    passed=False,
+                    detail=(
+                        f"Suggestion '{suggestion[:40]}...' is too long "
+                        f"({length} chars, max 80)"
+                    ),
+                    severity="warning",
+                )
+            )
+    return checks
+
+
+def check_latency(
+    prefix: str,
+    latency_ms: float,
+    threshold_ms: float = 200.0,
+) -> CheckResult:
+    """Check whether adapter response time exceeds a threshold."""
+    passed = latency_ms <= threshold_ms
+    return CheckResult(
+        check_name="latency",
+        query=prefix,
+        product_id=None,
+        passed=passed,
+        detail=(
+            f"Response time {latency_ms:.0f}ms"
+            if passed
+            else (
+                f"Response time {latency_ms:.0f}ms exceeds "
+                f"threshold {threshold_ms:.0f}ms"
+            )
+        ),
+        severity="info" if passed else "warning",
+    )

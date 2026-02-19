@@ -12,9 +12,9 @@ from veritail.types import PrefixEntry
 def load_prefixes(path: str) -> list[PrefixEntry]:
     """Load a prefix set from a CSV or JSON file.
 
-    CSV files must have 'prefix' and 'target_query' columns.
+    CSV files must have a 'prefix' column.
     Optional column: 'type'.
-    JSON files must be a list of objects with 'prefix' and 'target_query' keys.
+    JSON files must be a list of objects with a 'prefix' key.
     """
     file_path = Path(path)
     if not file_path.exists():
@@ -35,21 +35,16 @@ def _load_csv(path: Path) -> list[PrefixEntry]:
     with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         if reader.fieldnames is None:
-            raise ValueError("CSV file must have 'prefix' and 'target_query' columns")
-        missing = {"prefix", "target_query"} - set(reader.fieldnames)
-        if missing:
-            raise ValueError(
-                f"CSV file is missing required column(s): {', '.join(sorted(missing))}"
-            )
+            raise ValueError("CSV file must have a 'prefix' column")
+        if "prefix" not in reader.fieldnames:
+            raise ValueError("CSV file is missing required column: prefix")
         for row in reader:
             prefix = row["prefix"].strip()
-            target_query = row["target_query"].strip()
-            if not prefix or not target_query:
+            if not prefix:
                 continue
             entries.append(
                 PrefixEntry(
                     prefix=prefix,
-                    target_query=target_query,
                     type=row.get("type", "").strip() or None,
                 )
             )
@@ -70,20 +65,14 @@ def _load_json(path: Path) -> list[PrefixEntry]:
     for item in data:
         if not isinstance(item, dict):
             raise ValueError("Each JSON element must be an object")
-        missing = {"prefix", "target_query"} - set(item.keys())
-        if missing:
-            raise ValueError(
-                f"Each JSON object must have keys: prefix, target_query. "
-                f"Missing: {', '.join(sorted(missing))}"
-            )
+        if "prefix" not in item:
+            raise ValueError("Each JSON object must have a 'prefix' key")
         prefix = str(item["prefix"]).strip()
-        target_query = str(item["target_query"]).strip()
-        if not prefix or not target_query:
+        if not prefix:
             continue
         entries.append(
             PrefixEntry(
                 prefix=prefix,
-                target_query=target_query,
                 type=item.get("type"),
             )
         )

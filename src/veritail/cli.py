@@ -884,7 +884,7 @@ def autocomplete() -> None:
     "--prefixes",
     required=True,
     type=click.Path(exists=True),
-    help="Path to prefix set (CSV or JSON with prefix + target_query columns).",
+    help="Path to prefix set (CSV or JSON with a prefix column, optional type).",
 )
 @click.option(
     "--adapter",
@@ -1025,7 +1025,7 @@ def autocomplete_run(
             top_k=top_k,
         )
         adapter_fn = load_suggest_adapter(adapters[0])
-        checks, metrics, responses = run_autocomplete_evaluation(
+        checks, responses = run_autocomplete_evaluation(
             prefix_entries, adapter_fn, config, custom_checks=custom_check_fns
         )
         run_metadata = _build_autocomplete_run_metadata(
@@ -1036,7 +1036,6 @@ def autocomplete_run(
         )
 
         report = generate_autocomplete_report(
-            metrics,
             checks,
             responses_by_prefix=responses,
             prefixes=prefix_entries,
@@ -1046,18 +1045,7 @@ def autocomplete_run(
         exp_dir = Path(output_dir) / config_names[0]
         exp_dir.mkdir(parents=True, exist_ok=True)
 
-        metrics_path = exp_dir / "metrics.json"
-        metrics_path.write_text(
-            json.dumps(
-                [asdict(m) for m in metrics],
-                indent=2,
-                default=str,
-            ),
-            encoding="utf-8",
-        )
-
         html = generate_autocomplete_report(
-            metrics,
             checks,
             format="html",
             responses_by_prefix=responses,
@@ -1087,13 +1075,7 @@ def autocomplete_run(
         adapter_a = load_suggest_adapter(adapters[0])
         adapter_b = load_suggest_adapter(adapters[1])
 
-        (
-            checks_a,
-            checks_b,
-            metrics_a,
-            metrics_b,
-            comparison_checks,
-        ) = run_dual_autocomplete_evaluation(
+        checks_a, checks_b, comparison_checks = run_dual_autocomplete_evaluation(
             prefix_entries,
             adapter_a,
             config_a,
@@ -1110,33 +1092,17 @@ def autocomplete_run(
         )
 
         report = generate_autocomplete_comparison_report(
-            metrics_a,
-            metrics_b,
+            checks_a,
+            checks_b,
             comparison_checks,
             config_names[0],
             config_names[1],
         )
         console.print(report)
 
-        for cfg_name, cfg_metrics in [
-            (config_names[0], metrics_a),
-            (config_names[1], metrics_b),
-        ]:
-            exp_dir = Path(output_dir) / cfg_name
-            exp_dir.mkdir(parents=True, exist_ok=True)
-            metrics_path = exp_dir / "metrics.json"
-            metrics_path.write_text(
-                json.dumps(
-                    [asdict(m) for m in cfg_metrics],
-                    indent=2,
-                    default=str,
-                ),
-                encoding="utf-8",
-            )
-
         html = generate_autocomplete_comparison_report(
-            metrics_a,
-            metrics_b,
+            checks_a,
+            checks_b,
             comparison_checks,
             config_names[0],
             config_names[1],
