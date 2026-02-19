@@ -14,8 +14,8 @@ This folder contains working examples for a **home improvement** retailer to hel
    ```bash
    # From the project root
    veritail run \
-     --queries example/example_queries.csv \
-     --adapter example/example_adapter.py \
+     --queries example/queries.csv \
+     --adapter example/adapter.py \
      --vertical home-improvement \
      --config-name "home-improvement-test" \
      --llm-model gpt-4o
@@ -25,7 +25,7 @@ This folder contains working examples for a **home improvement** retailer to hel
    ```bash
    veritail run \
      --autocomplete example/prefixes.csv \
-     --adapter example/example_adapter.py \
+     --adapter example/adapter.py \
      --config-name "suggest-test" \
      --open
    ```
@@ -40,8 +40,8 @@ This folder contains working examples for a **home improvement** retailer to hel
 
 ## Files
 
-- **`example_queries.csv`** - 25 home improvement queries across 4 types (broad, navigational, attribute, long_tail)
-- **`example_adapter.py`** - Mock adapter with both `search()` and `suggest()` functions, realistic home improvement product data (5 results per query) and autocomplete suggestions
+- **`queries.csv`** - 25 home improvement queries across 4 types (broad, navigational, attribute, long_tail)
+- **`adapter.py`** - Mock adapter with both `search()` and `suggest()` functions, realistic home improvement product data (5 results per query) and autocomplete suggestions
 - **`prefixes.csv`** - 18 autocomplete prefixes across 3 length tiers (short, mid, long)
 - **`.env.example`** - Template for API keys (copy to `.env`)
 
@@ -82,8 +82,8 @@ Each query returns 5 products, including intentional relevance signals for the L
 **Local models** via any OpenAI-compatible server (Ollama, vLLM, LM Studio, etc.):
 ```bash
 veritail run \
-  --queries example/example_queries.csv \
-  --adapter example/example_adapter.py \
+  --queries example/queries.csv \
+  --adapter example/adapter.py \
   --vertical home-improvement \
   --llm-model qwen3:14b \
   --llm-base-url http://localhost:11434/v1 \
