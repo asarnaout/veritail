@@ -402,6 +402,41 @@ class TestGenerateComparisonReport:
         assert "share some products" in report  # 0.5 is in the middle range
         assert "2 queries" in report
 
+    def test_html_correction_comparison(self):
+        """Correction tables appear in HTML comparison report."""
+        corrections_a = [
+            CorrectionJudgment(
+                original_query="plats",
+                corrected_query="plates",
+                verdict="appropriate",
+                reasoning="Spelling fix",
+                model="test",
+                experiment="baseline",
+            ),
+            CorrectionJudgment(
+                original_query="cambro",
+                corrected_query="camaro",
+                verdict="inappropriate",
+                reasoning="Wrong correction",
+                model="test",
+                experiment="baseline",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+            correction_judgments_a=corrections_a,
+        )
+        assert "Query Corrections" in report
+        assert "plats" in report
+        assert "plates" in report
+        assert "appropriate" in report
+        assert "inappropriate" in report
+
     def test_html_biggest_winners_and_losers(self):
         """Winners and losers tables appear with correct queries."""
         metrics_a = [

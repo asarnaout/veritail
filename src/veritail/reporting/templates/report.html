@@ -184,6 +184,37 @@
     </table></div>
     {% endif %}
 
+    {% if correction_data_a or correction_data_b %}
+    <h2>Query Corrections</h2>
+    {% for label, cdata in [(config_a, correction_data_a), (config_b, correction_data_b)] %}
+    {% if cdata %}
+    <h3 style="font-size:15px; color:#4b5563; margin:12px 0 8px;">{{ label }}</h3>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Original Query</th>
+                <th>Corrected Query</th>
+                <th>Verdict</th>
+                <th>Reasoning</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in cdata %}
+            <tr>
+                <td>{{ c.original_query }}</td>
+                <td>{{ c.corrected_query }}</td>
+                <td class="{% if c.verdict == 'appropriate' %}positive{% elif c.verdict == 'inappropriate' %}negative{% else %}neutral{% endif %}">
+                    {{ c.verdict }}
+                </td>
+                <td style="font-size:13px">{{ c.reasoning }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
     {% if winners %}
     <h2>Biggest Improvements (NDCG@10)</h2>
     <div class="table-wrap"><table>

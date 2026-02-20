@@ -74,6 +74,8 @@ def generate_comparison_report(
             judgments_b=judgments_b,
             checks_a=checks_a,
             checks_b=checks_b,
+            correction_judgments_a=correction_judgments_a,
+            correction_judgments_b=correction_judgments_b,
         )
     return _generate_terminal(
         metrics_a,
@@ -288,6 +290,8 @@ def _generate_html(
     judgments_b: list[JudgmentRecord] | None = None,
     checks_a: list[CheckResult] | None = None,
     checks_b: list[CheckResult] | None = None,
+    correction_judgments_a: list[CorrectionJudgment] | None = None,
+    correction_judgments_b: list[CorrectionJudgment] | None = None,
 ) -> str:
     """Generate an HTML comparison report."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -468,6 +472,25 @@ def _generate_html(
                 }
             )
 
+    # Correction data for side-by-side tables
+    def _build_correction_data(
+        cjs: list[CorrectionJudgment] | None,
+    ) -> list[dict[str, str]]:
+        if not cjs:
+            return []
+        return [
+            {
+                "original_query": c.original_query,
+                "corrected_query": c.corrected_query,
+                "verdict": c.verdict,
+                "reasoning": c.reasoning,
+            }
+            for c in cjs
+        ]
+
+    correction_data_a = _build_correction_data(correction_judgments_a)
+    correction_data_b = _build_correction_data(correction_judgments_b)
+
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
         key_to_label = [
@@ -508,6 +531,8 @@ def _generate_html(
         metric_descriptions=METRIC_DESCRIPTIONS,
         check_comparison=check_comparison,
         check_descriptions=CHECK_DESCRIPTIONS,
+        correction_data_a=correction_data_a,
+        correction_data_b=correction_data_b,
         winners=winners,
         losers=losers,
     )
