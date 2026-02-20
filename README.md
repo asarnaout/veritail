@@ -13,17 +13,34 @@ Five evaluation layers:
 
 Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context and rubrics. Optional [Langfuse](docs/backends.md#langfuse-backend) integration for full observability — every judgment, score, and LLM call traced and grouped by evaluation run.
 
-## Preview
+## Demo
 
-Example output from a real run:
+### Search relevance evaluation
 
 <p align="center">
-  <img src="assets/report-1.png" alt="IR metrics and deterministic checks overview" width="900">
+  <img src="assets/main.gif" alt="Search relevance evaluation demo" width="900">
 </p>
 <p align="center">
-  <em>Overview report: IR metrics, deterministic checks, and worst-performing queries.</em>
+  <em>LLM-as-a-Judge scores every query-result pair, computes NDCG/MRR/MAP/Precision, runs deterministic checks, and evaluates autocorrect behavior.</em>
 </p>
 
+### Autocomplete evaluation
+
+<p align="center">
+  <img src="assets/autocomplete.gif" alt="Autocomplete evaluation demo" width="900">
+</p>
+<p align="center">
+  <em>Deterministic checks (duplicates, prefix coherence, encoding) and LLM-based semantic scoring for suggestion relevance and diversity.</em>
+</p>
+
+### Side-by-side comparison
+
+<p align="center">
+  <img src="assets/comparison.gif" alt="Side-by-side comparison demo" width="900">
+</p>
+<p align="center">
+  <em>Two search configurations compared head-to-head: per-query NDCG deltas, win/loss/tie analysis, rank correlation, and result overlap.</em>
+</p>
 
 ## Quick Start
 
