@@ -7,7 +7,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
+from veritail.types import (
+    CorrectionJudgment,
+    JudgmentRecord,
+    SearchResult,
+    SuggestionJudgment,
+)
 
 HAS_LANGFUSE = False
 _langfuse_skip_reason = "langfuse not installed"
@@ -155,3 +160,127 @@ def test_log_correction_judgment(mock_langfuse_cls: MagicMock) -> None:
     score_call = mock_client.create_score.call_args
     assert score_call.kwargs["name"] == "correction_appropriate"
     assert score_call.kwargs["value"] == 1.0
+
+
+def _make_suggestion_judgment() -> SuggestionJudgment:
+    return SuggestionJudgment(
+        prefix="run",
+        suggestions=["running shoes", "running shorts", "runner's watch"],
+        relevance_score=3,
+        diversity_score=2,
+        flagged_suggestions=[],
+        reasoning="Good suggestions",
+        model="claude-sonnet-4-5",
+        experiment="test-exp",
+        metadata={"input_tokens": 80, "output_tokens": 40},
+    )
+
+
+@patch("veritail.backends.langfuse.Langfuse")
+def test_log_suggestion_judgment(mock_langfuse_cls: MagicMock) -> None:
+    from veritail.backends.langfuse import LangfuseBackend
+
+    mock_client = mock_langfuse_cls.return_value
+    mock_span = MagicMock()
+    mock_generation = MagicMock()
+    mock_client.start_span.return_value = mock_span
+    mock_span.start_generation.return_value = mock_generation
+
+    backend = LangfuseBackend()
+    backend.log_suggestion_judgment(_make_suggestion_judgment())
+
+    # Root span created with suggestion metadata
+    mock_client.start_span.assert_called_once()
+    span_call = mock_client.start_span.call_args
+    assert span_call.kwargs["name"] == "veritail-suggestion-judgment"
+    assert span_call.kwargs["metadata"]["prefix"] == "run"
+    assert span_call.kwargs["metadata"]["suggestions"] == [
+        "running shoes",
+        "running shorts",
+        "runner's watch",
+    ]
+
+    # Generation nested under span
+    mock_span.start_generation.assert_called_once()
+    gen_call = mock_span.start_generation.call_args
+    assert gen_call.kwargs["name"] == "suggestion-judgment"
+    assert gen_call.kwargs["model"] == "claude-sonnet-4-5"
+    assert gen_call.kwargs["output"] == "Good suggestions"
+    mock_generation.end.assert_called_once()
+    mock_span.end.assert_called_once()
+
+    # Two scores created: relevance and diversity
+    assert mock_client.create_score.call_count == 2
+    score_calls = mock_client.create_score.call_args_list
+    score_names = {c.kwargs["name"] for c in score_calls}
+    assert score_names == {"autocomplete_relevance", "autocomplete_diversity"}
+
+    for call in score_calls:
+        if call.kwargs["name"] == "autocomplete_relevance":
+            assert call.kwargs["value"] == 3.0
+        elif call.kwargs["name"] == "autocomplete_diversity":
+            assert call.kwargs["value"] == 2.0
+
+
+@patch("veritail.backends.langfuse.Langfuse")
+def test_log_experiment_sets_session_id(mock_langfuse_cls: MagicMock) -> None:
+    from veritail.backends.langfuse import LangfuseBackend
+
+    mock_client = mock_langfuse_cls.return_value
+    mock_span = MagicMock()
+    mock_client.start_span.return_value = mock_span
+
+    backend = LangfuseBackend()
+
+    # Before log_experiment, update_current_trace should not be called
+    mock_client.update_current_trace.assert_not_called()
+
+    backend.log_experiment("my-session", {"llm_model": "claude-sonnet-4-5"})
+
+    # After log_experiment, update_current_trace is called with session_id
+    mock_client.update_current_trace.assert_called_once_with(session_id="my-session")
+
+
+@patch("veritail.backends.langfuse.Langfuse")
+def test_suggestion_judgment_with_session_id(mock_langfuse_cls: MagicMock) -> None:
+    from veritail.backends.langfuse import LangfuseBackend
+
+    mock_client = mock_langfuse_cls.return_value
+    mock_span = MagicMock()
+    mock_generation = MagicMock()
+    mock_client.start_span.return_value = mock_span
+    mock_span.start_generation.return_value = mock_generation
+
+    backend = LangfuseBackend()
+    backend.log_experiment("ac-session", {"type": "autocomplete"})
+    mock_client.update_current_trace.reset_mock()
+
+    backend.log_suggestion_judgment(_make_suggestion_judgment())
+
+    mock_client.update_current_trace.assert_called_once_with(session_id="ac-session")
+
+
+@patch("veritail.backends.langfuse.Langfuse")
+def test_correction_judgment_with_session_id(mock_langfuse_cls: MagicMock) -> None:
+    from veritail.backends.langfuse import LangfuseBackend
+
+    mock_client = mock_langfuse_cls.return_value
+    mock_span = MagicMock()
+    mock_client.start_span.return_value = mock_span
+
+    correction = CorrectionJudgment(
+        original_query="runing shoes",
+        corrected_query="running shoes",
+        verdict="appropriate",
+        reasoning="Fixed typo",
+        model="claude-sonnet-4-5",
+        experiment="test-exp",
+    )
+
+    backend = LangfuseBackend()
+    backend.log_experiment("corr-session", {"type": "search"})
+    mock_client.update_current_trace.reset_mock()
+
+    backend.log_correction_judgment(correction)
+
+    mock_client.update_current_trace.assert_called_once_with(session_id="corr-session")

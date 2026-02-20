@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from veritail.types import CorrectionJudgment, JudgmentRecord
+from veritail.types import CorrectionJudgment, JudgmentRecord, SuggestionJudgment
 
 
 class EvalBackend(ABC):
@@ -30,6 +30,10 @@ class EvalBackend(ABC):
 
     def log_correction_judgment(self, judgment: CorrectionJudgment) -> None:
         """Optionally store a correction judgment. Default no-op."""
+        pass
+
+    def log_suggestion_judgment(self, judgment: SuggestionJudgment) -> None:
+        """Optionally store a suggestion judgment. Default no-op."""
         pass
 
     def get_completed_query_indices(self, experiment: str) -> set[int]:

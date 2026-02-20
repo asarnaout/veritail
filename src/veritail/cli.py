@@ -403,6 +403,8 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
     llm_model: str,
     llm_base_url: str | None,
     llm_api_key: str | None,
+    backend_type: str,
+    backend_url: str | None,
     output_dir: str,
     top_k: int,
     context: str | None,
@@ -484,6 +486,14 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
 
     html_paths: list[Path] = []
 
+    backend_kwargs: dict[str, str] = {}
+    if backend_type == "file":
+        backend_kwargs["output_dir"] = output_dir
+    elif backend_type == "langfuse":
+        if backend_url:
+            backend_kwargs["url"] = backend_url
+    backend = create_backend(backend_type, **backend_kwargs)
+
     if len(adapters) == 1:
         ac_run_metadata["llm_model"] = llm_model
         ac_config = AutocompleteConfig(
@@ -492,6 +502,17 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
             top_k=top_k,
         )
         suggest_fn = load_suggest_adapter(adapters[0])
+
+        backend.log_experiment(
+            config_names[0],
+            {
+                "adapter_path": adapters[0],
+                "llm_model": llm_model,
+                "top_k": top_k,
+                "type": "autocomplete",
+            },
+        )
+
         ac_checks, ac_responses = run_autocomplete_evaluation(
             prefix_entries,
             suggest_fn,
@@ -575,6 +596,15 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
             + "\n",
             encoding="utf-8",
         )
+
+        for sj in ac_suggestion_judgments:
+            try:
+                backend.log_suggestion_judgment(sj)
+            except Exception as e:
+                console.print(
+                    f"[yellow]Warning: failed to log suggestion judgment "
+                    f"to backend: {e}[/yellow]"
+                )
 
         ac_report = generate_autocomplete_report(
             ac_checks,
@@ -1242,6 +1272,8 @@ def run(
             llm_model=llm_model,
             llm_base_url=llm_base_url,
             llm_api_key=llm_api_key,
+            backend_type=backend_type,
+            backend_url=backend_url,
             output_dir=output_dir,
             top_k=top_k,
             context=context,

@@ -8,7 +8,7 @@ from typing import Any
 from langfuse import Langfuse
 
 from veritail.backends import EvalBackend
-from veritail.types import CorrectionJudgment, JudgmentRecord
+from veritail.types import CorrectionJudgment, JudgmentRecord, SuggestionJudgment
 
 
 class LangfuseBackend(EvalBackend):
@@ -39,6 +39,7 @@ class LangfuseBackend(EvalBackend):
             kwargs["secret_key"] = secret_key
 
         self._client: Any = Langfuse(**kwargs)
+        self._session_id: str | None = None
 
     def log_judgment(self, judgment: JudgmentRecord) -> None:
         """Store a judgment as a Langfuse generation with a relevance score."""
@@ -72,6 +73,8 @@ class LangfuseBackend(EvalBackend):
                 "query_type": judgment.query_type,
             },
         )
+        if self._session_id:
+            self._client.update_current_trace(session_id=self._session_id)
 
         generation = span.start_generation(
             name="relevance-judgment",
@@ -100,6 +103,8 @@ class LangfuseBackend(EvalBackend):
         self, name: str, config: dict[str, Any], *, resume: bool = False
     ) -> None:
         """Register an experiment as a Langfuse span."""
+        self._session_id = name
+
         trace_id = Langfuse.create_trace_id(seed=f"experiment:{name}")
         trace_context = {"trace_id": trace_id}
 
@@ -111,6 +116,8 @@ class LangfuseBackend(EvalBackend):
                 "type": "experiment_registration",
             },
         )
+        if self._session_id:
+            self._client.update_current_trace(session_id=self._session_id)
         span.end()
 
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
@@ -151,11 +158,63 @@ class LangfuseBackend(EvalBackend):
                 "model": judgment.model,
             },
         )
+        if self._session_id:
+            self._client.update_current_trace(session_id=self._session_id)
         span.end()
 
         self._client.create_score(
             trace_id=trace_id,
             name="correction_appropriate",
             value=1.0 if judgment.verdict == "appropriate" else 0.0,
+            comment=judgment.reasoning,
+        )
+
+    def log_suggestion_judgment(self, judgment: SuggestionJudgment) -> None:
+        """Store a suggestion judgment as a Langfuse generation with scores."""
+        trace_id = Langfuse.create_trace_id(
+            seed=f"{judgment.experiment}:autocomplete:{judgment.prefix}"
+        )
+        trace_context = {"trace_id": trace_id}
+
+        span = self._client.start_span(
+            trace_context=trace_context,
+            name="veritail-suggestion-judgment",
+            metadata={
+                "experiment": judgment.experiment,
+                "prefix": judgment.prefix,
+                "suggestions": judgment.suggestions,
+                "flagged_suggestions": judgment.flagged_suggestions,
+                "model": judgment.model,
+            },
+        )
+        if self._session_id:
+            self._client.update_current_trace(session_id=self._session_id)
+
+        generation = span.start_generation(
+            name="suggestion-judgment",
+            model=judgment.model,
+            metadata={
+                "prefix": judgment.prefix,
+                "suggestions": judgment.suggestions,
+            },
+            output=judgment.reasoning,
+            usage_details={
+                "input": judgment.metadata.get("input_tokens", 0),
+                "output": judgment.metadata.get("output_tokens", 0),
+            },
+        )
+        generation.end()
+        span.end()
+
+        self._client.create_score(
+            trace_id=trace_id,
+            name="autocomplete_relevance",
+            value=float(judgment.relevance_score),
+            comment=judgment.reasoning,
+        )
+        self._client.create_score(
+            trace_id=trace_id,
+            name="autocomplete_diversity",
+            value=float(judgment.diversity_score),
             comment=judgment.reasoning,
         )
