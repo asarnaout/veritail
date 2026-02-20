@@ -15,7 +15,9 @@ Includes 14 built-in ecommerce verticals for domain-aware judging, with support 
 
 ## Demo
 
-### Search relevance evaluation
+### Evaluate search results
+
+<br>
 
 <p align="center">
   <img src="assets/main.gif" alt="Search relevance evaluation demo" width="900">
@@ -26,7 +28,9 @@ Includes 14 built-in ecommerce verticals for domain-aware judging, with support 
 
 ---
 
-### Autocomplete evaluation
+### Evaluate autocomplete suggestions
+
+<br>
 
 <p align="center">
   <img src="assets/autocomplete.gif" alt="Autocomplete evaluation demo" width="900">
@@ -38,6 +42,8 @@ Includes 14 built-in ecommerce verticals for domain-aware judging, with support 
 ---
 
 ### Side-by-side comparison
+
+<br>
 
 <p align="center">
   <img src="assets/comparison.gif" alt="Side-by-side comparison demo" width="900">
