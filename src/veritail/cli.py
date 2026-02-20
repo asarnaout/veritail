@@ -336,6 +336,8 @@ def _run_search_pipeline(  # noqa: PLR0913
             run_metadata=run_metadata,
             correction_judgments_a=corrections_a or None,
             correction_judgments_b=corrections_b or None,
+            judgments_a=judgments_a,
+            judgments_b=judgments_b,
         )
         console.print(report)
 
@@ -376,6 +378,8 @@ def _run_search_pipeline(  # noqa: PLR0913
             correction_judgments_a=corrections_a or None,
             correction_judgments_b=corrections_b or None,
             sibling_report=search_sibling,
+            judgments_a=judgments_a,
+            judgments_b=judgments_b,
         )
         cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
         html_path = Path(output_dir) / cmp_dir / "report.html"

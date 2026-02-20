@@ -10,7 +10,7 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
-from veritail.types import CheckResult, CorrectionJudgment, MetricResult
+from veritail.types import CheckResult, CorrectionJudgment, JudgmentRecord, MetricResult
 
 _JINJA_ENV = Environment(
     autoescape=select_autoescape(("html", "xml"), default_for_string=True),
@@ -28,6 +28,8 @@ def generate_comparison_report(
     correction_judgments_a: list[CorrectionJudgment] | None = None,
     correction_judgments_b: list[CorrectionJudgment] | None = None,
     sibling_report: str | None = None,
+    judgments_a: list[JudgmentRecord] | None = None,
+    judgments_b: list[JudgmentRecord] | None = None,
 ) -> str:
     """Generate a comparison report for two evaluation configurations.
 
@@ -41,6 +43,8 @@ def generate_comparison_report(
         correction_judgments_a: Optional correction judgments for config A
         correction_judgments_b: Optional correction judgments for config B
         sibling_report: Optional relative path to a sibling report.
+        judgments_a: Optional LLM judgments for config A (used in HTML)
+        judgments_b: Optional LLM judgments for config B (used in HTML)
 
     Returns:
         Formatted report string.
@@ -54,6 +58,8 @@ def generate_comparison_report(
             config_b,
             run_metadata=run_metadata,
             sibling_report=sibling_report,
+            judgments_a=judgments_a,
+            judgments_b=judgments_b,
         )
     return _generate_terminal(
         metrics_a,
@@ -264,6 +270,8 @@ def _generate_html(
     config_b: str,
     run_metadata: Mapping[str, object] | None = None,
     sibling_report: str | None = None,
+    judgments_a: list[JudgmentRecord] | None = None,
+    judgments_b: list[JudgmentRecord] | None = None,
 ) -> str:
     """Generate an HTML comparison report."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -322,6 +330,24 @@ def _generate_html(
                 "tie_pct": round(ties / total * 100, 1),
             }
 
+    # Score distributions for side-by-side comparison
+    def _score_distribution(
+        judgments: list[JudgmentRecord] | None,
+    ) -> dict[str, object] | None:
+        if not judgments:
+            return None
+        counts = {0: 0, 1: 0, 2: 0, 3: 0}
+        for j in judgments:
+            counts[j.score] = counts.get(j.score, 0) + 1
+        total = sum(counts.values())
+        if total == 0:
+            return None
+        pcts = {s: round(c / total * 100, 1) for s, c in counts.items()}
+        return {"counts": counts, "total": total, "pcts": pcts}
+
+    score_dist_a = _score_distribution(judgments_a)
+    score_dist_b = _score_distribution(judgments_b)
+
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
         key_to_label = [
@@ -352,4 +378,6 @@ def _generate_html(
         run_metadata_rows=metadata_rows,
         sibling_report=sibling_report,
         win_loss=win_loss,
+        score_dist_a=score_dist_a,
+        score_dist_b=score_dist_b,
     )

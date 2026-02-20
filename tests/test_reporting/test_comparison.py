@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from veritail.reporting.comparison import generate_comparison_report
-from veritail.types import CheckResult, CorrectionJudgment, MetricResult
+from veritail.types import (
+    CheckResult,
+    CorrectionJudgment,
+    JudgmentRecord,
+    MetricResult,
+    SearchResult,
+)
 
 
 def _make_metrics_a() -> list[MetricResult]:
@@ -251,3 +257,55 @@ class TestGenerateComparisonReport:
         )
         assert "Query-Level Outcome" in report
         assert "3 queries compared on NDCG@10" in report
+
+    def test_html_score_distribution_section(self):
+        """Score distribution bars appear when judgments are provided."""
+        product = SearchResult(
+            product_id="SKU-1",
+            title="Test",
+            description="desc",
+            category="cat",
+            price=10.0,
+            position=0,
+        )
+        judgments_a = [
+            JudgmentRecord(
+                query="shoes",
+                product=product,
+                score=3,
+                reasoning="good",
+                model="test",
+                experiment="baseline",
+            ),
+            JudgmentRecord(
+                query="shoes",
+                product=product,
+                score=1,
+                reasoning="ok",
+                model="test",
+                experiment="baseline",
+            ),
+        ]
+        judgments_b = [
+            JudgmentRecord(
+                query="shoes",
+                product=product,
+                score=3,
+                reasoning="great",
+                model="test",
+                experiment="experiment",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+            judgments_a=judgments_a,
+            judgments_b=judgments_b,
+        )
+        assert "Score Distribution" in report
+        assert "2 judgments" in report
+        assert "1 judgments" in report
