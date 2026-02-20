@@ -213,8 +213,8 @@ example/results/
 # Evaluation results
 eval-results/
 
-# Local example overrides
-example.local/
+# Local scratch scripts
+local-preview/
 
 # Claude Code
 CLAUDE.md
