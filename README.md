@@ -11,7 +11,7 @@ Five evaluation layers:
 - **Autocorrect evaluation** — catches intent-altering or unnecessary query corrections
 - **Autocomplete evaluation** — deterministic checks and LLM-based semantic evaluation for type-ahead suggestions
 
-Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context and rubrics.
+Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context and rubrics. Optional [Langfuse](https://langfuse.com) integration for full observability — every judgment, score, and LLM call traced and grouped by evaluation run.
 
 ## Preview
 
