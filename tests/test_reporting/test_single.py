@@ -502,3 +502,66 @@ class TestGenerateSingleReport:
         assert "<img src=x onerror=alert('title')>" not in report
         assert "&lt;script&gt;alert" in report
         assert "&lt;img src=x onerror=alert" in report
+
+    def test_html_check_failures_drilldown(self):
+        checks = [
+            CheckResult(
+                check_name="text_overlap",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Low overlap: 10%",
+                severity="warning",
+            ),
+            CheckResult(
+                check_name="text_overlap",
+                query="boots",
+                product_id="SKU-2",
+                passed=False,
+                detail="No common terms",
+                severity="fail",
+            ),
+            CheckResult(
+                check_name="text_overlap",
+                query="shoes",
+                product_id="SKU-3",
+                passed=True,
+                detail="OK",
+            ),
+        ]
+        report = generate_single_report(_make_metrics(), checks, format="html")
+        assert "Low overlap: 10%" in report
+        assert "No common terms" in report
+        assert "SKU-1" in report
+        assert "SKU-2" in report
+        assert "Show 2 failed items" in report
+
+    def test_html_check_failures_severity_badge(self):
+        checks = [
+            CheckResult(
+                check_name="price_outlier",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Price outlier",
+                severity="fail",
+            ),
+        ]
+        report = generate_single_report(_make_metrics(), checks, format="html")
+        assert "background:#fee2e2" in report
+        assert ">fail<" in report
+
+    def test_html_check_failures_no_product_id(self):
+        checks = [
+            CheckResult(
+                check_name="zero_results",
+                query="obscure query",
+                product_id=None,
+                passed=False,
+                detail="Zero results returned",
+                severity="fail",
+            ),
+        ]
+        report = generate_single_report(_make_metrics(), checks, format="html")
+        assert "obscure query" in report
+        assert "Zero results returned" in report

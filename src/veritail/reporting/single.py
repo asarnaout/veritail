@@ -130,6 +130,41 @@ CHECK_ORDER: list[str] = [
 ]
 
 
+_MAX_FAILURES_PER_CHECK = 50
+
+
+def _build_check_failures(
+    checks: list[CheckResult],
+) -> dict[str, dict[str, object]]:
+    """Group failed CheckResults by check_name for drill-down display.
+
+    Returns a mapping of check_name → {"items": [...], "total": int}.
+    Each item has keys: query, product_id, detail, severity.
+    Capped at ``_MAX_FAILURES_PER_CHECK`` items per check.
+    """
+    failures: dict[str, list[dict[str, str | None]]] = {}
+    totals: dict[str, int] = {}
+    for c in checks:
+        if c.passed:
+            continue
+        totals[c.check_name] = totals.get(c.check_name, 0) + 1
+        if c.check_name not in failures:
+            failures[c.check_name] = []
+        if len(failures[c.check_name]) < _MAX_FAILURES_PER_CHECK:
+            failures[c.check_name].append(
+                {
+                    "query": c.query,
+                    "product_id": c.product_id,
+                    "detail": c.detail,
+                    "severity": c.severity,
+                }
+            )
+    return {
+        name: {"entries": items, "total": totals[name]}
+        for name, items in failures.items()
+    }
+
+
 def summarize_checks(
     checks: list[CheckResult],
 ) -> list[tuple[str, dict[str, str | int | bool]]]:
@@ -377,6 +412,7 @@ def _generate_html(
 
     # Build check summary
     check_summary = summarize_checks(checks)
+    check_failures = _build_check_failures(checks)
 
     # Worst queries
     ndcg = next(
@@ -538,6 +574,7 @@ def _generate_html(
         judgments_for_template=judgments_for_template,
         metric_descriptions=METRIC_DESCRIPTIONS,
         check_descriptions=CHECK_DESCRIPTIONS,
+        check_failures=check_failures,
         run_metadata_rows=metadata_rows,
         correction_summary=correction_summary,
         score_counts=score_counts,
