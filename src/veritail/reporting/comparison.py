@@ -10,6 +10,11 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
+from veritail.reporting.single import (
+    METRIC_DESCRIPTIONS,
+    QUERY_TYPE_DESCRIPTIONS,
+    QUERY_TYPE_DISPLAY_NAMES,
+)
 from veritail.types import CheckResult, CorrectionJudgment, JudgmentRecord, MetricResult
 
 _JINJA_ENV = Environment(
@@ -348,6 +353,27 @@ def _generate_html(
     score_dist_a = _score_distribution(judgments_a)
     score_dist_b = _score_distribution(judgments_b)
 
+    # Metrics by query type comparison
+    all_types: set[str] = set()
+    for m in metrics_a + metrics_b:
+        all_types.update(m.by_query_type.keys())
+    query_types = sorted(all_types)
+
+    type_comparison: list[dict[str, object]] = []
+    if query_types:
+        for m_a in metrics_a:
+            m_b = metrics_b_lookup.get(m_a.metric_name)
+            if m_b:
+                per_type: dict[str, dict[str, float | None]] = {}
+                for qt in query_types:
+                    va = m_a.by_query_type.get(qt)
+                    vb = m_b.by_query_type.get(qt)
+                    qt_delta: float | None = (
+                        (vb - va) if va is not None and vb is not None else None
+                    )
+                    per_type[qt] = {"value_a": va, "value_b": vb, "delta": qt_delta}
+                type_comparison.append({"name": m_a.metric_name, "types": per_type})
+
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
         key_to_label = [
@@ -380,4 +406,9 @@ def _generate_html(
         win_loss=win_loss,
         score_dist_a=score_dist_a,
         score_dist_b=score_dist_b,
+        type_comparison=type_comparison,
+        query_types=query_types,
+        query_type_display_names=QUERY_TYPE_DISPLAY_NAMES,
+        query_type_descriptions=QUERY_TYPE_DESCRIPTIONS,
+        metric_descriptions=METRIC_DESCRIPTIONS,
     )

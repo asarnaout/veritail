@@ -309,3 +309,16 @@ class TestGenerateComparisonReport:
         assert "Score Distribution" in report
         assert "2 judgments" in report
         assert "1 judgments" in report
+
+    def test_html_metrics_by_query_type(self):
+        """Metrics by query type section appears with type breakdown."""
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+        )
+        assert "Metrics by Query Type" in report
+        assert "broad" in report

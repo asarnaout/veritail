@@ -141,6 +141,53 @@
     </div>
     {% endif %}
 
+    {% if type_comparison %}
+    <h2>Metrics by Query Type</h2>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Metric</th>
+                {% for qt in query_types %}
+                <th colspan="3">
+                    {{ query_type_display_names.get(qt, qt) }}
+                    {% if query_type_descriptions and query_type_descriptions.get(qt) %}
+                    <span class="tip" data-tip="{{ query_type_descriptions[qt] }}">?</span>
+                    {% endif %}
+                </th>
+                {% endfor %}
+            </tr>
+            <tr>
+                <th></th>
+                {% for qt in query_types %}
+                <th style="font-weight:400; font-size:12px;">{{ config_a }}</th>
+                <th style="font-weight:400; font-size:12px;">{{ config_b }}</th>
+                <th style="font-weight:400; font-size:12px;">Delta</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in type_comparison %}
+            <tr>
+                <td>
+                    {{ m.name }}
+                    {% if metric_descriptions and metric_descriptions.get(m.name) %}
+                    <span class="tip" data-tip="{{ metric_descriptions[m.name] }}">?</span>
+                    {% endif %}
+                </td>
+                {% for qt in query_types %}
+                {% set t = m.types[qt] %}
+                <td class="metric-value">{% if t.value_a is not none %}{{ "%.4f"|format(t.value_a) }}{% else %}-{% endif %}</td>
+                <td class="metric-value">{% if t.value_b is not none %}{{ "%.4f"|format(t.value_b) }}{% else %}-{% endif %}</td>
+                <td class="metric-value {% if t.delta is not none and t.delta > 0 %}positive{% elif t.delta is not none and t.delta < 0 %}negative{% else %}neutral{% endif %}">
+                    {% if t.delta is not none %}{{ "%+.4f"|format(t.delta) }}{% else %}-{% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% endif %}
+
     {% if shift_checks %}
     <h2>Biggest Position Shifts</h2>
     <div class="table-wrap"><table>
