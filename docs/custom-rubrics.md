@@ -67,7 +67,7 @@ Pass a short string directly:
 veritail run \
   --queries queries.csv \
   --adapter adapter.py \
-  --context "B2B supplier specializing in BBQ restaurant equipment" \
+  --context "Pro contractor supplier. Queries for lumber should always prioritize pressure-treated options." \
   --llm-model gpt-4o
 ```
 
@@ -75,42 +75,44 @@ veritail run \
 
 For detailed guidance, point `--context` at a text file. veritail reads the file contents automatically when the value is a valid file path.
 
-Example `context.txt` for a foodservice supplier:
+Example `context.txt` for a home improvement retailer:
 
 ```text
-WebstaurantStore is a B2B commercial foodservice equipment and supplies distributor.
-Our customers are restaurant owners, caterers, and institutional buyers.
+BuildRight Supply is a home improvement retailer serving both professional contractors
+and DIY homeowners.
 
 Key evaluation guidance:
-- NSF certification is a hard requirement for all food-contact surfaces. Products
-  missing NSF certification should be penalized when the query implies food contact.
-- "Cambro" is a major brand in our catalog. Do not confuse it with "Camaro" — queries
-  for Cambro products should match Cambro brand items specifically.
-- "Hotel pan" always means a steam table pan (gastronorm), not a cooking pan for hotels.
-- "Plats" is a common shorthand for "plates" in our customer base.
-- Smallwares queries (e.g., "tongs", "ladle", "spatula") should prioritize
-  commercial-grade NSF-listed items over residential kitchen tools.
+- Lumber queries should always prioritize pressure-treated options unless the query
+  explicitly specifies untreated or kiln-dried.
+- "PEX" always means cross-linked polyethylene tubing for plumbing, not any other
+  type of flexible tubing. Queries for PEX should never return garden hoses or vinyl tubing.
+- For power tool queries, corded and cordless are distinct categories. A query for
+  "cordless drill" should not return corded drills, even from the same brand.
+- "Romex" is an industry shorthand for NM-B (non-metallic sheathed) electrical cable.
+  Treat them as equivalent in search.
+- Fastener queries (e.g., "deck screws", "lag bolts") should prioritize
+  exterior-rated or stainless steel options over interior-only fasteners.
 ```
-
-```bash
-veritail run \
-  --queries queries.csv \
-  --adapter adapter.py \
-  --vertical foodservice \
-  --context context.txt \
-  --llm-model gpt-4o
-```
-
-### Combining context with verticals
-
-`--context` and `--vertical` work together. The vertical provides general domain scoring guidance (e.g., what matters in foodservice search), while the context adds your specific business rules. Both are included in the system prompt sent to the LLM judge.
 
 ```bash
 veritail run \
   --queries queries.csv \
   --adapter adapter.py \
   --vertical home-improvement \
-  --context "Big-box home improvement retailer targeting both contractors and DIY homeowners" \
+  --context context.txt \
+  --llm-model gpt-4o
+```
+
+### Combining context with verticals
+
+`--context` and `--vertical` work together. The vertical provides general domain scoring guidance (e.g., what matters in home improvement search), while the context adds your specific business rules. Both are included in the system prompt sent to the LLM judge.
+
+```bash
+veritail run \
+  --queries queries.csv \
+  --adapter adapter.py \
+  --vertical home-improvement \
+  --context "Big-box retailer targeting both contractors and DIY homeowners" \
   --llm-model gpt-4o
 ```
 
