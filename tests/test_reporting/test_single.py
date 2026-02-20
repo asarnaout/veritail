@@ -269,7 +269,7 @@ class TestGenerateSingleReport:
         ]
         report = generate_single_report(metrics, _make_checks())
         assert "0.8500" in report
-        assert "n=" not in report
+        assert "(n=" not in report
         assert "N/A" not in report
 
     def test_html_report_attribute_match_na(self):

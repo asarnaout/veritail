@@ -209,7 +209,7 @@ def _generate_terminal(
     judgments: list[JudgmentRecord] | None = None,
 ) -> str:
     """Generate a rich-formatted terminal report."""
-    console = Console(file=StringIO(), force_terminal=True, width=100)
+    console = Console(file=StringIO(), width=100)
 
     console.print("\n[bold]Search Evaluation Report[/bold]\n")
 

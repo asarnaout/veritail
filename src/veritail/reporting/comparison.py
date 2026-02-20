@@ -76,7 +76,7 @@ def _generate_terminal(
     correction_judgments_b: list[CorrectionJudgment] | None = None,
 ) -> str:
     """Generate a rich-formatted terminal comparison report."""
-    console = Console(file=StringIO(), force_terminal=True, width=120)
+    console = Console(file=StringIO(), width=120)
 
     console.print(
         f"\n[bold]Search Evaluation Comparison: '{config_a}' vs '{config_b}'[/bold]\n"

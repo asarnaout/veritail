@@ -133,7 +133,7 @@ def _generate_terminal(
     suggestion_judgments: list[SuggestionJudgment] | None = None,
 ) -> str:
     """Generate a rich-formatted terminal report."""
-    con = Console(file=StringIO(), force_terminal=True, width=100)
+    con = Console(file=StringIO(), width=100)
 
     con.print("\n[bold]Autocomplete Evaluation Report[/bold]\n")
 
@@ -282,7 +282,7 @@ def _generate_comparison_terminal(
     config_b: str,
 ) -> str:
     """Generate a rich-formatted terminal comparison report."""
-    con = Console(file=StringIO(), force_terminal=True, width=120)
+    con = Console(file=StringIO(), width=120)
 
     con.print(f"\n[bold]Autocomplete Comparison: '{config_a}' vs '{config_b}'[/bold]\n")
 
