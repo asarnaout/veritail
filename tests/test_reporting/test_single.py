@@ -646,3 +646,88 @@ class TestGenerateSingleReport:
             judgments=judgments,
         )
         assert 'id="query-' in report
+
+    def test_html_judgment_drilldown_shows_product_data(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Running Shoe",
+                    description="Fast shoe",
+                    category="Footwear",
+                    price=89.99,
+                    position=0,
+                    in_stock=False,
+                ),
+                score=2,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "Footwear" in report
+        assert "$89.99" in report
+        assert "Out of stock" in report
+
+    def test_html_judgment_drilldown_hides_zero_price(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=0.0,
+                    position=0,
+                ),
+                score=2,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "$0.00" not in report
+
+    def test_html_judgment_drilldown_in_stock_hidden_when_true(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=50.0,
+                    position=0,
+                    in_stock=True,
+                ),
+                score=2,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "Out of stock" not in report

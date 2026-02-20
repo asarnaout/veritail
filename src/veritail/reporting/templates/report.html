@@ -758,6 +758,13 @@
             <td>
               <strong>{{ j.product.title }}</strong><br>
               <span style="color:#6b7280; font-size:12px">{{ j.product.product_id }}</span>
+              {% if j.product.category or j.product.price > 0 or j.product.in_stock is false %}
+              <div style="display:flex; gap:8px; align-items:center; margin-top:3px; font-size:12px; color:#6b7280; flex-wrap:wrap;">
+                {% if j.product.category %}<span>{{ j.product.category }}</span>{% endif %}
+                {% if j.product.price > 0 %}<span>${{ "%.2f"|format(j.product.price) }}</span>{% endif %}
+                {% if j.product.in_stock is false %}<span style="background:#fee2e2; color:#991b1b; padding:1px 6px; border-radius:3px; font-weight:600; font-size:11px;">Out of stock</span>{% endif %}
+              </div>
+              {% endif %}
             </td>
             <td class="metric-value" style="color:{% if j.score == 3 %}#16a34a{% elif j.score == 2 %}#ca8a04{% elif j.score == 1 %}#ea580c{% else %}#dc2626{% endif %}">
               {{ j.score }}/3
