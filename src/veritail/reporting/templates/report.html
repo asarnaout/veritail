@@ -153,6 +153,53 @@
     </div>
     {% endif %}
 
+    {% if position_line_chart %}
+    <h2>Mean Relevance by Position</h2>
+    <div class="card">
+        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+            Average relevance score (0–3) at each result position. Lines should slope downward if ranking places the most relevant results first.
+        </p>
+        <svg viewBox="0 0 630 280" style="width:100%; max-width:630px; display:block; margin:0 auto;" role="img" aria-label="Mean relevance by position chart">
+            {% for g in position_line_chart.gridlines %}
+            <line x1="{{ position_line_chart.chart_left }}" y1="{{ g.y }}" x2="{{ position_line_chart.chart_right }}" y2="{{ g.y }}"
+                  stroke="#e5e7eb" stroke-width="1" {% if g.label > 0 %}stroke-dasharray="4,4"{% endif %} />
+            <text x="{{ position_line_chart.chart_left - 8 }}" y="{{ g.y + 4 }}" text-anchor="end"
+                  fill="#9ca3af" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.label }}</text>
+            {% endfor %}
+
+            {% for t in position_line_chart.x_ticks %}
+            <text x="{{ t.x }}" y="{{ position_line_chart.chart_bottom + 18 }}" text-anchor="middle"
+                  fill="#9ca3af" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">#{{ t.label }}</text>
+            {% endfor %}
+
+            <line x1="{{ position_line_chart.chart_left }}" y1="{{ position_line_chart.chart_top }}" x2="{{ position_line_chart.chart_left }}" y2="{{ position_line_chart.chart_bottom }}" stroke="#d1d5db" stroke-width="1" />
+            <line x1="{{ position_line_chart.chart_left }}" y1="{{ position_line_chart.chart_bottom }}" x2="{{ position_line_chart.chart_right }}" y2="{{ position_line_chart.chart_bottom }}" stroke="#d1d5db" stroke-width="1" />
+
+            {% if position_line_chart.polyline_a %}
+            <polyline points="{{ position_line_chart.polyline_a }}" fill="none" stroke="#4f6bed" stroke-width="2.5" stroke-linejoin="round" />
+            {% for p in position_line_chart.points_a %}
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="4" fill="#4f6bed">
+                <title>Position {{ p.pos }}: {{ p.score }}/3 ({{ config_a }})</title>
+            </circle>
+            {% endfor %}
+            {% endif %}
+
+            {% if position_line_chart.polyline_b %}
+            <polyline points="{{ position_line_chart.polyline_b }}" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-linejoin="round" />
+            {% for p in position_line_chart.points_b %}
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="4" fill="#ea580c">
+                <title>Position {{ p.pos }}: {{ p.score }}/3 ({{ config_b }})</title>
+            </circle>
+            {% endfor %}
+            {% endif %}
+        </svg>
+        <div style="display:flex; gap:20px; font-size:13px; margin-top:12px; justify-content:center;">
+            <span><span style="display:inline-block; width:16px; height:3px; background:#4f6bed; border-radius:1px; vertical-align:middle; margin-right:4px;"></span> {{ config_a }}</span>
+            <span><span style="display:inline-block; width:16px; height:3px; background:#ea580c; border-radius:1px; vertical-align:middle; margin-right:4px;"></span> {{ config_b }}</span>
+        </div>
+    </div>
+    {% endif %}
+
     {% if check_comparison %}
     <h2>Deterministic Checks</h2>
     <div class="table-wrap"><table>

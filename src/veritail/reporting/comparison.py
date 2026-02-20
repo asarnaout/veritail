@@ -420,6 +420,94 @@ def _generate_html(
     score_dist_a = _score_distribution(judgments_a)
     score_dist_b = _score_distribution(judgments_b)
 
+    # Mean relevance by position line chart
+    def _mean_by_position(
+        judgments: list[JudgmentRecord] | None,
+    ) -> dict[int, float]:
+        if not judgments:
+            return {}
+        by_pos: dict[int, list[int]] = {}
+        for j in judgments:
+            pos = j.product.position + 1
+            by_pos.setdefault(pos, []).append(j.score)
+        return {pos: sum(scores) / len(scores) for pos, scores in by_pos.items()}
+
+    position_line_chart: dict[str, object] | None = None
+    means_a = _mean_by_position(judgments_a)
+    means_b = _mean_by_position(judgments_b)
+    if means_a or means_b:
+        all_positions = sorted(set(means_a.keys()) | set(means_b.keys()))
+        if all_positions:
+            chart_left = 50
+            chart_right = 580
+            chart_top = 20
+            chart_bottom = 240
+            chart_w = chart_right - chart_left
+            chart_h = chart_bottom - chart_top
+            max_score = 3.0
+            n_pos = len(all_positions)
+
+            def _pos_to_x(idx: int) -> float:
+                if n_pos == 1:
+                    return chart_left + chart_w / 2
+                return chart_left + idx * chart_w / (n_pos - 1)
+
+            def _score_to_y(score: float) -> float:
+                return chart_bottom - (score / max_score) * chart_h
+
+            points_a: list[dict[str, object]] = []
+            points_b: list[dict[str, object]] = []
+            for idx, pos in enumerate(all_positions):
+                x = _pos_to_x(idx)
+                if pos in means_a:
+                    y = _score_to_y(means_a[pos])
+                    points_a.append(
+                        {
+                            "x": round(x, 1),
+                            "y": round(y, 1),
+                            "pos": pos,
+                            "score": round(means_a[pos], 2),
+                        }
+                    )
+                if pos in means_b:
+                    y = _score_to_y(means_b[pos])
+                    points_b.append(
+                        {
+                            "x": round(x, 1),
+                            "y": round(y, 1),
+                            "pos": pos,
+                            "score": round(means_b[pos], 2),
+                        }
+                    )
+
+            polyline_a = (
+                " ".join(f"{p['x']},{p['y']}" for p in points_a) if points_a else ""
+            )
+            polyline_b = (
+                " ".join(f"{p['x']},{p['y']}" for p in points_b) if points_b else ""
+            )
+
+            gridlines = [
+                {"y": round(_score_to_y(s), 1), "label": s} for s in [0, 1, 2, 3]
+            ]
+            x_ticks = [
+                {"x": round(_pos_to_x(idx), 1), "label": pos}
+                for idx, pos in enumerate(all_positions)
+            ]
+
+            position_line_chart = {
+                "points_a": points_a,
+                "points_b": points_b,
+                "polyline_a": polyline_a,
+                "polyline_b": polyline_b,
+                "gridlines": gridlines,
+                "x_ticks": x_ticks,
+                "chart_left": chart_left,
+                "chart_right": chart_right,
+                "chart_top": chart_top,
+                "chart_bottom": chart_bottom,
+            }
+
     # Metrics by query type comparison
     all_types: set[str] = set()
     for m in metrics_a + metrics_b:
@@ -524,6 +612,7 @@ def _generate_html(
         overlap_summary=overlap_summary,
         score_dist_a=score_dist_a,
         score_dist_b=score_dist_b,
+        position_line_chart=position_line_chart,
         type_comparison=type_comparison,
         query_types=query_types,
         query_type_display_names=QUERY_TYPE_DISPLAY_NAMES,

@@ -402,6 +402,73 @@ class TestGenerateComparisonReport:
         assert "share some products" in report  # 0.5 is in the middle range
         assert "2 queries" in report
 
+    def test_html_mean_relevance_by_position(self):
+        """Mean relevance by position chart appears with polylines."""
+        product_pos0 = SearchResult(
+            product_id="A",
+            title="A",
+            description="d",
+            category="c",
+            price=1.0,
+            position=0,
+        )
+        product_pos1 = SearchResult(
+            product_id="B",
+            title="B",
+            description="d",
+            category="c",
+            price=1.0,
+            position=1,
+        )
+        judgments_a = [
+            JudgmentRecord(
+                query="shoes",
+                product=product_pos0,
+                score=3,
+                reasoning="r",
+                model="m",
+                experiment="baseline",
+            ),
+            JudgmentRecord(
+                query="shoes",
+                product=product_pos1,
+                score=1,
+                reasoning="r",
+                model="m",
+                experiment="baseline",
+            ),
+        ]
+        judgments_b = [
+            JudgmentRecord(
+                query="shoes",
+                product=product_pos0,
+                score=2,
+                reasoning="r",
+                model="m",
+                experiment="experiment",
+            ),
+            JudgmentRecord(
+                query="shoes",
+                product=product_pos1,
+                score=2,
+                reasoning="r",
+                model="m",
+                experiment="experiment",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+            judgments_a=judgments_a,
+            judgments_b=judgments_b,
+        )
+        assert "Mean Relevance by Position" in report
+        assert "<polyline" in report
+
     def test_html_correction_comparison(self):
         """Correction tables appear in HTML comparison report."""
         corrections_a = [
