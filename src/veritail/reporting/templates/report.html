@@ -82,6 +82,37 @@
         </tbody>
     </table></div>
 
+    {% if win_loss %}
+    <h2>Query-Level Outcome</h2>
+    <div class="card">
+        <div style="font-size:13px; color:#6b7280; margin-bottom:10px;">
+            {{ win_loss.total }} queries compared on NDCG@10
+        </div>
+        <div style="display:flex; height:28px; border-radius:6px; overflow:hidden;">
+            {% if win_loss.win_pct > 0 %}
+            <div style="width:{{ win_loss.win_pct }}%; background:#16a34a; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
+                {% if win_loss.win_pct >= 8 %}{{ win_loss.wins }}{% endif %}
+            </div>
+            {% endif %}
+            {% if win_loss.tie_pct > 0 %}
+            <div style="width:{{ win_loss.tie_pct }}%; background:#6b7280; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
+                {% if win_loss.tie_pct >= 8 %}{{ win_loss.ties }}{% endif %}
+            </div>
+            {% endif %}
+            {% if win_loss.loss_pct > 0 %}
+            <div style="width:{{ win_loss.loss_pct }}%; background:#dc2626; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
+                {% if win_loss.loss_pct >= 8 %}{{ win_loss.losses }}{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div style="display:flex; gap:20px; font-size:13px; margin-top:10px;">
+            <span><span style="display:inline-block; width:10px; height:10px; background:#16a34a; border-radius:2px; vertical-align:middle;"></span> {{ config_b }} wins &mdash; {{ win_loss.wins }} ({{ win_loss.win_pct }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:#6b7280; border-radius:2px; vertical-align:middle;"></span> Tied &mdash; {{ win_loss.ties }} ({{ win_loss.tie_pct }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:#dc2626; border-radius:2px; vertical-align:middle;"></span> {{ config_a }} wins &mdash; {{ win_loss.losses }} ({{ win_loss.loss_pct }}%)</span>
+        </div>
+    </div>
+    {% endif %}
+
     {% if shift_checks %}
     <h2>Biggest Position Shifts</h2>
     <div class="table-wrap"><table>

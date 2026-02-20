@@ -224,3 +224,30 @@ class TestGenerateComparisonReport:
         )
         assert "appropriate" in report
         assert "errored" not in report
+
+    def test_html_win_loss_tie_section(self):
+        """Win/loss/tie section appears in HTML with correct counts."""
+        metrics_a = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.75,
+                per_query={"shoes": 0.8, "laptop": 0.7, "hat": 0.5},
+            )
+        ]
+        metrics_b = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.80,
+                per_query={"shoes": 0.9, "laptop": 0.7, "hat": 0.3},
+            )
+        ]
+        report = generate_comparison_report(
+            metrics_a,
+            metrics_b,
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+        )
+        assert "Query-Level Outcome" in report
+        assert "3 queries compared on NDCG@10" in report

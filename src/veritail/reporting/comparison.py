@@ -294,6 +294,34 @@ def _generate_html(
 
     shift_checks = [c for c in comparison_checks if c.check_name == "position_shift"]
 
+    # Win/loss/tie from NDCG@10 per-query deltas
+    ndcg_a = next((m for m in metrics_a if m.metric_name == "ndcg@10"), None)
+    ndcg_b = next((m for m in metrics_b if m.metric_name == "ndcg@10"), None)
+
+    win_loss: dict[str, object] | None = None
+    if ndcg_a and ndcg_b and ndcg_a.per_query and ndcg_b.per_query:
+        wins = losses = ties = 0
+        for query in ndcg_a.per_query:
+            if query in ndcg_b.per_query:
+                delta = ndcg_b.per_query[query] - ndcg_a.per_query[query]
+                if delta > 0.001:
+                    wins += 1
+                elif delta < -0.001:
+                    losses += 1
+                else:
+                    ties += 1
+        total = wins + losses + ties
+        if total > 0:
+            win_loss = {
+                "wins": wins,
+                "losses": losses,
+                "ties": ties,
+                "total": total,
+                "win_pct": round(wins / total * 100, 1),
+                "loss_pct": round(losses / total * 100, 1),
+                "tie_pct": round(ties / total * 100, 1),
+            }
+
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
         key_to_label = [
@@ -323,4 +351,5 @@ def _generate_html(
         shift_checks=shift_checks[:10],
         run_metadata_rows=metadata_rows,
         sibling_report=sibling_report,
+        win_loss=win_loss,
     )
