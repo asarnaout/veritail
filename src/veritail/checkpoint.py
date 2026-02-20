@@ -24,6 +24,7 @@ class BatchCheckpoint:
     gemini_custom_id_order: list[str] = field(default_factory=list)
     correction_batch_id: str | None = None
     correction_context: dict[str, dict[str, Any]] | None = None
+    gemini_correction_custom_id_order: list[str] = field(default_factory=list)
 
 
 def _checkpoint_path(

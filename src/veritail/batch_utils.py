@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 
 from rich.console import Console
-from rich.progress import Progress
+from rich.progress import Progress, TaskID
 
 from veritail.llm.client import LLMClient
 
@@ -48,3 +49,47 @@ def poll_until_done(
                 raise RuntimeError(msg)
 
             time.sleep(poll_interval)
+
+
+def poll_multiple_batches(
+    llm_client: LLMClient,
+    batches: Sequence[tuple[str, int, str]],
+    *,
+    poll_interval: int = 60,
+) -> None:
+    """Poll multiple batches concurrently in a single Rich progress context.
+
+    *batches* is a sequence of ``(batch_id, expected_total, label)`` tuples.
+    Raises ``RuntimeError`` on the first failed/expired batch (matching the
+    behaviour of :func:`poll_until_done`).
+    """
+    if not batches:
+        return
+
+    with Progress(console=console) as progress:
+        tasks: list[tuple[str, int, TaskID]] = []
+        for batch_id, expected_total, label in batches:
+            tid = progress.add_task(f"[cyan]{label}", total=expected_total)
+            tasks.append((batch_id, expected_total, tid))
+
+        pending = set(range(len(tasks)))
+
+        while pending:
+            for idx in list(pending):
+                batch_id, expected_total, tid = tasks[idx]
+                status, completed, total = llm_client.poll_batch(batch_id)
+                progress.update(tid, completed=completed, total=total or expected_total)
+
+                if status == "completed":
+                    pending.discard(idx)
+                elif status in ("failed", "expired"):
+                    detail = llm_client.batch_error_message(batch_id)
+                    msg = f"Batch {batch_id} {status}."
+                    if detail:
+                        msg += f" Error: {detail}"
+                    else:
+                        msg += " Check your provider's dashboard for details."
+                    raise RuntimeError(msg)
+
+            if pending:
+                time.sleep(poll_interval)

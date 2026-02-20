@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 from veritail.backends import EvalBackend
-from veritail.batch_utils import poll_until_done
+from veritail.batch_utils import poll_multiple_batches, poll_until_done
 from veritail.checkpoint import (
     BatchCheckpoint,
     clear_checkpoint,
@@ -611,6 +611,9 @@ def run_batch_evaluation(
         saved_checkpoint = load_checkpoint(output_dir, config.name)
 
     # ---- Resume path: skip Phase 1 & 2, jump to polling ----
+    corr_batch_id: str | None = None
+    corr_context: dict[str, tuple[str, str]] = {}
+
     if saved_checkpoint is not None:
         batch_id = saved_checkpoint.batch_id
         request_context = deserialize_request_context(saved_checkpoint.request_context)
@@ -624,6 +627,17 @@ def run_batch_evaluation(
         if saved_checkpoint.gemini_custom_id_order:
             llm_client.restore_batch_custom_ids(
                 batch_id, saved_checkpoint.gemini_custom_id_order
+            )
+        # Restore correction batch info
+        corr_batch_id = saved_checkpoint.correction_batch_id
+        if saved_checkpoint.correction_context:
+            corr_context = {
+                k: (v["original"], v["corrected"])
+                for k, v in saved_checkpoint.correction_context.items()
+            }
+        if corr_batch_id and saved_checkpoint.gemini_correction_custom_id_order:
+            llm_client.restore_batch_custom_ids(
+                corr_batch_id, saved_checkpoint.gemini_correction_custom_id_order
             )
         console.print(f"[bold]Resuming batch {batch_id} for '{config.name}'...[/bold]")
     else:
@@ -725,15 +739,38 @@ def run_batch_evaluation(
             metrics = compute_all_metrics({}, queries)
             return [], all_checks, metrics, []
 
-        # Phase 2: Submit batch
+        # Build correction batch requests upfront (inputs available after Phase 1)
+        corr_requests: list[BatchRequest] = []
+        if correction_entries:
+            for idx, (_, original, corrected) in enumerate(correction_entries):
+                custom_id = f"corr-{idx}"
+                corr_req = correction_judge.prepare_request(
+                    custom_id, original, corrected
+                )
+                corr_requests.append(corr_req)
+                corr_context[custom_id] = (original, corrected)
+
+        # Phase 2: Submit batches
         console.print(
             f"[cyan]Submitting batch of {len(batch_requests)} requests...[/cyan]"
         )
         batch_id = llm_client.submit_batch(batch_requests)
         console.print(f"[dim]Batch ID: {batch_id}[/dim]")
 
+        if corr_requests:
+            console.print(
+                f"[cyan]Submitting correction batch of "
+                f"{len(corr_requests)} requests...[/cyan]"
+            )
+            corr_batch_id = llm_client.submit_batch(corr_requests)
+
         # Save checkpoint after submission
         gemini_order = getattr(llm_client, "_batch_custom_ids", {}).get(batch_id, [])
+        gemini_corr_order = (
+            getattr(llm_client, "_batch_custom_ids", {}).get(corr_batch_id, [])
+            if corr_batch_id
+            else []
+        )
         save_checkpoint(
             output_dir,
             config.name,
@@ -747,15 +784,30 @@ def run_batch_evaluation(
                     [idx, orig, corr] for idx, orig, corr in correction_entries
                 ],
                 gemini_custom_id_order=gemini_order,
+                correction_batch_id=corr_batch_id,
+                correction_context={
+                    k: {"original": v[0], "corrected": v[1]}
+                    for k, v in corr_context.items()
+                }
+                if corr_context
+                else None,
+                gemini_correction_custom_id_order=gemini_corr_order,
             ),
         )
 
-    # Phase 3: Poll for completion
+    # Phase 3: Poll for completion (both batches together)
+    poll_entries: list[tuple[str, int, str]] = [
+        (batch_id, len(request_context), "Waiting for relevance batch..."),
+    ]
+    if corr_batch_id:
+        poll_entries.append(
+            (corr_batch_id, len(corr_context), "Waiting for correction batch..."),
+        )
+
     try:
-        poll_until_done(
+        poll_multiple_batches(
             llm_client,
-            batch_id,
-            expected_total=len(request_context),
+            poll_entries,
             poll_interval=poll_interval,
         )
     except RuntimeError as exc:
@@ -767,7 +819,7 @@ def run_batch_evaluation(
             )
         raise RuntimeError(msg) from exc
 
-    # Phase 4: Retrieve and map results
+    # Phase 4: Retrieve and map relevance results
     console.print("[cyan]Retrieving batch results...[/cyan]")
     batch_results = llm_client.retrieve_batch_results(batch_id)
     results_by_id = {r.custom_id: r for r in batch_results}
@@ -834,32 +886,9 @@ def run_batch_evaluation(
         all_judgments.append(judgment)
         judgments_by_query[query_index].append(judgment)
 
-    # Phase 5: Corrections batch
+    # Phase 5: Retrieve correction results (already submitted & polled above)
     all_correction_judgments: list[CorrectionJudgment] = []
-    if correction_entries:
-        corr_requests: list[BatchRequest] = []
-        corr_context: dict[str, tuple[str, str]] = {}
-
-        for idx, (_, original, corrected) in enumerate(correction_entries):
-            custom_id = f"corr-{idx}"
-            corr_req = correction_judge.prepare_request(custom_id, original, corrected)
-            corr_requests.append(corr_req)
-            corr_context[custom_id] = (original, corrected)
-
-        console.print(
-            f"[cyan]Submitting correction batch of "
-            f"{len(corr_requests)} requests...[/cyan]"
-        )
-        corr_batch_id = llm_client.submit_batch(corr_requests)
-
-        poll_until_done(
-            llm_client,
-            corr_batch_id,
-            expected_total=len(corr_requests),
-            poll_interval=poll_interval,
-            label="Waiting for correction batch...",
-        )
-
+    if corr_batch_id and corr_context:
         corr_results = llm_client.retrieve_batch_results(corr_batch_id)
         corr_results_by_id = {r.custom_id: r for r in corr_results}
 

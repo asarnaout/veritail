@@ -98,6 +98,542 @@ def _build_run_metadata(
 _KNOWN_MODEL_PREFIXES = ("claude", "gemini", "gpt-", "o1", "o3", "o4")
 
 
+def _run_search_pipeline(  # noqa: PLR0913
+    *,
+    queries_path: str,
+    adapters: tuple[str, ...],
+    config_names: tuple[str, ...],
+    llm_model: str,
+    llm_base_url: str | None,
+    llm_api_key: str | None,
+    rubric_name: str,
+    backend_type: str,
+    output_dir: str,
+    backend_url: str | None,
+    top_k: int,
+    context: str | None,
+    vertical_context: str | None,
+    vertical_raw: str | None,
+    check_modules: tuple[str, ...],
+    sample: int | None,
+    use_batch: bool,
+    use_resume: bool,
+    search_sibling: str | None,
+) -> list[Path]:
+    """Run the search evaluation pipeline. Returns list of HTML report paths."""
+    query_entries = load_queries(queries_path)
+    total_queries = len(query_entries)
+
+    if sample is not None and sample < total_queries:
+        import random
+
+        rng = random.Random(42)
+        query_entries = rng.sample(query_entries, sample)
+        console.print(
+            f"Sampled {sample} of {total_queries} queries from {queries_path}"
+        )
+    else:
+        console.print(f"Loaded {len(query_entries)} queries from {queries_path}")
+
+    rubric_data = load_rubric(rubric_name)
+
+    custom_check_fns: list[CustomCheckFn] | None = None
+    if check_modules:
+        custom_check_fns = []
+        for check_path in check_modules:
+            loaded = load_checks(check_path)
+            custom_check_fns.extend(loaded)
+            console.print(
+                f"[dim]Loaded {len(loaded)} custom check(s) from {check_path}[/dim]"
+            )
+
+    _warn_custom_model(llm_model, llm_base_url)
+    llm_client = create_llm_client(
+        llm_model, base_url=llm_base_url, api_key=llm_api_key
+    )
+
+    try:
+        llm_client.preflight_check()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if use_batch:
+        if llm_base_url is not None:
+            raise click.UsageError(
+                "--batch cannot be used with --llm-base-url. "
+                "Batch APIs are only available for cloud providers "
+                "(OpenAI, Anthropic, Gemini)."
+            )
+        if not llm_client.supports_batch():
+            raise click.UsageError(
+                f"The model '{llm_model}' does not support batch operations."
+            )
+
+    backend_kwargs: dict[str, str] = {}
+    if backend_type == "file":
+        backend_kwargs["output_dir"] = output_dir
+    elif backend_type == "langfuse":
+        if backend_url:
+            backend_kwargs["url"] = backend_url
+
+    backend = create_backend(backend_type, **backend_kwargs)
+
+    html_paths: list[Path] = []
+
+    if len(adapters) == 1:
+        # Single configuration
+        config = ExperimentConfig(
+            name=config_names[0],
+            adapter_path=adapters[0],
+            llm_model=llm_model,
+            rubric=rubric_name,
+            top_k=top_k,
+        )
+        adapter_fn = load_adapter(adapters[0])
+
+        pipeline_fn = run_batch_evaluation if use_batch else run_evaluation
+        judgments, checks, metrics, correction_judgments = pipeline_fn(
+            query_entries,
+            adapter_fn,
+            config,
+            llm_client,
+            rubric_data,
+            backend,
+            context=context,
+            vertical=vertical_context,
+            custom_checks=custom_check_fns,
+            resume=use_resume,
+            output_dir=output_dir,
+        )
+        run_metadata = _build_run_metadata(
+            llm_model=llm_model,
+            rubric=rubric_name,
+            vertical=vertical_raw,
+            top_k=top_k,
+            sample=sample,
+            total_queries=total_queries,
+            adapter_path=adapters[0],
+        )
+
+        report = generate_single_report(
+            metrics,
+            checks,
+            run_metadata=run_metadata,
+            correction_judgments=correction_judgments or None,
+        )
+        console.print(report)
+
+        exp_dir = Path(output_dir) / config_names[0]
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        metrics_path = exp_dir / "metrics.json"
+        metrics_path.write_text(
+            json.dumps(
+                [asdict(m) for m in metrics],
+                indent=2,
+                default=str,
+            ),
+            encoding="utf-8",
+        )
+
+        if correction_judgments:
+            corrections_path = exp_dir / "corrections.jsonl"
+            corrections_path.write_text(
+                "\n".join(
+                    json.dumps(asdict(cj), default=str) for cj in correction_judgments
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+        html = generate_single_report(
+            metrics,
+            checks,
+            judgments=judgments,
+            format="html",
+            run_metadata=run_metadata,
+            correction_judgments=correction_judgments or None,
+            sibling_report=search_sibling,
+        )
+        html_path = exp_dir / "report.html"
+        html_path.write_text(html, encoding="utf-8")
+        console.print(f"[dim]HTML report -> {html_path}[/dim]")
+        html_paths.append(html_path)
+
+    else:
+        # Dual configuration
+        config_a = ExperimentConfig(
+            name=config_names[0],
+            adapter_path=adapters[0],
+            llm_model=llm_model,
+            rubric=rubric_name,
+            top_k=top_k,
+        )
+        config_b = ExperimentConfig(
+            name=config_names[1],
+            adapter_path=adapters[1],
+            llm_model=llm_model,
+            rubric=rubric_name,
+            top_k=top_k,
+        )
+        adapter_a = load_adapter(adapters[0])
+        adapter_b = load_adapter(adapters[1])
+
+        dual_fn = run_dual_batch_evaluation if use_batch else run_dual_evaluation
+        (
+            judgments_a,
+            judgments_b,
+            checks_a,
+            checks_b,
+            metrics_a,
+            metrics_b,
+            comparison_checks,
+            corrections_a,
+            corrections_b,
+        ) = dual_fn(
+            query_entries,
+            adapter_a,
+            config_a,
+            adapter_b,
+            config_b,
+            llm_client,
+            rubric_data,
+            backend,
+            context=context,
+            vertical=vertical_context,
+            custom_checks=custom_check_fns,
+            resume=use_resume,
+            output_dir=output_dir,
+        )
+        run_metadata = _build_run_metadata(
+            llm_model=llm_model,
+            rubric=rubric_name,
+            vertical=vertical_raw,
+            top_k=top_k,
+            sample=sample,
+            total_queries=total_queries,
+            adapter_path_a=adapters[0],
+            adapter_path_b=adapters[1],
+        )
+
+        report = generate_comparison_report(
+            metrics_a,
+            metrics_b,
+            comparison_checks,
+            config_names[0],
+            config_names[1],
+            run_metadata=run_metadata,
+            correction_judgments_a=corrections_a or None,
+            correction_judgments_b=corrections_b or None,
+        )
+        console.print(report)
+
+        configs_and_data = [
+            (config_names[0], metrics_a, corrections_a),
+            (config_names[1], metrics_b, corrections_b),
+        ]
+        for cfg_name, cfg_metrics, cfg_corrections in configs_and_data:
+            exp_dir = Path(output_dir) / cfg_name
+            exp_dir.mkdir(parents=True, exist_ok=True)
+            metrics_path = exp_dir / "metrics.json"
+            metrics_path.write_text(
+                json.dumps(
+                    [asdict(m) for m in cfg_metrics],
+                    indent=2,
+                    default=str,
+                ),
+                encoding="utf-8",
+            )
+            if cfg_corrections:
+                corrections_path = exp_dir / "corrections.jsonl"
+                corrections_path.write_text(
+                    "\n".join(
+                        json.dumps(asdict(cj), default=str) for cj in cfg_corrections
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
+        html = generate_comparison_report(
+            metrics_a,
+            metrics_b,
+            comparison_checks,
+            config_names[0],
+            config_names[1],
+            format="html",
+            run_metadata=run_metadata,
+            correction_judgments_a=corrections_a or None,
+            correction_judgments_b=corrections_b or None,
+            sibling_report=search_sibling,
+        )
+        cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
+        html_path = Path(output_dir) / cmp_dir / "report.html"
+        html_path.parent.mkdir(parents=True, exist_ok=True)
+        html_path.write_text(html, encoding="utf-8")
+        console.print(f"[dim]HTML report -> {html_path}[/dim]")
+        html_paths.append(html_path)
+
+    return html_paths
+
+
+def _run_autocomplete_pipeline(  # noqa: PLR0913
+    *,
+    autocomplete_prefixes: str,
+    adapters: tuple[str, ...],
+    config_names: tuple[str, ...],
+    llm_model: str,
+    llm_base_url: str | None,
+    llm_api_key: str | None,
+    output_dir: str,
+    top_k: int,
+    context: str | None,
+    vertical_context: str | None,
+    autocomplete_check_modules: tuple[str, ...],
+    sample: int | None,
+    use_batch: bool,
+    use_resume: bool,
+    ac_sibling: str | None,
+) -> list[Path]:
+    """Run the autocomplete evaluation pipeline. Returns list of HTML report paths."""
+    from veritail.autocomplete.adapter import load_suggest_adapter
+    from veritail.autocomplete.pipeline import (
+        run_autocomplete_evaluation,
+        run_dual_autocomplete_evaluation,
+    )
+    from veritail.autocomplete.queries import load_prefixes
+    from veritail.autocomplete.reporting import (
+        generate_autocomplete_comparison_report,
+        generate_autocomplete_report,
+    )
+    from veritail.types import AutocompleteConfig
+
+    prefix_entries = load_prefixes(autocomplete_prefixes)
+    total_prefixes = len(prefix_entries)
+
+    if sample is not None and sample < total_prefixes:
+        import random
+
+        rng = random.Random(42)
+        prefix_entries = rng.sample(prefix_entries, sample)
+        console.print(
+            f"Sampled {sample} of {total_prefixes} prefixes from "
+            f"{autocomplete_prefixes}"
+        )
+    else:
+        console.print(
+            f"Loaded {len(prefix_entries)} prefixes from {autocomplete_prefixes}"
+        )
+
+    # Load autocomplete-specific custom checks
+    ac_custom_check_fns = None
+    if autocomplete_check_modules:
+        import importlib.util
+
+        ac_custom_check_fns = []
+        for check_path in autocomplete_check_modules:
+            spec = importlib.util.spec_from_file_location(
+                "ac_custom_checks", check_path
+            )
+            if spec is None or spec.loader is None:
+                raise click.ClickException(
+                    f"Could not load check module from: {check_path}"
+                )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            found = 0
+            for name in sorted(dir(mod)):
+                if name.startswith("check_") and callable(getattr(mod, name)):
+                    ac_custom_check_fns.append(getattr(mod, name))
+                    found += 1
+            if found == 0:
+                raise click.ClickException(
+                    f"Check module '{check_path}' has no check_* functions."
+                )
+            console.print(
+                f"[dim]Loaded {found} autocomplete check(s) from {check_path}[/dim]"
+            )
+
+    ac_run_metadata = _build_run_metadata(
+        top_k=top_k,
+        sample=sample,
+        total_queries=total_prefixes,
+        adapter_path=adapters[0] if len(adapters) == 1 else None,
+        adapter_path_a=adapters[0] if len(adapters) == 2 else None,
+        adapter_path_b=adapters[1] if len(adapters) == 2 else None,
+    )
+
+    html_paths: list[Path] = []
+
+    if len(adapters) == 1:
+        ac_run_metadata["llm_model"] = llm_model
+        ac_config = AutocompleteConfig(
+            name=config_names[0],
+            adapter_path=adapters[0],
+            top_k=top_k,
+        )
+        suggest_fn = load_suggest_adapter(adapters[0])
+        ac_checks, ac_responses = run_autocomplete_evaluation(
+            prefix_entries,
+            suggest_fn,
+            ac_config,
+            custom_checks=ac_custom_check_fns,
+        )
+
+        # ---- LLM suggestion evaluation ----
+        from veritail.autocomplete.judge import (
+            SUGGESTION_SYSTEM_PROMPT,
+            SuggestionJudge,
+        )
+        from veritail.autocomplete.pipeline import (
+            run_autocomplete_llm_evaluation,
+        )
+
+        # Create own LLM client
+        _warn_custom_model(llm_model, llm_base_url)
+        llm_client = create_llm_client(
+            llm_model, base_url=llm_base_url, api_key=llm_api_key
+        )
+        try:
+            llm_client.preflight_check()
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+        if use_batch:
+            if llm_base_url is not None:
+                raise click.UsageError(
+                    "--batch cannot be used with --llm-base-url. "
+                    "Batch APIs are only available for cloud providers "
+                    "(OpenAI, Anthropic, Gemini)."
+                )
+            if not llm_client.supports_batch():
+                raise click.UsageError(
+                    f"The model '{llm_model}' does not support batch operations."
+                )
+
+        # Build system prompt with vertical/context prefix
+        ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
+        prefix_parts: list[str] = []
+        if vertical_context:
+            prefix_parts.append(f"## Store Vertical\n{vertical_context}")
+        if context:
+            prefix_parts.append(f"## Business Context\n{context}")
+        if prefix_parts:
+            ac_system_prompt = "\n\n".join(prefix_parts) + "\n\n" + ac_system_prompt
+
+        ac_judge = SuggestionJudge(llm_client, ac_system_prompt, config_names[0])
+        if use_batch:
+            from veritail.autocomplete.pipeline import (
+                run_autocomplete_batch_llm_evaluation,
+            )
+
+            ac_suggestion_judgments = run_autocomplete_batch_llm_evaluation(
+                prefix_entries,
+                ac_responses,
+                ac_judge,
+                ac_config,
+                llm_client,
+                poll_interval=60,
+                resume=use_resume,
+                output_dir=output_dir,
+            )
+        else:
+            ac_suggestion_judgments = run_autocomplete_llm_evaluation(
+                prefix_entries, ac_responses, ac_judge, ac_config
+            )
+
+        # Write suggestion-judgments.jsonl
+        exp_dir = Path(output_dir) / config_names[0]
+        exp_dir.mkdir(parents=True, exist_ok=True)
+        sj_path = exp_dir / "suggestion-judgments.jsonl"
+        from dataclasses import asdict as _asdict
+
+        sj_path.write_text(
+            "\n".join(
+                json.dumps(_asdict(sj), default=str) for sj in ac_suggestion_judgments
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        ac_report = generate_autocomplete_report(
+            ac_checks,
+            responses_by_prefix=ac_responses,
+            prefixes=prefix_entries,
+            suggestion_judgments=ac_suggestion_judgments,
+        )
+        console.print(ac_report)
+
+        exp_dir = Path(output_dir) / config_names[0]
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        ac_html = generate_autocomplete_report(
+            ac_checks,
+            format="html",
+            responses_by_prefix=ac_responses,
+            prefixes=prefix_entries,
+            run_metadata=ac_run_metadata,
+            sibling_report=ac_sibling,
+            suggestion_judgments=ac_suggestion_judgments,
+        )
+        ac_html_path = exp_dir / "autocomplete-report.html"
+        ac_html_path.write_text(ac_html, encoding="utf-8")
+        console.print(f"[dim]Autocomplete HTML report -> {ac_html_path}[/dim]")
+        html_paths.append(ac_html_path)
+
+    else:
+        ac_config_a = AutocompleteConfig(
+            name=config_names[0],
+            adapter_path=adapters[0],
+            top_k=top_k,
+        )
+        ac_config_b = AutocompleteConfig(
+            name=config_names[1],
+            adapter_path=adapters[1],
+            top_k=top_k,
+        )
+        suggest_a = load_suggest_adapter(adapters[0])
+        suggest_b = load_suggest_adapter(adapters[1])
+
+        ac_checks_a, ac_checks_b, ac_comparison_checks = (
+            run_dual_autocomplete_evaluation(
+                prefix_entries,
+                suggest_a,
+                ac_config_a,
+                suggest_b,
+                ac_config_b,
+                custom_checks=ac_custom_check_fns,
+            )
+        )
+
+        ac_report = generate_autocomplete_comparison_report(
+            ac_checks_a,
+            ac_checks_b,
+            ac_comparison_checks,
+            config_names[0],
+            config_names[1],
+        )
+        console.print(ac_report)
+
+        ac_html = generate_autocomplete_comparison_report(
+            ac_checks_a,
+            ac_checks_b,
+            ac_comparison_checks,
+            config_names[0],
+            config_names[1],
+            format="html",
+            run_metadata=ac_run_metadata,
+            sibling_report=ac_sibling,
+        )
+        cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
+        ac_html_path = Path(output_dir) / cmp_dir / "autocomplete-report.html"
+        ac_html_path.parent.mkdir(parents=True, exist_ok=True)
+        ac_html_path.write_text(ac_html, encoding="utf-8")
+        console.print(f"[dim]Autocomplete HTML report -> {ac_html_path}[/dim]")
+        html_paths.append(ac_html_path)
+
+    return html_paths
+
+
 def _warn_custom_model(model: str, base_url: str | None) -> None:
     """Emit a warning when the model name is unrecognized."""
     if any(model.startswith(p) for p in _KNOWN_MODEL_PREFIXES):
@@ -643,501 +1179,73 @@ def run(
 
         vertical_context = load_vertical(vertical)
 
-    # ---- Search evaluation ----
+    # ---- Run evaluations ----
     html_paths: list[Path] = []
 
-    if queries:
-        assert llm_model is not None  # guarded above
-
-        query_entries = load_queries(queries)
-        total_queries = len(query_entries)
-
-        if sample is not None and sample < total_queries:
-            import random
-
-            rng = random.Random(42)
-            query_entries = rng.sample(query_entries, sample)
-            console.print(f"Sampled {sample} of {total_queries} queries from {queries}")
-        else:
-            console.print(f"Loaded {len(query_entries)} queries from {queries}")
-
-        rubric_data = load_rubric(rubric)
-
-        custom_check_fns: list[CustomCheckFn] | None = None
-        if check_modules:
-            custom_check_fns = []
-            for check_path in check_modules:
-                loaded = load_checks(check_path)
-                custom_check_fns.extend(loaded)
-                console.print(
-                    f"[dim]Loaded {len(loaded)} custom check(s) from {check_path}[/dim]"
-                )
-
-        _warn_custom_model(llm_model, llm_base_url)
-        llm_client = create_llm_client(
-            llm_model, base_url=llm_base_url, api_key=llm_api_key
-        )
-
-        try:
-            llm_client.preflight_check()
-        except RuntimeError as exc:
-            raise click.ClickException(str(exc)) from exc
-
-        if use_batch:
-            if llm_base_url is not None:
-                raise click.UsageError(
-                    "--batch cannot be used with --llm-base-url. "
-                    "Batch APIs are only available for cloud providers "
-                    "(OpenAI, Anthropic, Gemini)."
-                )
-            if not llm_client.supports_batch():
-                raise click.UsageError(
-                    f"The model '{llm_model}' does not support batch operations."
-                )
-
-        backend_kwargs: dict[str, str] = {}
-        if backend_type == "file":
-            backend_kwargs["output_dir"] = output_dir
-        elif backend_type == "langfuse":
-            if backend_url:
-                backend_kwargs["url"] = backend_url
-
-        backend = create_backend(backend_type, **backend_kwargs)
-
-        if len(adapters) == 1:
-            # Single configuration
-            config = ExperimentConfig(
-                name=config_names[0],
-                adapter_path=adapters[0],
-                llm_model=llm_model,
-                rubric=rubric,
-                top_k=top_k,
-            )
-            adapter_fn = load_adapter(adapters[0])
-
-            pipeline_fn = run_batch_evaluation if use_batch else run_evaluation
-            judgments, checks, metrics, correction_judgments = pipeline_fn(
-                query_entries,
-                adapter_fn,
-                config,
-                llm_client,
-                rubric_data,
-                backend,
-                context=context,
-                vertical=vertical_context,
-                custom_checks=custom_check_fns,
-                resume=use_resume,
-                output_dir=output_dir,
-            )
-            run_metadata = _build_run_metadata(
-                llm_model=llm_model,
-                rubric=rubric,
-                vertical=vertical,
-                top_k=top_k,
-                sample=sample,
-                total_queries=total_queries,
-                adapter_path=adapters[0],
-            )
-
-            report = generate_single_report(
-                metrics,
-                checks,
-                run_metadata=run_metadata,
-                correction_judgments=correction_judgments or None,
-            )
-            console.print(report)
-
-            exp_dir = Path(output_dir) / config_names[0]
-            exp_dir.mkdir(parents=True, exist_ok=True)
-
-            metrics_path = exp_dir / "metrics.json"
-            metrics_path.write_text(
-                json.dumps(
-                    [asdict(m) for m in metrics],
-                    indent=2,
-                    default=str,
-                ),
-                encoding="utf-8",
-            )
-
-            if correction_judgments:
-                corrections_path = exp_dir / "corrections.jsonl"
-                corrections_path.write_text(
-                    "\n".join(
-                        json.dumps(asdict(cj), default=str)
-                        for cj in correction_judgments
-                    )
-                    + "\n",
-                    encoding="utf-8",
-                )
-
-            html = generate_single_report(
-                metrics,
-                checks,
-                judgments=judgments,
-                format="html",
-                run_metadata=run_metadata,
-                correction_judgments=correction_judgments or None,
-                sibling_report=search_sibling,
-            )
-            html_path = exp_dir / "report.html"
-            html_path.write_text(html, encoding="utf-8")
-            console.print(f"[dim]HTML report -> {html_path}[/dim]")
-            html_paths.append(html_path)
-
-        else:
-            # Dual configuration
-            config_a = ExperimentConfig(
-                name=config_names[0],
-                adapter_path=adapters[0],
-                llm_model=llm_model,
-                rubric=rubric,
-                top_k=top_k,
-            )
-            config_b = ExperimentConfig(
-                name=config_names[1],
-                adapter_path=adapters[1],
-                llm_model=llm_model,
-                rubric=rubric,
-                top_k=top_k,
-            )
-            adapter_a = load_adapter(adapters[0])
-            adapter_b = load_adapter(adapters[1])
-
-            dual_fn = run_dual_batch_evaluation if use_batch else run_dual_evaluation
-            (
-                judgments_a,
-                judgments_b,
-                checks_a,
-                checks_b,
-                metrics_a,
-                metrics_b,
-                comparison_checks,
-                corrections_a,
-                corrections_b,
-            ) = dual_fn(
-                query_entries,
-                adapter_a,
-                config_a,
-                adapter_b,
-                config_b,
-                llm_client,
-                rubric_data,
-                backend,
-                context=context,
-                vertical=vertical_context,
-                custom_checks=custom_check_fns,
-                resume=use_resume,
-                output_dir=output_dir,
-            )
-            run_metadata = _build_run_metadata(
-                llm_model=llm_model,
-                rubric=rubric,
-                vertical=vertical,
-                top_k=top_k,
-                sample=sample,
-                total_queries=total_queries,
-                adapter_path_a=adapters[0],
-                adapter_path_b=adapters[1],
-            )
-
-            report = generate_comparison_report(
-                metrics_a,
-                metrics_b,
-                comparison_checks,
-                config_names[0],
-                config_names[1],
-                run_metadata=run_metadata,
-                correction_judgments_a=corrections_a or None,
-                correction_judgments_b=corrections_b or None,
-            )
-            console.print(report)
-
-            configs_and_data = [
-                (config_names[0], metrics_a, corrections_a),
-                (config_names[1], metrics_b, corrections_b),
-            ]
-            for cfg_name, cfg_metrics, cfg_corrections in configs_and_data:
-                exp_dir = Path(output_dir) / cfg_name
-                exp_dir.mkdir(parents=True, exist_ok=True)
-                metrics_path = exp_dir / "metrics.json"
-                metrics_path.write_text(
-                    json.dumps(
-                        [asdict(m) for m in cfg_metrics],
-                        indent=2,
-                        default=str,
-                    ),
-                    encoding="utf-8",
-                )
-                if cfg_corrections:
-                    corrections_path = exp_dir / "corrections.jsonl"
-                    corrections_path.write_text(
-                        "\n".join(
-                            json.dumps(asdict(cj), default=str)
-                            for cj in cfg_corrections
-                        )
-                        + "\n",
-                        encoding="utf-8",
-                    )
-
-            html = generate_comparison_report(
-                metrics_a,
-                metrics_b,
-                comparison_checks,
-                config_names[0],
-                config_names[1],
-                format="html",
-                run_metadata=run_metadata,
-                correction_judgments_a=corrections_a or None,
-                correction_judgments_b=corrections_b or None,
-                sibling_report=search_sibling,
-            )
-            cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
-            html_path = Path(output_dir) / cmp_dir / "report.html"
-            html_path.parent.mkdir(parents=True, exist_ok=True)
-            html_path.write_text(html, encoding="utf-8")
-            console.print(f"[dim]HTML report -> {html_path}[/dim]")
-            html_paths.append(html_path)
-
-    # ---- Autocomplete evaluation ----
-    if autocomplete_prefixes:
-        from veritail.autocomplete.adapter import load_suggest_adapter
-        from veritail.autocomplete.pipeline import (
-            run_autocomplete_evaluation,
-            run_dual_autocomplete_evaluation,
-        )
-        from veritail.autocomplete.queries import load_prefixes
-        from veritail.autocomplete.reporting import (
-            generate_autocomplete_comparison_report,
-            generate_autocomplete_report,
-        )
-        from veritail.types import AutocompleteConfig
-
-        prefix_entries = load_prefixes(autocomplete_prefixes)
-        total_prefixes = len(prefix_entries)
-
-        if sample is not None and sample < total_prefixes:
-            import random
-
-            rng = random.Random(42)
-            prefix_entries = rng.sample(prefix_entries, sample)
-            console.print(
-                f"Sampled {sample} of {total_prefixes} prefixes from "
-                f"{autocomplete_prefixes}"
-            )
-        else:
-            console.print(
-                f"Loaded {len(prefix_entries)} prefixes from {autocomplete_prefixes}"
-            )
-
-        # Load autocomplete-specific custom checks
-        ac_custom_check_fns = None
-        if autocomplete_check_modules:
-            import importlib.util
-
-            ac_custom_check_fns = []
-            for check_path in autocomplete_check_modules:
-                spec = importlib.util.spec_from_file_location(
-                    "ac_custom_checks", check_path
-                )
-                if spec is None or spec.loader is None:
-                    raise click.ClickException(
-                        f"Could not load check module from: {check_path}"
-                    )
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                found = 0
-                for name in sorted(dir(mod)):
-                    if name.startswith("check_") and callable(getattr(mod, name)):
-                        ac_custom_check_fns.append(getattr(mod, name))
-                        found += 1
-                if found == 0:
-                    raise click.ClickException(
-                        f"Check module '{check_path}' has no check_* functions."
-                    )
-                console.print(
-                    f"[dim]Loaded {found} autocomplete check(s) from {check_path}[/dim]"
-                )
-
-        ac_run_metadata = _build_run_metadata(
+    def _do_search() -> list[Path]:
+        assert queries is not None
+        assert llm_model is not None
+        return _run_search_pipeline(
+            queries_path=queries,
+            adapters=adapters,
+            config_names=config_names,
+            llm_model=llm_model,
+            llm_base_url=llm_base_url,
+            llm_api_key=llm_api_key,
+            rubric_name=rubric,
+            backend_type=backend_type,
+            output_dir=output_dir,
+            backend_url=backend_url,
             top_k=top_k,
+            context=context,
+            vertical_context=vertical_context,
+            vertical_raw=vertical,
+            check_modules=check_modules,
             sample=sample,
-            total_queries=total_prefixes,
-            adapter_path=adapters[0] if len(adapters) == 1 else None,
-            adapter_path_a=adapters[0] if len(adapters) == 2 else None,
-            adapter_path_b=adapters[1] if len(adapters) == 2 else None,
+            use_batch=use_batch,
+            use_resume=use_resume,
+            search_sibling=search_sibling,
         )
 
-        if len(adapters) == 1:
-            ac_run_metadata["llm_model"] = llm_model
-            ac_config = AutocompleteConfig(
-                name=config_names[0],
-                adapter_path=adapters[0],
-                top_k=top_k,
-            )
-            suggest_fn = load_suggest_adapter(adapters[0])
-            ac_checks, ac_responses = run_autocomplete_evaluation(
-                prefix_entries,
-                suggest_fn,
-                ac_config,
-                custom_checks=ac_custom_check_fns,
-            )
+    def _do_autocomplete() -> list[Path]:
+        assert autocomplete_prefixes is not None
+        assert llm_model is not None
+        return _run_autocomplete_pipeline(
+            autocomplete_prefixes=autocomplete_prefixes,
+            adapters=adapters,
+            config_names=config_names,
+            llm_model=llm_model,
+            llm_base_url=llm_base_url,
+            llm_api_key=llm_api_key,
+            output_dir=output_dir,
+            top_k=top_k,
+            context=context,
+            vertical_context=vertical_context,
+            autocomplete_check_modules=autocomplete_check_modules,
+            sample=sample,
+            use_batch=use_batch,
+            use_resume=use_resume,
+            ac_sibling=ac_sibling,
+        )
 
-            # ---- LLM suggestion evaluation ----
-            from veritail.autocomplete.judge import (
-                SUGGESTION_SYSTEM_PROMPT,
-                SuggestionJudge,
-            )
-            from veritail.autocomplete.pipeline import (
-                run_autocomplete_llm_evaluation,
-            )
+    # Concurrent path: both search and autocomplete in batch mode
+    if queries and autocomplete_prefixes and use_batch:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-            # Create LLM client if not already created (search eval creates it)
-            assert llm_model is not None  # validated above
-            if not queries:
-                _warn_custom_model(llm_model, llm_base_url)
-                llm_client = create_llm_client(
-                    llm_model, base_url=llm_base_url, api_key=llm_api_key
-                )
-                try:
-                    llm_client.preflight_check()
-                except RuntimeError as exc:
-                    raise click.ClickException(str(exc)) from exc
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            search_future = executor.submit(_do_search)
+            ac_future = executor.submit(_do_autocomplete)
+            for future in as_completed([search_future, ac_future]):
+                future.result()  # re-raises any exception
+            html_paths = search_future.result() + ac_future.result()
 
-                if use_batch:
-                    if llm_base_url is not None:
-                        raise click.UsageError(
-                            "--batch cannot be used with --llm-base-url. "
-                            "Batch APIs are only available for cloud providers "
-                            "(OpenAI, Anthropic, Gemini)."
-                        )
-                    if not llm_client.supports_batch():
-                        raise click.UsageError(
-                            f"The model '{llm_model}' does not support "
-                            f"batch operations."
-                        )
+    else:
+        # Sequential path
+        if queries:
+            html_paths.extend(_do_search())
 
-            # Build system prompt with vertical/context prefix
-            ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
-            prefix_parts: list[str] = []
-            if vertical_context:
-                prefix_parts.append(f"## Store Vertical\n{vertical_context}")
-            if context:
-                prefix_parts.append(f"## Business Context\n{context}")
-            if prefix_parts:
-                ac_system_prompt = "\n\n".join(prefix_parts) + "\n\n" + ac_system_prompt
-
-            ac_judge = SuggestionJudge(llm_client, ac_system_prompt, config_names[0])
-            if use_batch:
-                from veritail.autocomplete.pipeline import (
-                    run_autocomplete_batch_llm_evaluation,
-                )
-
-                ac_suggestion_judgments = run_autocomplete_batch_llm_evaluation(
-                    prefix_entries,
-                    ac_responses,
-                    ac_judge,
-                    ac_config,
-                    llm_client,
-                    poll_interval=60,
-                    resume=use_resume,
-                    output_dir=output_dir,
-                )
-            else:
-                ac_suggestion_judgments = run_autocomplete_llm_evaluation(
-                    prefix_entries, ac_responses, ac_judge, ac_config
-                )
-
-            # Write suggestion-judgments.jsonl
-            exp_dir = Path(output_dir) / config_names[0]
-            exp_dir.mkdir(parents=True, exist_ok=True)
-            sj_path = exp_dir / "suggestion-judgments.jsonl"
-            from dataclasses import asdict as _asdict
-
-            sj_path.write_text(
-                "\n".join(
-                    json.dumps(_asdict(sj), default=str)
-                    for sj in ac_suggestion_judgments
-                )
-                + "\n",
-                encoding="utf-8",
-            )
-
-            ac_report = generate_autocomplete_report(
-                ac_checks,
-                responses_by_prefix=ac_responses,
-                prefixes=prefix_entries,
-                suggestion_judgments=ac_suggestion_judgments,
-            )
-            console.print(ac_report)
-
-            exp_dir = Path(output_dir) / config_names[0]
-            exp_dir.mkdir(parents=True, exist_ok=True)
-
-            ac_html = generate_autocomplete_report(
-                ac_checks,
-                format="html",
-                responses_by_prefix=ac_responses,
-                prefixes=prefix_entries,
-                run_metadata=ac_run_metadata,
-                sibling_report=ac_sibling,
-                suggestion_judgments=ac_suggestion_judgments,
-            )
-            ac_html_path = exp_dir / "autocomplete-report.html"
-            ac_html_path.write_text(ac_html, encoding="utf-8")
-            console.print(f"[dim]Autocomplete HTML report -> {ac_html_path}[/dim]")
-            html_paths.append(ac_html_path)
-
-        else:
-            ac_config_a = AutocompleteConfig(
-                name=config_names[0],
-                adapter_path=adapters[0],
-                top_k=top_k,
-            )
-            ac_config_b = AutocompleteConfig(
-                name=config_names[1],
-                adapter_path=adapters[1],
-                top_k=top_k,
-            )
-            suggest_a = load_suggest_adapter(adapters[0])
-            suggest_b = load_suggest_adapter(adapters[1])
-
-            ac_checks_a, ac_checks_b, ac_comparison_checks = (
-                run_dual_autocomplete_evaluation(
-                    prefix_entries,
-                    suggest_a,
-                    ac_config_a,
-                    suggest_b,
-                    ac_config_b,
-                    custom_checks=ac_custom_check_fns,
-                )
-            )
-
-            ac_report = generate_autocomplete_comparison_report(
-                ac_checks_a,
-                ac_checks_b,
-                ac_comparison_checks,
-                config_names[0],
-                config_names[1],
-            )
-            console.print(ac_report)
-
-            ac_html = generate_autocomplete_comparison_report(
-                ac_checks_a,
-                ac_checks_b,
-                ac_comparison_checks,
-                config_names[0],
-                config_names[1],
-                format="html",
-                run_metadata=ac_run_metadata,
-                sibling_report=ac_sibling,
-            )
-            cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
-            ac_html_path = Path(output_dir) / cmp_dir / "autocomplete-report.html"
-            ac_html_path.parent.mkdir(parents=True, exist_ok=True)
-            ac_html_path.write_text(ac_html, encoding="utf-8")
-            console.print(f"[dim]Autocomplete HTML report -> {ac_html_path}[/dim]")
-            html_paths.append(ac_html_path)
+        if autocomplete_prefixes:
+            html_paths.extend(_do_autocomplete())
 
     # ---- Open report in browser ----
     if open_browser and html_paths:

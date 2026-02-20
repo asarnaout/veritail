@@ -8,6 +8,7 @@ import pytest
 
 from veritail.backends import EvalBackend
 from veritail.backends.file import FileBackend
+from veritail.checkpoint import BatchCheckpoint, save_checkpoint
 from veritail.llm.client import BatchRequest, BatchResult, LLMClient, LLMResponse
 from veritail.pipeline import run_batch_evaluation, run_dual_evaluation, run_evaluation
 from veritail.types import (
@@ -1297,3 +1298,313 @@ class TestRunBatchEvaluation:
         # Metrics should have by_type breakdown
         ndcg = next(m for m in metrics if m.metric_name == "ndcg@10")
         assert "navigational" in ndcg.by_query_type
+
+    def test_batch_concurrent_submit_both_upfront(self, tmp_path):
+        """Both relevance and correction batches are submitted before polling."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        responses = [
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+            "VERDICT: appropriate\nREASONING: Spelling fix.",
+        ]
+        llm_client = _make_mock_batch_llm_client(responses)
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        # Both batches submitted before polling: 2 submit_batch calls
+        assert llm_client.submit_batch.call_count == 2
+        # Both results processed correctly
+        assert len(judgments) == 1
+        assert judgments[0].score == 3
+        assert len(corrections) == 1
+        assert corrections[0].verdict == "appropriate"
+
+        # Verify submit order: relevance first, corrections second
+        first_batch_reqs = llm_client.submit_batch.call_args_list[0][0][0]
+        second_batch_reqs = llm_client.submit_batch.call_args_list[1][0][0]
+        assert first_batch_reqs[0].custom_id.startswith("rel-")
+        assert second_batch_reqs[0].custom_id.startswith("corr-")
+
+    def test_batch_no_corrections_single_submit(self, tmp_path):
+        """Only 1 submit_batch when there are no corrections."""
+        queries = [QueryEntry(query="shoes", type="broad")]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        responses = [
+            "SCORE: 3\nATTRIBUTES: match\nREASONING: Excellent",
+            "SCORE: 2\nATTRIBUTES: partial\nREASONING: Good",
+            "SCORE: 1\nATTRIBUTES: mismatch\nREASONING: Marginal",
+        ]
+        llm_client = _make_mock_batch_llm_client(responses)
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            rubric,
+            backend,
+            poll_interval=0,
+        )
+
+        # Only relevance batch submitted
+        assert llm_client.submit_batch.call_count == 1
+        assert len(corrections) == 0
+
+    def test_batch_resume_with_correction_batch_id(self, tmp_path):
+        """Checkpoint with correction_batch_id resumes and processes both."""
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        # Save a checkpoint with both batch IDs
+        from veritail.checkpoint import serialize_request_context
+
+        result = SearchResult(
+            product_id="SKU-1",
+            title="Shoe",
+            description="desc",
+            category="Shoes",
+            price=50.0,
+            position=0,
+        )
+        req_ctx = {
+            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0)
+        }
+        cp = BatchCheckpoint(
+            batch_id="batch-rel",
+            experiment_name="test-batch",
+            phase="relevance",
+            request_context=serialize_request_context(req_ctx),
+            checks=[],
+            correction_entries=[[0, "runnign shoes", "running shoes"]],
+            correction_batch_id="batch-corr",
+            correction_context={
+                "corr-0": {"original": "runnign shoes", "corrected": "running shoes"}
+            },
+        )
+        save_checkpoint(str(tmp_path), "test-batch", cp)
+
+        # Mock client that returns completed results for both batches
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+        client.poll_batch.return_value = ("completed", 1, 1)
+
+        client.retrieve_batch_results.side_effect = [
+            # Relevance results
+            [
+                BatchResult(
+                    custom_id="rel-0-0",
+                    response=LLMResponse(
+                        content="SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+                        model="test",
+                        input_tokens=10,
+                        output_tokens=10,
+                    ),
+                )
+            ],
+            # Correction results
+            [
+                BatchResult(
+                    custom_id="corr-0",
+                    response=LLMResponse(
+                        content="VERDICT: appropriate\nREASONING: Spelling fix.",
+                        model="test",
+                        input_tokens=10,
+                        output_tokens=10,
+                    ),
+                )
+            ],
+        ]
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            _make_mock_adapter(),
+            config,
+            client,
+            rubric,
+            backend,
+            poll_interval=0,
+            resume=True,
+            output_dir=str(tmp_path),
+        )
+
+        # No submit_batch calls (resumed from checkpoint)
+        client.submit_batch.assert_not_called()
+        assert len(judgments) == 1
+        assert judgments[0].score == 3
+        assert len(corrections) == 1
+        assert corrections[0].verdict == "appropriate"
+
+    def test_batch_resume_backward_compat(self, tmp_path):
+        """Old checkpoint without correction_batch_id still works."""
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        from veritail.checkpoint import serialize_request_context
+
+        result = SearchResult(
+            product_id="SKU-1",
+            title="Shoe",
+            description="desc",
+            category="Shoes",
+            price=50.0,
+            position=0,
+        )
+        req_ctx = {"rel-0-0": ("shoes", result, "broad", None, [], 0)}
+        cp = BatchCheckpoint(
+            batch_id="batch-rel",
+            experiment_name="test-batch",
+            phase="relevance",
+            request_context=serialize_request_context(req_ctx),
+            checks=[],
+            correction_entries=[],
+            # No correction_batch_id, no correction_context
+        )
+        save_checkpoint(str(tmp_path), "test-batch", cp)
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+        client.poll_batch.return_value = ("completed", 1, 1)
+        client.retrieve_batch_results.return_value = [
+            BatchResult(
+                custom_id="rel-0-0",
+                response=LLMResponse(
+                    content="SCORE: 2\nATTRIBUTES: partial\nREASONING: OK",
+                    model="test",
+                    input_tokens=10,
+                    output_tokens=10,
+                ),
+            )
+        ]
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+        queries = [QueryEntry(query="shoes", type="broad")]
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            _make_mock_adapter(),
+            config,
+            client,
+            rubric,
+            backend,
+            poll_interval=0,
+            resume=True,
+            output_dir=str(tmp_path),
+        )
+
+        assert len(judgments) == 1
+        assert len(corrections) == 0
+
+    def test_batch_correction_batch_fails(self, tmp_path):
+        """RuntimeError when correction batch fails."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+
+        submitted: list[list[BatchRequest]] = []
+
+        def submit_batch(requests):
+            submitted.append(list(requests))
+            return f"batch-{len(submitted)}"
+
+        client.submit_batch.side_effect = submit_batch
+
+        # First poll (relevance): completed; second poll (correction): failed
+        client.poll_batch.side_effect = [
+            ("completed", 1, 1),
+            ("failed", 0, 1),
+        ]
+        client.batch_error_message.return_value = None
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        with pytest.raises(RuntimeError, match="batch-2 failed"):
+            run_batch_evaluation(
+                queries,
+                adapter,
+                config,
+                client,
+                rubric,
+                backend,
+                poll_interval=0,
+            )

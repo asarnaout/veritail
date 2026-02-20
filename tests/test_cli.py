@@ -1735,6 +1735,91 @@ class TestCLI:
         assert result.exit_code != 0
         assert "does not support batch operations" in result.output
 
+    def test_batch_concurrent_search_and_autocomplete(self, tmp_path):
+        """--batch with both --queries and --autocomplete runs both pipelines."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult, AutocompleteResponse\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from pathlib import Path
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        search_called = []
+        ac_called = []
+
+        def mock_search_pipeline(**kwargs):
+            search_called.append(True)
+            # Create a minimal report file
+            exp_dir = Path(kwargs["output_dir"]) / kwargs["config_names"][0]
+            exp_dir.mkdir(parents=True, exist_ok=True)
+            html_path = exp_dir / "report.html"
+            html_path.write_text("<html>search</html>", encoding="utf-8")
+            return [html_path]
+
+        def mock_ac_pipeline(**kwargs):
+            ac_called.append(True)
+            exp_dir = Path(kwargs["output_dir"]) / kwargs["config_names"][0]
+            exp_dir.mkdir(parents=True, exist_ok=True)
+            html_path = exp_dir / "autocomplete-report.html"
+            html_path.write_text("<html>ac</html>", encoding="utf-8")
+            return [html_path]
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        with (
+            patch("veritail.cli.create_llm_client", return_value=mock_client),
+            patch(
+                "veritail.cli._run_search_pipeline",
+                side_effect=mock_search_pipeline,
+            ),
+            patch(
+                "veritail.cli._run_autocomplete_pipeline",
+                side_effect=mock_ac_pipeline,
+            ),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code == 0
+        # Both pipelines were invoked
+        assert len(search_called) == 1
+        assert len(ac_called) == 1
+
     def test_run_dual_config_without_batch(self, tmp_path):
         queries_file = tmp_path / "queries.csv"
         queries_file.write_text("query\nshoes\n")
