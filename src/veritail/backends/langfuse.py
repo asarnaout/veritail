@@ -74,7 +74,7 @@ class LangfuseBackend(EvalBackend):
             },
         )
         if self._session_id:
-            self._client.update_current_trace(session_id=self._session_id)
+            span.update_trace(session_id=self._session_id)
 
         generation = span.start_generation(
             name="relevance-judgment",
@@ -117,7 +117,7 @@ class LangfuseBackend(EvalBackend):
             },
         )
         if self._session_id:
-            self._client.update_current_trace(session_id=self._session_id)
+            span.update_trace(session_id=self._session_id)
         span.end()
 
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
@@ -159,7 +159,7 @@ class LangfuseBackend(EvalBackend):
             },
         )
         if self._session_id:
-            self._client.update_current_trace(session_id=self._session_id)
+            span.update_trace(session_id=self._session_id)
         span.end()
 
         self._client.create_score(
@@ -188,7 +188,7 @@ class LangfuseBackend(EvalBackend):
             },
         )
         if self._session_id:
-            self._client.update_current_trace(session_id=self._session_id)
+            span.update_trace(session_id=self._session_id)
 
         generation = span.start_generation(
             name="suggestion-judgment",

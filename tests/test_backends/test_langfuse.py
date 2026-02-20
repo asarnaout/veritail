@@ -232,13 +232,13 @@ def test_log_experiment_sets_session_id(mock_langfuse_cls: MagicMock) -> None:
 
     backend = LangfuseBackend()
 
-    # Before log_experiment, update_current_trace should not be called
-    mock_client.update_current_trace.assert_not_called()
+    # Before log_experiment, span.update_trace should not be called
+    mock_span.update_trace.assert_not_called()
 
     backend.log_experiment("my-session", {"llm_model": "claude-sonnet-4-5"})
 
-    # After log_experiment, update_current_trace is called with session_id
-    mock_client.update_current_trace.assert_called_once_with(session_id="my-session")
+    # After log_experiment, span.update_trace is called with session_id
+    mock_span.update_trace.assert_called_once_with(session_id="my-session")
 
 
 @patch("veritail.backends.langfuse.Langfuse")
@@ -253,11 +253,11 @@ def test_suggestion_judgment_with_session_id(mock_langfuse_cls: MagicMock) -> No
 
     backend = LangfuseBackend()
     backend.log_experiment("ac-session", {"type": "autocomplete"})
-    mock_client.update_current_trace.reset_mock()
+    mock_span.update_trace.reset_mock()
 
     backend.log_suggestion_judgment(_make_suggestion_judgment())
 
-    mock_client.update_current_trace.assert_called_once_with(session_id="ac-session")
+    mock_span.update_trace.assert_called_once_with(session_id="ac-session")
 
 
 @patch("veritail.backends.langfuse.Langfuse")
@@ -279,8 +279,8 @@ def test_correction_judgment_with_session_id(mock_langfuse_cls: MagicMock) -> No
 
     backend = LangfuseBackend()
     backend.log_experiment("corr-session", {"type": "search"})
-    mock_client.update_current_trace.reset_mock()
+    mock_span.update_trace.reset_mock()
 
     backend.log_correction_judgment(correction)
 
-    mock_client.update_current_trace.assert_called_once_with(session_id="corr-session")
+    mock_span.update_trace.assert_called_once_with(session_id="corr-session")
