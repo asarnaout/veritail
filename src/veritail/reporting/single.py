@@ -130,7 +130,7 @@ CHECK_ORDER: list[str] = [
 ]
 
 
-def _summarize_checks(
+def summarize_checks(
     checks: list[CheckResult],
 ) -> list[tuple[str, dict[str, str | int | bool]]]:
     """Build a display-ready, ordered check summary for reports."""
@@ -292,7 +292,7 @@ def _generate_terminal(
     check_table.add_column("Passed", justify="right", style="green")
     check_table.add_column("Failed", justify="right", style="red")
 
-    check_summary = _summarize_checks(checks)
+    check_summary = summarize_checks(checks)
 
     for _, counts in check_summary:
         check_table.add_row(
@@ -376,7 +376,7 @@ def _generate_html(
     template = _JINJA_ENV.from_string(template_str)
 
     # Build check summary
-    check_summary = _summarize_checks(checks)
+    check_summary = summarize_checks(checks)
 
     # Worst queries
     ndcg = next(

@@ -11,9 +11,11 @@ from rich.console import Console
 from rich.table import Table
 
 from veritail.reporting.single import (
+    CHECK_DESCRIPTIONS,
     METRIC_DESCRIPTIONS,
     QUERY_TYPE_DESCRIPTIONS,
     QUERY_TYPE_DISPLAY_NAMES,
+    summarize_checks,
 )
 from veritail.types import CheckResult, CorrectionJudgment, JudgmentRecord, MetricResult
 
@@ -35,6 +37,8 @@ def generate_comparison_report(
     sibling_report: str | None = None,
     judgments_a: list[JudgmentRecord] | None = None,
     judgments_b: list[JudgmentRecord] | None = None,
+    checks_a: list[CheckResult] | None = None,
+    checks_b: list[CheckResult] | None = None,
 ) -> str:
     """Generate a comparison report for two evaluation configurations.
 
@@ -50,6 +54,8 @@ def generate_comparison_report(
         sibling_report: Optional relative path to a sibling report.
         judgments_a: Optional LLM judgments for config A (used in HTML)
         judgments_b: Optional LLM judgments for config B (used in HTML)
+        checks_a: Optional per-config check results for config A (HTML)
+        checks_b: Optional per-config check results for config B (HTML)
 
     Returns:
         Formatted report string.
@@ -65,6 +71,8 @@ def generate_comparison_report(
             sibling_report=sibling_report,
             judgments_a=judgments_a,
             judgments_b=judgments_b,
+            checks_a=checks_a,
+            checks_b=checks_b,
         )
     return _generate_terminal(
         metrics_a,
@@ -277,6 +285,8 @@ def _generate_html(
     sibling_report: str | None = None,
     judgments_a: list[JudgmentRecord] | None = None,
     judgments_b: list[JudgmentRecord] | None = None,
+    checks_a: list[CheckResult] | None = None,
+    checks_b: list[CheckResult] | None = None,
 ) -> str:
     """Generate an HTML comparison report."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -374,6 +384,37 @@ def _generate_html(
                     per_type[qt] = {"value_a": va, "value_b": vb, "delta": qt_delta}
                 type_comparison.append({"name": m_a.metric_name, "types": per_type})
 
+    # Deterministic checks comparison
+    check_comparison: list[dict[str, object]] = []
+    if checks_a or checks_b:
+        summary_a = dict(summarize_checks(checks_a or []))
+        summary_b = dict(summarize_checks(checks_b or []))
+        all_check_names: list[str] = list(summary_a.keys())
+        for name in summary_b:
+            if name not in summary_a:
+                all_check_names.append(name)
+        for name in all_check_names:
+            a_data = summary_a.get(name)
+            b_data = summary_b.get(name)
+            display = (
+                str(a_data["display_name"])
+                if a_data
+                else str(b_data["display_name"])
+                if b_data
+                else name
+            )
+            failed_a = int(a_data["failed"]) if a_data else 0
+            failed_b = int(b_data["failed"]) if b_data else 0
+            check_comparison.append(
+                {
+                    "name": name,
+                    "display_name": display,
+                    "failed_a": failed_a,
+                    "failed_b": failed_b,
+                    "delta": failed_b - failed_a,
+                }
+            )
+
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
         key_to_label = [
@@ -411,4 +452,6 @@ def _generate_html(
         query_type_display_names=QUERY_TYPE_DISPLAY_NAMES,
         query_type_descriptions=QUERY_TYPE_DESCRIPTIONS,
         metric_descriptions=METRIC_DESCRIPTIONS,
+        check_comparison=check_comparison,
+        check_descriptions=CHECK_DESCRIPTIONS,
     )

@@ -322,3 +322,50 @@ class TestGenerateComparisonReport:
         )
         assert "Metrics by Query Type" in report
         assert "broad" in report
+
+    def test_html_deterministic_checks_comparison(self):
+        """Deterministic checks comparison table appears."""
+        checks_a = [
+            CheckResult(
+                check_name="zero_results",
+                query="shoes",
+                product_id=None,
+                passed=True,
+                detail="OK",
+            ),
+            CheckResult(
+                check_name="zero_results",
+                query="hat",
+                product_id=None,
+                passed=False,
+                detail="Zero results",
+            ),
+        ]
+        checks_b = [
+            CheckResult(
+                check_name="zero_results",
+                query="shoes",
+                product_id=None,
+                passed=True,
+                detail="OK",
+            ),
+            CheckResult(
+                check_name="zero_results",
+                query="hat",
+                product_id=None,
+                passed=True,
+                detail="OK",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+            checks_a=checks_a,
+            checks_b=checks_b,
+        )
+        assert "Deterministic Checks" in report
+        assert "zero_results" in report

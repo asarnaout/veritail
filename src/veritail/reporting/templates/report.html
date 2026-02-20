@@ -188,6 +188,37 @@
     </table></div>
     {% endif %}
 
+    {% if check_comparison %}
+    <h2>Deterministic Checks</h2>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Check</th>
+                <th>Failed ({{ config_a }})</th>
+                <th>Failed ({{ config_b }})</th>
+                <th>Delta</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in check_comparison %}
+            <tr>
+                <td>
+                    {{ c.display_name }}
+                    {% if check_descriptions and check_descriptions.get(c.name) %}
+                    <span class="tip" data-tip="{{ check_descriptions[c.name] }}">?</span>
+                    {% endif %}
+                </td>
+                <td class="metric-value {% if c.failed_a > 0 %}negative{% else %}neutral{% endif %}">{{ c.failed_a }}</td>
+                <td class="metric-value {% if c.failed_b > 0 %}negative{% else %}neutral{% endif %}">{{ c.failed_b }}</td>
+                <td class="metric-value {% if c.delta < 0 %}positive{% elif c.delta > 0 %}negative{% else %}neutral{% endif %}">
+                    {{ "%+d"|format(c.delta) }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% endif %}
+
     {% if shift_checks %}
     <h2>Biggest Position Shifts</h2>
     <div class="table-wrap"><table>
