@@ -174,6 +174,8 @@ Choose the vertical that best matches the ecommerce site you are evaluating.
 
 You can also provide a custom vertical as a plain text file with `--vertical ./my_vertical.txt`. Use the built-in verticals in `src/veritail/verticals/` as templates.
 
+Use `--context` to layer enterprise-specific rules on top of a vertical — things like brand priorities, certification requirements, or domain jargon unique to your store. See [Custom Rubrics & Enterprise Context](docs/custom-rubrics.md) for details.
+
 Examples:
 
 ```bash
@@ -189,12 +191,12 @@ veritail run \
   --adapter my_adapter.py \
   --vertical ./my_vertical.txt
 
-# Vertical + business context
+# Vertical + enterprise-specific rules
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
-  --vertical foodservice \
-  --context "B2B supplier specializing in BBQ restaurant equipment"
+  --vertical home-improvement \
+  --context "Pro contractor supplier. Queries for lumber should always prioritize pressure-treated options."
 
 # Vertical + detailed business context from a file
 veritail run \
