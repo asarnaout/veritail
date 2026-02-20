@@ -1931,6 +1931,9 @@ _CATALOG: dict[str, list[dict]] = {
 }
 
 
+# -- Search (veritail calls this function) ------------------------------------
+
+
 def search(query: str) -> SearchResponse:
     """Return mock search results for the given query.
 
@@ -2131,6 +2134,9 @@ _SUGGESTIONS: dict[str, list[str]] = {
         "self drilling drywall anchor with screws",
     ],
 }
+
+
+# -- Suggest (veritail calls this function) -----------------------------------
 
 
 def suggest(prefix: str) -> AutocompleteResponse:
