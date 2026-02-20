@@ -13,43 +13,11 @@ Five evaluation layers:
 
 Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context and rubrics. Optional [Langfuse](docs/backends.md#langfuse-backend) integration for full observability — every judgment, score, and LLM call traced and grouped by evaluation run.
 
-## Demo
-
-### Evaluate search results
-
-<br>
-
 <p align="center">
   <img src="assets/main.gif" alt="Search relevance evaluation demo" width="900">
 </p>
 <p align="center">
   <em>LLM-as-a-Judge scores every query-result pair, computes NDCG/MRR/MAP/Precision, runs deterministic checks, and evaluates autocorrect behavior.</em>
-</p>
-
----
-
-### Evaluate autocomplete suggestions
-
-<br>
-
-<p align="center">
-  <img src="assets/autocomplete.gif" alt="Autocomplete evaluation demo" width="900">
-</p>
-<p align="center">
-  <em>Deterministic checks (duplicates, prefix coherence, encoding) and LLM-based semantic scoring for suggestion relevance and diversity.</em>
-</p>
-
----
-
-### Side-by-side comparison
-
-<br>
-
-<p align="center">
-  <img src="assets/comparison.gif" alt="Side-by-side comparison demo" width="900">
-</p>
-<p align="center">
-  <em>Two search configurations compared head-to-head: per-query NDCG deltas, win/loss/tie analysis, rank correlation, and result overlap.</em>
 </p>
 
 ## Quick Start
@@ -232,6 +200,32 @@ veritail run \
   --vertical home-improvement \
   --context context.txt
 ```
+
+## More Reports
+
+### Evaluate autocomplete suggestions
+
+<br>
+
+<p align="center">
+  <img src="assets/autocomplete.gif" alt="Autocomplete evaluation demo" width="900">
+</p>
+<p align="center">
+  <em>Deterministic checks (duplicates, prefix coherence, encoding) and LLM-based semantic scoring for suggestion relevance and diversity.</em>
+</p>
+
+---
+
+### Side-by-side comparison
+
+<br>
+
+<p align="center">
+  <img src="assets/comparison.gif" alt="Side-by-side comparison demo" width="900">
+</p>
+<p align="center">
+  <em>Two search configurations compared head-to-head: per-query NDCG deltas, win/loss/tie analysis, rank correlation, and result overlap.</em>
+</p>
 
 ## Documentation
 
