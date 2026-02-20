@@ -24,6 +24,8 @@ Includes 14 built-in ecommerce verticals for domain-aware judging, with support 
   <em>LLM-as-a-Judge scores every query-result pair, computes NDCG/MRR/MAP/Precision, runs deterministic checks, and evaluates autocorrect behavior.</em>
 </p>
 
+---
+
 ### Autocomplete evaluation
 
 <p align="center">
@@ -32,6 +34,8 @@ Includes 14 built-in ecommerce verticals for domain-aware judging, with support 
 <p align="center">
   <em>Deterministic checks (duplicates, prefix coherence, encoding) and LLM-based semantic scoring for suggestion relevance and diversity.</em>
 </p>
+
+---
 
 ### Side-by-side comparison
 
