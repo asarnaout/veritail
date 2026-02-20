@@ -89,6 +89,15 @@ def test_log_judgment(mock_langfuse_cls: MagicMock) -> None:
     mock_generation.end.assert_called_once()
     mock_span.end.assert_called_once()
 
+    # Trace-level input/output are set
+    mock_span.update_trace.assert_called_once()
+    trace_call = mock_span.update_trace.call_args
+    assert trace_call.kwargs["input"] == {
+        "query": "running shoes",
+        "product_id": "SKU-001",
+    }
+    assert trace_call.kwargs["output"] == 3
+
     # Score is created
     mock_client.create_score.assert_called_once()
     score_call = mock_client.create_score.call_args
@@ -112,6 +121,11 @@ def test_log_experiment(mock_langfuse_cls: MagicMock) -> None:
     span_call = mock_client.start_span.call_args
     assert span_call.kwargs["name"] == "experiment-test-exp"
     assert span_call.kwargs["metadata"]["type"] == "experiment_registration"
+
+    # Trace-level input is the config
+    mock_span.update_trace.assert_called_once()
+    trace_call = mock_span.update_trace.call_args
+    assert trace_call.kwargs["input"] == {"llm_model": "claude-sonnet-4-5"}
     mock_span.end.assert_called_once()
 
 
@@ -154,6 +168,15 @@ def test_log_correction_judgment(mock_langfuse_cls: MagicMock) -> None:
     mock_client.start_span.assert_called_once()
     span_call = mock_client.start_span.call_args
     assert span_call.kwargs["metadata"]["verdict"] == "appropriate"
+
+    # Trace-level input/output are set
+    mock_span.update_trace.assert_called_once()
+    trace_call = mock_span.update_trace.call_args
+    assert trace_call.kwargs["input"] == {
+        "original_query": "runing shoes",
+        "corrected_query": "running shoes",
+    }
+    assert trace_call.kwargs["output"] == "appropriate"
     mock_span.end.assert_called_once()
 
     mock_client.create_score.assert_called_once()
@@ -209,6 +232,18 @@ def test_log_suggestion_judgment(mock_langfuse_cls: MagicMock) -> None:
     mock_generation.end.assert_called_once()
     mock_span.end.assert_called_once()
 
+    # Trace-level input/output are set
+    mock_span.update_trace.assert_called_once()
+    trace_call = mock_span.update_trace.call_args
+    assert trace_call.kwargs["input"] == {
+        "prefix": "run",
+        "suggestions": ["running shoes", "running shorts", "runner's watch"],
+    }
+    assert trace_call.kwargs["output"] == {
+        "relevance_score": 3,
+        "diversity_score": 2,
+    }
+
     # Two scores created: relevance and diversity
     assert mock_client.create_score.call_count == 2
     score_calls = mock_client.create_score.call_args_list
@@ -238,7 +273,8 @@ def test_log_experiment_sets_session_id(mock_langfuse_cls: MagicMock) -> None:
     backend.log_experiment("my-session", {"llm_model": "claude-sonnet-4-5"})
 
     # After log_experiment, span.update_trace is called with session_id
-    mock_span.update_trace.assert_called_once_with(session_id="my-session")
+    mock_span.update_trace.assert_called_once()
+    assert mock_span.update_trace.call_args.kwargs["session_id"] == "my-session"
 
 
 @patch("veritail.backends.langfuse.Langfuse")
@@ -257,7 +293,8 @@ def test_suggestion_judgment_with_session_id(mock_langfuse_cls: MagicMock) -> No
 
     backend.log_suggestion_judgment(_make_suggestion_judgment())
 
-    mock_span.update_trace.assert_called_once_with(session_id="ac-session")
+    mock_span.update_trace.assert_called_once()
+    assert mock_span.update_trace.call_args.kwargs["session_id"] == "ac-session"
 
 
 @patch("veritail.backends.langfuse.Langfuse")
@@ -283,4 +320,5 @@ def test_correction_judgment_with_session_id(mock_langfuse_cls: MagicMock) -> No
 
     backend.log_correction_judgment(correction)
 
-    mock_span.update_trace.assert_called_once_with(session_id="corr-session")
+    mock_span.update_trace.assert_called_once()
+    assert mock_span.update_trace.call_args.kwargs["session_id"] == "corr-session"

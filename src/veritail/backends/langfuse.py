@@ -73,8 +73,13 @@ class LangfuseBackend(EvalBackend):
                 "query_type": judgment.query_type,
             },
         )
+        trace_update_kwargs: dict[str, Any] = {
+            "input": {"query": judgment.query, "product_id": product.product_id},
+            "output": judgment.score,
+        }
         if self._session_id:
-            span.update_trace(session_id=self._session_id)
+            trace_update_kwargs["session_id"] = self._session_id
+        span.update_trace(**trace_update_kwargs)
 
         generation = span.start_generation(
             name="relevance-judgment",
@@ -116,8 +121,12 @@ class LangfuseBackend(EvalBackend):
                 "type": "experiment_registration",
             },
         )
+        trace_update_kwargs: dict[str, Any] = {
+            "input": config,
+        }
         if self._session_id:
-            span.update_trace(session_id=self._session_id)
+            trace_update_kwargs["session_id"] = self._session_id
+        span.update_trace(**trace_update_kwargs)
         span.end()
 
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
@@ -158,8 +167,16 @@ class LangfuseBackend(EvalBackend):
                 "model": judgment.model,
             },
         )
+        trace_update_kwargs: dict[str, Any] = {
+            "input": {
+                "original_query": judgment.original_query,
+                "corrected_query": judgment.corrected_query,
+            },
+            "output": judgment.verdict,
+        }
         if self._session_id:
-            span.update_trace(session_id=self._session_id)
+            trace_update_kwargs["session_id"] = self._session_id
+        span.update_trace(**trace_update_kwargs)
         span.end()
 
         self._client.create_score(
@@ -187,8 +204,19 @@ class LangfuseBackend(EvalBackend):
                 "model": judgment.model,
             },
         )
+        trace_update_kwargs: dict[str, Any] = {
+            "input": {
+                "prefix": judgment.prefix,
+                "suggestions": judgment.suggestions,
+            },
+            "output": {
+                "relevance_score": judgment.relevance_score,
+                "diversity_score": judgment.diversity_score,
+            },
+        }
         if self._session_id:
-            span.update_trace(session_id=self._session_id)
+            trace_update_kwargs["session_id"] = self._session_id
+        span.update_trace(**trace_update_kwargs)
 
         generation = span.start_generation(
             name="suggestion-judgment",
