@@ -731,3 +731,54 @@ class TestGenerateSingleReport:
             judgments=judgments,
         )
         assert "Out of stock" not in report
+
+    def test_html_ndcg_histogram(self):
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.5,
+                per_query={
+                    "q1": 0.0,
+                    "q2": 0.25,
+                    "q3": 0.5,
+                    "q4": 0.75,
+                    "q5": 1.0,
+                },
+                by_query_type={"broad": 0.5},
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "NDCG@10 Distribution" in report
+        assert "0.0" in report  # first bin label
+        assert "0.9" in report  # last bin label
+
+    def test_html_ndcg_histogram_absent_single_query(self):
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.9,
+                per_query={"q1": 0.9},
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "NDCG@10 Distribution" not in report
+
+    def test_html_ndcg_stats_moved_to_histogram_section(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        # ndcg_stats should appear after the histogram heading
+        ndcg_heading_pos = report.find("NDCG@10 Distribution")
+        spread_pos = report.find("NDCG@10 spread")
+        assert ndcg_heading_pos != -1
+        assert spread_pos != -1
+        assert spread_pos > ndcg_heading_pos
+
+    def test_html_ndcg_histogram_all_perfect_scores(self):
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=1.0,
+                per_query={"q1": 1.0, "q2": 1.0, "q3": 1.0},
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "NDCG@10 Distribution" in report

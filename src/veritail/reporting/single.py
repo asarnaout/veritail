@@ -532,6 +532,7 @@ def _generate_html(
 
     # NDCG@10 distribution stats
     ndcg_stats: dict[str, float] | None = None
+    ndcg_histogram: list[dict[str, object]] | None = None
     if ndcg and ndcg.per_query:
         pq_values = list(ndcg.per_query.values())
         if len(pq_values) >= 2:
@@ -541,6 +542,71 @@ def _generate_html(
                 "median": statistics.median(pq_values),
                 "stdev": statistics.stdev(pq_values),
             }
+
+            # Build histogram bins
+            bin_counts = [0] * 10
+            for v in pq_values:
+                idx = min(int(v * 10), 9)
+                bin_counts[idx] += 1
+            max_count = max(bin_counts)
+
+            bin_colors = [
+                "#dc2626",
+                "#dc2626",
+                "#dc2626",
+                "#ea580c",
+                "#ea580c",
+                "#ca8a04",
+                "#ca8a04",
+                "#16a34a",
+                "#16a34a",
+                "#16a34a",
+            ]
+            bin_labels = [
+                "0.0",
+                "0.1",
+                "0.2",
+                "0.3",
+                "0.4",
+                "0.5",
+                "0.6",
+                "0.7",
+                "0.8",
+                "0.9",
+            ]
+
+            chart_w = 640.0
+            chart_h = 150.0
+            x_left = 40.0
+            y_top = 15.0
+            gap = 6.0
+            n_bins = 10
+            bar_w = (chart_w - gap * (n_bins - 1)) / n_bins
+
+            hist_bars: list[dict[str, object]] = []
+            for i in range(n_bins):
+                count = bin_counts[i]
+                bar_h = (
+                    max(2.0, (count / max_count) * chart_h) if max_count > 0 else 2.0
+                )
+                x = round(x_left + i * (bar_w + gap), 1)
+                y = round(y_top + chart_h - bar_h, 1)
+                label_y = round(y - 5, 1)
+                tick_x = round(x + bar_w / 2, 1)
+                hist_bars.append(
+                    {
+                        "bin_label": bin_labels[i],
+                        "count": count,
+                        "x": x,
+                        "y": y,
+                        "width": round(bar_w, 1),
+                        "height": round(bar_h, 1),
+                        "color": bin_colors[i],
+                        "label_y": label_y,
+                        "tick_x": tick_x,
+                    }
+                )
+            ndcg_histogram = hist_bars
 
     # Score by position chart
     position_chart: list[dict[str, object]] | None = None
@@ -609,6 +675,7 @@ def _generate_html(
         score_total=score_total,
         score_pcts=score_pcts,
         ndcg_stats=ndcg_stats,
+        ndcg_histogram=ndcg_histogram,
         position_chart=position_chart,
         type_metrics=type_metrics,
         query_types=query_types,

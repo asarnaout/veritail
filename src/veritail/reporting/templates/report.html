@@ -543,8 +543,14 @@
             <span><span style="display:inline-block; width:10px; height:10px; background:#ea580c; border-radius:2px; vertical-align:middle;"></span> 1 &mdash; {{ score_counts[1] }} ({{ "%.1f"|format(score_pcts[1]) }}%)</span>
             <span><span style="display:inline-block; width:10px; height:10px; background:#dc2626; border-radius:2px; vertical-align:middle;"></span> 0 &mdash; {{ score_counts[0] }} ({{ "%.1f"|format(score_pcts[0]) }}%)</span>
         </div>
+    </div>
+    {% endif %}
+
+    {% if ndcg_histogram %}
+    <h2>NDCG@10 Distribution</h2>
+    <div class="card">
         {% if ndcg_stats %}
-        <div style="margin-top:14px; padding-top:12px; border-top:1px solid #eee; font-size:13px; color:#4b5563;">
+        <div style="margin-bottom:14px; font-size:13px; color:#4b5563;">
             <strong>NDCG@10 spread:</strong>&nbsp;
             <span class="metric-value">min={{ "%.4f"|format(ndcg_stats.min) }}</span>
             <span style="color:#d1d5db;">&middot;</span>
@@ -555,6 +561,25 @@
             <span class="metric-value">stdev={{ "%.4f"|format(ndcg_stats.stdev) }}</span>
         </div>
         {% endif %}
+        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+            Distribution of per-query NDCG@10 scores. Red bins indicate poor relevance; green bins indicate strong relevance.
+        </p>
+        <svg viewBox="0 0 700 210" style="width:100%; max-width:700px; display:block; margin:0 auto;" role="img" aria-label="NDCG@10 histogram">
+            {% for bar in ndcg_histogram %}
+            <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}"
+                  rx="3" fill="{{ bar.color }}" opacity="0.85">
+                <title>{{ bar.bin_label }}–{{ "%.1f"|format(bar.bin_label|float + 0.1) }}: {{ bar.count }} queries</title>
+            </rect>
+            {% if bar.count > 0 %}
+            <text x="{{ bar.tick_x }}" y="{{ bar.label_y }}" text-anchor="middle"
+                  fill="#374151" font-size="11" font-weight="600" font-family="Menlo, monospace">{{ bar.count }}</text>
+            {% endif %}
+            <text x="{{ bar.tick_x }}" y="185" text-anchor="middle"
+                  fill="#6b7280" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ bar.bin_label }}</text>
+            {% endfor %}
+            <line x1="40" y1="15" x2="40" y2="165" stroke="#d1d5db" stroke-width="1" />
+            <line x1="40" y1="165" x2="680" y2="165" stroke="#d1d5db" stroke-width="1" />
+        </svg>
     </div>
     {% endif %}
 
