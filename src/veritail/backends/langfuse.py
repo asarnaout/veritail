@@ -8,7 +8,7 @@ from typing import Any
 from langfuse import Langfuse
 
 from veritail.backends import EvalBackend
-from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
+from veritail.types import CorrectionJudgment, JudgmentRecord
 
 
 class LangfuseBackend(EvalBackend):
@@ -21,7 +21,7 @@ class LangfuseBackend(EvalBackend):
     - Experiment tracking and versioning across runs
 
     Configuration can be provided via constructor args or environment variables:
-        LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST
+        LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL
     """
 
     def __init__(
@@ -32,7 +32,7 @@ class LangfuseBackend(EvalBackend):
     ) -> None:
         kwargs: dict[str, Any] = {}
         if url:
-            kwargs["host"] = url
+            kwargs["base_url"] = url
         if public_key:
             kwargs["public_key"] = public_key
         if secret_key:
@@ -41,7 +41,7 @@ class LangfuseBackend(EvalBackend):
         self._client: Any = Langfuse(**kwargs)
 
     def log_judgment(self, judgment: JudgmentRecord) -> None:
-        """Store a judgment as a Langfuse trace with a generation span and score."""
+        """Store a judgment as a Langfuse generation with a relevance score."""
         product = judgment.product
         product_data: dict[str, Any] = {
             "product_id": product.product_id,
@@ -55,7 +55,13 @@ class LangfuseBackend(EvalBackend):
             "metadata": product.metadata,
         }
 
-        trace = self._client.trace(
+        trace_id = Langfuse.create_trace_id(
+            seed=f"{judgment.experiment}:{judgment.query}:{product.product_id}"
+        )
+        trace_context = {"trace_id": trace_id}
+
+        span = self._client.start_span(
+            trace_context=trace_context,
             name="veritail-judgment",
             metadata={
                 "experiment": judgment.experiment,
@@ -65,10 +71,9 @@ class LangfuseBackend(EvalBackend):
                 "model": judgment.model,
                 "query_type": judgment.query_type,
             },
-            tags=[judgment.experiment],
         )
 
-        trace.generation(
+        generation = span.start_generation(
             name="relevance-judgment",
             model=judgment.model,
             metadata={
@@ -76,92 +81,67 @@ class LangfuseBackend(EvalBackend):
                 "product": product_data,
             },
             output=judgment.reasoning,
-            usage={
+            usage_details={
                 "input": judgment.metadata.get("input_tokens", 0),
                 "output": judgment.metadata.get("output_tokens", 0),
             },
         )
+        generation.end()
+        span.end()
 
-        trace.score(
+        self._client.create_score(
+            trace_id=trace_id,
             name="relevance",
-            value=judgment.score,
+            value=float(judgment.score),
             comment=judgment.reasoning,
         )
 
     def log_experiment(
         self, name: str, config: dict[str, Any], *, resume: bool = False
     ) -> None:
-        """Create a Langfuse session/dataset for the experiment."""
-        self._client.trace(
+        """Register an experiment as a Langfuse span."""
+        trace_id = Langfuse.create_trace_id(seed=f"experiment:{name}")
+        trace_context = {"trace_id": trace_id}
+
+        span = self._client.start_span(
+            trace_context=trace_context,
             name=f"experiment-{name}",
-            metadata={"experiment_config": config, "type": "experiment_registration"},
-            tags=[name, "experiment-config"],
+            metadata={
+                "experiment_config": config,
+                "type": "experiment_registration",
+            },
         )
+        span.end()
 
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:
-        """Retrieve all LLM judgments from Langfuse traces."""
-        judgments: list[JudgmentRecord] = []
+        """Retrieve judgments from Langfuse.
 
-        traces = self._client.fetch_traces(tags=[experiment])
-        for trace in traces.data:
-            try:
-                if not trace.metadata:
-                    continue
-                if trace.metadata.get("type") == "experiment_registration":
-                    continue
-
-                # Find the relevance score
-                trace_scores = self._client.fetch_scores(trace_id=trace.id)
-                relevance_score = None
-                reasoning = ""
-                for score in trace_scores.data:
-                    if score.name == "relevance":
-                        relevance_score = int(score.value)
-                        reasoning = score.comment or ""
-                        break
-
-                if relevance_score is None:
-                    continue
-
-                product_data = trace.metadata.get("product", {})
-                product = SearchResult(
-                    product_id=product_data.get("product_id", ""),
-                    title=product_data.get("title", ""),
-                    description=product_data.get("description", ""),
-                    category=product_data.get("category", ""),
-                    price=float(product_data.get("price", 0.0)),
-                    position=int(product_data.get("position", 0)),
-                    in_stock=bool(product_data.get("in_stock", True)),
-                    attributes=product_data.get("attributes", {}),
-                    metadata=product_data.get("metadata", {}),
-                )
-
-                judgments.append(
-                    JudgmentRecord(
-                        query=trace.metadata.get("query", ""),
-                        product=product,
-                        score=relevance_score,
-                        reasoning=reasoning,
-                        attribute_verdict=trace.metadata.get(
-                            "attribute_verdict", "n/a"
-                        ),
-                        model=trace.metadata.get("model", ""),
-                        experiment=experiment,
-                        query_type=trace.metadata.get("query_type"),
-                    )
-                )
-            except Exception as e:
-                trace_id = getattr(trace, "id", "unknown")
-                warnings.warn(
-                    f"Skipping trace {trace_id}: {e}",
-                    stacklevel=2,
-                )
-
-        return judgments
+        Note: The Langfuse v3 SDK removed ``fetch_traces`` / ``fetch_scores``.
+        Judgment retrieval now requires the Langfuse REST API.  For most
+        veritail workflows the file backend handles retrieval; Langfuse is
+        used primarily as an observability sink.  This method is kept as a
+        stub so the interface contract is satisfied.
+        """
+        warnings.warn(
+            "LangfuseBackend.get_judgments is not supported in Langfuse SDK v3. "
+            "Use the file backend for judgment retrieval or query the Langfuse "
+            "REST API directly.",
+            stacklevel=2,
+        )
+        return []
 
     def log_correction_judgment(self, judgment: CorrectionJudgment) -> None:
-        """Store a correction judgment as a Langfuse trace with a score."""
-        trace = self._client.trace(
+        """Store a correction judgment as a Langfuse generation with a score."""
+        trace_id = Langfuse.create_trace_id(
+            seed=(
+                f"{judgment.experiment}:correction:"
+                f"{judgment.original_query}:{judgment.corrected_query}"
+            )
+        )
+        trace_context = {"trace_id": trace_id}
+
+        span = self._client.start_span(
+            trace_context=trace_context,
             name="veritail-correction-judgment",
             metadata={
                 "experiment": judgment.experiment,
@@ -170,11 +150,12 @@ class LangfuseBackend(EvalBackend):
                 "verdict": judgment.verdict,
                 "model": judgment.model,
             },
-            tags=[judgment.experiment, "correction"],
         )
+        span.end()
 
-        trace.score(
+        self._client.create_score(
+            trace_id=trace_id,
             name="correction_appropriate",
-            value=1 if judgment.verdict == "appropriate" else 0,
+            value=1.0 if judgment.verdict == "appropriate" else 0.0,
             comment=judgment.reasoning,
         )

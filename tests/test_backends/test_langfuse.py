@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import warnings
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from veritail.types import JudgmentRecord, SearchResult
+from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
 
 HAS_LANGFUSE = False
 _langfuse_skip_reason = "langfuse not installed"
@@ -50,28 +51,23 @@ def _make_judgment() -> JudgmentRecord:
 
 
 @patch("veritail.backends.langfuse.Langfuse")
-def test_log_judgment(mock_langfuse_cls):
+def test_log_judgment(mock_langfuse_cls: MagicMock) -> None:
     from veritail.backends.langfuse import LangfuseBackend
 
     mock_client = mock_langfuse_cls.return_value
-    mock_trace = MagicMock()
-    mock_client.trace.return_value = mock_trace
+    mock_span = MagicMock()
+    mock_generation = MagicMock()
+    mock_client.start_span.return_value = mock_span
+    mock_span.start_generation.return_value = mock_generation
 
     backend = LangfuseBackend()
     backend.log_judgment(_make_judgment())
 
-    mock_client.trace.assert_called_once()
-    mock_trace.generation.assert_called_once()
-    mock_trace.score.assert_called_once()
-
-    # Verify score value
-    score_call = mock_trace.score.call_args
-    assert score_call.kwargs["value"] == 3
-    assert score_call.kwargs["name"] == "relevance"
-
-    # Verify full product data is stored in trace metadata
-    trace_call = mock_client.trace.call_args
-    product_data = trace_call.kwargs["metadata"]["product"]
+    # Root span is created with product metadata
+    mock_client.start_span.assert_called_once()
+    span_call = mock_client.start_span.call_args
+    assert span_call.kwargs["name"] == "veritail-judgment"
+    product_data = span_call.kwargs["metadata"]["product"]
     assert product_data["product_id"] == "SKU-001"
     assert product_data["title"] == "Nike Running Shoes"
     assert product_data["description"] == "Classic shoes"
@@ -79,72 +75,83 @@ def test_log_judgment(mock_langfuse_cls):
     assert product_data["price"] == 129.99
     assert product_data["position"] == 0
 
+    # Generation is nested under the span and ended
+    mock_span.start_generation.assert_called_once()
+    gen_call = mock_span.start_generation.call_args
+    assert gen_call.kwargs["name"] == "relevance-judgment"
+    assert gen_call.kwargs["model"] == "claude-sonnet-4-5"
+    assert gen_call.kwargs["output"] == "Great match"
+    mock_generation.end.assert_called_once()
+    mock_span.end.assert_called_once()
+
+    # Score is created
+    mock_client.create_score.assert_called_once()
+    score_call = mock_client.create_score.call_args
+    assert score_call.kwargs["name"] == "relevance"
+    assert score_call.kwargs["value"] == 3.0
+    assert score_call.kwargs["comment"] == "Great match"
+
 
 @patch("veritail.backends.langfuse.Langfuse")
-def test_log_experiment(mock_langfuse_cls):
+def test_log_experiment(mock_langfuse_cls: MagicMock) -> None:
     from veritail.backends.langfuse import LangfuseBackend
 
     mock_client = mock_langfuse_cls.return_value
+    mock_span = MagicMock()
+    mock_client.start_span.return_value = mock_span
+
     backend = LangfuseBackend()
     backend.log_experiment("test-exp", {"llm_model": "claude-sonnet-4-5"})
 
-    mock_client.trace.assert_called_once()
+    mock_client.start_span.assert_called_once()
+    span_call = mock_client.start_span.call_args
+    assert span_call.kwargs["name"] == "experiment-test-exp"
+    assert span_call.kwargs["metadata"]["type"] == "experiment_registration"
+    mock_span.end.assert_called_once()
 
 
 @patch("veritail.backends.langfuse.Langfuse")
-def test_get_judgments_skips_bad_trace(mock_langfuse_cls):
-    """A trace that raises during processing is skipped; others still load."""
-    import warnings
-
+def test_get_judgments_returns_empty_with_warning(mock_langfuse_cls: MagicMock) -> None:
+    """get_judgments emits a warning since Langfuse v3 removed fetch_traces."""
     from veritail.backends.langfuse import LangfuseBackend
-
-    mock_client = mock_langfuse_cls.return_value
-
-    # Two traces: first is good, second has bad metadata that causes an error
-    good_trace = MagicMock()
-    good_trace.id = "trace-1"
-    good_trace.metadata = {
-        "query": "shoes",
-        "product": {
-            "product_id": "SKU-1",
-            "title": "Shoes",
-            "description": "desc",
-            "category": "Shoes",
-            "price": 50.0,
-            "position": 0,
-        },
-        "attribute_verdict": "match",
-        "model": "test",
-    }
-
-    bad_trace = MagicMock()
-    bad_trace.id = "trace-2"
-    bad_trace.metadata = {"query": "broken", "product": "not-a-dict"}
-
-    traces_response = MagicMock()
-    traces_response.data = [good_trace, bad_trace]
-    mock_client.fetch_traces.return_value = traces_response
-
-    # Set up scores for the good trace
-    good_score = MagicMock()
-    good_score.name = "relevance"
-    good_score.value = 3
-    good_score.comment = "Great match"
-    good_scores_response = MagicMock()
-    good_scores_response.data = [good_score]
-
-    bad_scores_response = MagicMock()
-    bad_scores_response.data = []
-
-    mock_client.fetch_scores.side_effect = [good_scores_response, bad_scores_response]
 
     backend = LangfuseBackend()
 
-    with warnings.catch_warnings(record=True):
+    with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         judgments = backend.get_judgments("test-exp")
 
-    # Good trace loaded, bad trace skipped
-    assert len(judgments) == 1
-    assert judgments[0].query == "shoes"
-    assert judgments[0].score == 3
+    assert judgments == []
+    assert len(w) == 1
+    assert "not supported" in str(w[0].message)
+
+
+@patch("veritail.backends.langfuse.Langfuse")
+def test_log_correction_judgment(mock_langfuse_cls: MagicMock) -> None:
+    from veritail.backends.langfuse import LangfuseBackend
+
+    mock_client = mock_langfuse_cls.return_value
+    mock_span = MagicMock()
+    mock_client.start_span.return_value = mock_span
+
+    correction = CorrectionJudgment(
+        original_query="runing shoes",
+        corrected_query="running shoes",
+        verdict="appropriate",
+        reasoning="Fixed typo",
+        model="claude-sonnet-4-5",
+        experiment="test-exp",
+    )
+
+    backend = LangfuseBackend()
+    backend.log_correction_judgment(correction)
+
+    mock_client.start_span.assert_called_once()
+    span_call = mock_client.start_span.call_args
+    assert span_call.kwargs["metadata"]["verdict"] == "appropriate"
+    mock_span.end.assert_called_once()
+
+    mock_client.create_score.assert_called_once()
+    score_call = mock_client.create_score.call_args
+    assert score_call.kwargs["name"] == "correction_appropriate"
+    assert score_call.kwargs["value"] == 1.0
