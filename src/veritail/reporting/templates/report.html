@@ -38,6 +38,9 @@
         .pagination button:disabled { opacity: 0.4; cursor: default; }
         .pagination button.active { background: #1a1a2e; color: white; border-color: #1a1a2e; font-weight: 600; }
         .pagination .page-info { font-size: 13px; color: #6b7280; margin: 0 8px; }
+        details summary::-webkit-details-marker { display: none; }
+        details summary::marker { display: none; content: ""; }
+        details[open] > summary .check-arrow { transform: rotate(90deg); }
     </style>
 </head>
 <body>
@@ -671,42 +674,46 @@
         </thead>
         <tbody>
             {% for name, counts in check_summary %}
+            {% set has_failures = check_failures and check_failures.get(name) %}
             <tr>
                 <td>
+                  {% if has_failures %}
+                  {% set cf = check_failures[name] %}
+                  <details style="margin:0;">
+                    <summary style="cursor:pointer; list-style:none; display:inline;">
+                      <span style="display:inline-block; width:12px; font-size:10px; color:#9ca3af; transition:transform 0.15s;" class="check-arrow">&#9654;</span>
+                      {{ counts.display_name }}
+                      {% if check_descriptions and check_descriptions.get(name) %}
+                      <span class="tip" data-tip="{{ check_descriptions[name] }}">?</span>
+                      {% endif %}
+                    </summary>
+                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f3f4f6;">
+                      {% for item in cf["entries"] %}
+                      <div style="display:flex; align-items:baseline; gap:8px; padding:4px 0; font-size:13px; border-bottom:1px solid #f3f4f6;">
+                          <span style="font-weight:600; min-width:120px;">{{ item.query }}</span>
+                          {% if item.product_id %}<span style="color:#6b7280; font-size:12px;">{{ item.product_id }}</span>{% endif %}
+                          <span style="flex:1; color:#4b5563;">{{ item.detail }}</span>
+                          <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; white-space:nowrap;
+                              {% if item.severity == 'fail' %}background:#fee2e2; color:#991b1b;
+                              {% elif item.severity == 'warning' %}background:#fef3c7; color:#92400e;
+                              {% else %}background:#dbeafe; color:#1e40af;{% endif %}">{{ item.severity }}</span>
+                      </div>
+                      {% endfor %}
+                      {% if cf["total"] > cf["entries"]|length %}
+                      <div style="font-size:12px; color:#9ca3af; margin-top:6px;">&hellip;and {{ cf["total"] - cf["entries"]|length }} more</div>
+                      {% endif %}
+                    </div>
+                  </details>
+                  {% else %}
                   {{ counts.display_name }}
                   {% if check_descriptions and check_descriptions.get(name) %}
                   <span class="tip" data-tip="{{ check_descriptions[name] }}">?</span>
+                  {% endif %}
                   {% endif %}
                 </td>
                 <td class="{% if counts.passed_is_na %}neutral{% else %}positive{% endif %}">{{ counts.passed_display }}</td>
                 <td class="{% if counts.failed > 0 %}negative{% else %}neutral{% endif %}">{{ counts.failed }}</td>
             </tr>
-            {% if check_failures and check_failures.get(name) %}
-            {% set cf = check_failures[name] %}
-            <tr>
-                <td colspan="3" style="padding:0; border-bottom:1px solid #eee;">
-                    <details style="padding:8px 16px;">
-                        <summary style="cursor:pointer; font-size:13px; color:#6b7280;">Show {{ cf["total"] }} failed item{{ "s" if cf["total"] != 1 else "" }}</summary>
-                        <div style="margin-top:8px;">
-                        {% for item in cf["entries"] %}
-                        <div style="display:flex; align-items:baseline; gap:8px; padding:4px 0; font-size:13px; border-bottom:1px solid #f3f4f6;">
-                            <span style="font-weight:600; min-width:120px;">{{ item.query }}</span>
-                            {% if item.product_id %}<span style="color:#6b7280; font-size:12px;">{{ item.product_id }}</span>{% endif %}
-                            <span style="flex:1; color:#4b5563;">{{ item.detail }}</span>
-                            <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; white-space:nowrap;
-                                {% if item.severity == 'fail' %}background:#fee2e2; color:#991b1b;
-                                {% elif item.severity == 'warning' %}background:#fef3c7; color:#92400e;
-                                {% else %}background:#dbeafe; color:#1e40af;{% endif %}">{{ item.severity }}</span>
-                        </div>
-                        {% endfor %}
-                        {% if cf["total"] > cf["entries"]|length %}
-                        <div style="font-size:12px; color:#9ca3af; margin-top:6px;">&hellip;and {{ cf["total"] - cf["entries"]|length }} more</div>
-                        {% endif %}
-                        </div>
-                    </details>
-                </td>
-            </tr>
-            {% endif %}
             {% endfor %}
         </tbody>
     </table></div>

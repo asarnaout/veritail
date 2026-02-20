@@ -534,7 +534,8 @@ class TestGenerateSingleReport:
         assert "No common terms" in report
         assert "SKU-1" in report
         assert "SKU-2" in report
-        assert "Show 2 failed items" in report
+        # Check name is the expandable element (no separate "Show N" row)
+        assert "text_overlap" in report
 
     def test_html_check_failures_severity_badge(self):
         checks = [
