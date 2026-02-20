@@ -369,3 +369,32 @@ class TestGenerateComparisonReport:
         )
         assert "Deterministic Checks" in report
         assert "zero_results" in report
+
+    def test_html_biggest_winners_and_losers(self):
+        """Winners and losers tables appear with correct queries."""
+        metrics_a = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.5,
+                per_query={"shoes": 0.3, "laptop": 0.9, "hat": 0.5},
+            )
+        ]
+        metrics_b = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.6,
+                per_query={"shoes": 0.8, "laptop": 0.4, "hat": 0.5},
+            )
+        ]
+        report = generate_comparison_report(
+            metrics_a,
+            metrics_b,
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+        )
+        assert "Biggest Improvements" in report
+        assert "Biggest Regressions" in report
+        assert "shoes" in report
+        assert "laptop" in report

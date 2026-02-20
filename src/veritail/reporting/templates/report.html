@@ -219,6 +219,54 @@
     </table></div>
     {% endif %}
 
+    {% if winners %}
+    <h2>Biggest Improvements (NDCG@10)</h2>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Query</th>
+                <th>{{ config_a }}</th>
+                <th>{{ config_b }}</th>
+                <th>Delta</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for w in winners %}
+            <tr>
+                <td>{{ w.query }}</td>
+                <td class="metric-value">{{ "%.4f"|format(w.value_a) }}</td>
+                <td class="metric-value">{{ "%.4f"|format(w.value_b) }}</td>
+                <td class="metric-value positive">{{ "%+.4f"|format(w.delta) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% endif %}
+
+    {% if losers %}
+    <h2>Biggest Regressions (NDCG@10)</h2>
+    <div class="table-wrap"><table>
+        <thead>
+            <tr>
+                <th>Query</th>
+                <th>{{ config_a }}</th>
+                <th>{{ config_b }}</th>
+                <th>Delta</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for l in losers %}
+            <tr>
+                <td>{{ l.query }}</td>
+                <td class="metric-value">{{ "%.4f"|format(l.value_a) }}</td>
+                <td class="metric-value">{{ "%.4f"|format(l.value_b) }}</td>
+                <td class="metric-value negative">{{ "%+.4f"|format(l.delta) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table></div>
+    {% endif %}
+
     {% if shift_checks %}
     <h2>Biggest Position Shifts</h2>
     <div class="table-wrap"><table>

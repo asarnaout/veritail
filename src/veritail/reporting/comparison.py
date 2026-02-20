@@ -345,6 +345,26 @@ def _generate_html(
                 "tie_pct": round(ties / total * 100, 1),
             }
 
+    # Biggest winners and losers (per-query NDCG@10 deltas)
+    winners: list[dict[str, object]] = []
+    losers: list[dict[str, object]] = []
+    if ndcg_a and ndcg_b and ndcg_a.per_query and ndcg_b.per_query:
+        deltas: list[dict[str, object]] = []
+        for query in ndcg_a.per_query:
+            if query in ndcg_b.per_query:
+                d = ndcg_b.per_query[query] - ndcg_a.per_query[query]
+                deltas.append(
+                    {
+                        "query": query,
+                        "value_a": ndcg_a.per_query[query],
+                        "value_b": ndcg_b.per_query[query],
+                        "delta": d,
+                    }
+                )
+        deltas.sort(key=lambda x: float(str(x["delta"])))
+        losers = [d for d in deltas if float(str(d["delta"])) < -0.001][:10]
+        winners = [d for d in reversed(deltas) if float(str(d["delta"])) > 0.001][:10]
+
     # Score distributions for side-by-side comparison
     def _score_distribution(
         judgments: list[JudgmentRecord] | None,
@@ -454,4 +474,6 @@ def _generate_html(
         metric_descriptions=METRIC_DESCRIPTIONS,
         check_comparison=check_comparison,
         check_descriptions=CHECK_DESCRIPTIONS,
+        winners=winners,
+        losers=losers,
     )
