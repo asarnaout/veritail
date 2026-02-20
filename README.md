@@ -131,7 +131,16 @@ veritail run \
   --open
 ```
 
-**Cost note:** Each query-result pair requires one LLM API call. A run with 50 queries and `--top-k 10` makes ~500 calls. With frontier cloud models, this typically costs a few dollars. Larger query sets or more expensive models will cost more. Use `--top-k` to control results per query and `--sample N` to evaluate a random subset of queries. Prompt caching is supported — the shared system prompt is reused across all calls, reducing input token costs on providers that support it.
+**LLM API usage:** A full run may make several types of LLM calls:
+
+| Call type | Volume |
+|---|---|
+| Query type classification | 1 per query (skipped when `type` column is provided in the CSV) |
+| Relevance judgment | 1 per query-result pair (queries × `--top-k`) |
+| Autocorrect judgment | 1 per corrected query (only when adapter returns `corrected_query`) |
+| Autocomplete judgment | 1 per prefix with non-empty suggestions (only with `--autocomplete`) |
+
+Use `--top-k` and `--sample N` to control call volume. `--batch` reduces cost by 50% with cloud providers. Prompt caching is supported — the shared system prompt is reused across all calls, reducing input token costs on providers that support it. **When using cloud models, be mindful of API costs — use `--sample` for quick iterations and check your provider dashboard to track spend.** Note that product data (titles, descriptions, prices, etc.) is sent to the configured LLM provider for judging. Use a [local model](#local-models-via-openai-compatible-servers) if data must stay on-premise.
 
 Outputs are written under:
 
@@ -793,7 +802,7 @@ For reliable metrics that can inform production search decisions, we recommend f
 
 ## Disclaimer
 
-veritail uses large language models to generate relevance judgments. LLM outputs can be inaccurate, inconsistent, or misleading. All scores, reasoning, and reports produced by this tool should be reviewed by a qualified human before informing production decisions. veritail is an evaluation aid, not a substitute for human judgment. The authors are not liable for any decisions made based on its output.
+veritail uses large language models to generate relevance judgments. LLM outputs can be inaccurate, inconsistent, or misleading. All scores, reasoning, and reports produced by this tool should be reviewed by a qualified human before informing production decisions. veritail is an evaluation aid, not a substitute for human judgment. The authors are not liable for any decisions made based on its output or for any API costs incurred by running evaluations.
 
 ## License
 
