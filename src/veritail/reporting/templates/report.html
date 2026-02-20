@@ -113,6 +113,18 @@
     </div>
     {% endif %}
 
+    {% if overlap_summary %}
+    <h2>Result Set Overlap</h2>
+    <div class="card" style="text-align:center;">
+        <div style="font-size:48px; font-weight:700; color:#1a1a2e; line-height:1.2;">{{ overlap_summary.mean_jaccard }}</div>
+        <div style="font-size:14px; color:#6b7280; margin-top:4px;">Mean Jaccard Index</div>
+        <div style="font-size:14px; color:#4b5563; margin-top:12px; max-width:480px; margin-left:auto; margin-right:auto;">
+            {{ overlap_summary.interpretation }}
+        </div>
+        <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Based on {{ overlap_summary.query_count }} queries</div>
+    </div>
+    {% endif %}
+
     {% if score_dist_a or score_dist_b %}
     <h2>Score Distribution</h2>
     <div class="card">

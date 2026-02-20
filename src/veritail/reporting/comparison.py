@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from io import StringIO
 from pathlib import Path
@@ -317,6 +318,38 @@ def _generate_html(
 
     shift_checks = [c for c in comparison_checks if c.check_name == "position_shift"]
 
+    # Result set overlap summary
+    overlap_summary: dict[str, object] | None = None
+    overlap_checks = [c for c in comparison_checks if c.check_name == "result_overlap"]
+    if overlap_checks:
+        jaccard_values: list[float] = []
+        for oc in overlap_checks:
+            match = re.search(r"Result overlap: ([\d.]+)", oc.detail)
+            if match:
+                jaccard_values.append(float(match.group(1)))
+        if jaccard_values:
+            mean_jaccard = sum(jaccard_values) / len(jaccard_values)
+            if mean_jaccard > 0.7:
+                interpretation = (
+                    "Configs return mostly the same products — differences "
+                    "are primarily in ranking order."
+                )
+            elif mean_jaccard < 0.3:
+                interpretation = (
+                    "Configs return substantially different products — "
+                    "this is a retrieval change, not just a ranking change."
+                )
+            else:
+                interpretation = (
+                    "Configs share some products but also retrieve distinct "
+                    "results — a mix of retrieval and ranking differences."
+                )
+            overlap_summary = {
+                "mean_jaccard": round(mean_jaccard, 3),
+                "interpretation": interpretation,
+                "query_count": len(jaccard_values),
+            }
+
     # Win/loss/tie from NDCG@10 per-query deltas
     ndcg_a = next((m for m in metrics_a if m.metric_name == "ndcg@10"), None)
     ndcg_b = next((m for m in metrics_b if m.metric_name == "ndcg@10"), None)
@@ -465,6 +498,7 @@ def _generate_html(
         run_metadata_rows=metadata_rows,
         sibling_report=sibling_report,
         win_loss=win_loss,
+        overlap_summary=overlap_summary,
         score_dist_a=score_dist_a,
         score_dist_b=score_dist_b,
         type_comparison=type_comparison,

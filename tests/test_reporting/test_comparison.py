@@ -370,6 +370,38 @@ class TestGenerateComparisonReport:
         assert "Deterministic Checks" in report
         assert "zero_results" in report
 
+    def test_html_result_overlap_summary(self):
+        """Result overlap summary shows mean Jaccard and interpretation."""
+        checks = [
+            CheckResult(
+                check_name="result_overlap",
+                query="shoes",
+                product_id=None,
+                passed=True,
+                detail="Result overlap: 0.60 (6/10 shared products)",
+            ),
+            CheckResult(
+                check_name="result_overlap",
+                query="laptop",
+                product_id=None,
+                passed=True,
+                detail="Result overlap: 0.40 (4/10 shared products)",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            checks,
+            "baseline",
+            "experiment",
+            format="html",
+        )
+        assert "Result Set Overlap" in report
+        assert "0.5" in report  # mean of 0.60 and 0.40
+        assert "Mean Jaccard Index" in report
+        assert "share some products" in report  # 0.5 is in the middle range
+        assert "2 queries" in report
+
     def test_html_biggest_winners_and_losers(self):
         """Winners and losers tables appear with correct queries."""
         metrics_a = [
