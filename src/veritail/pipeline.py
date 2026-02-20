@@ -639,6 +639,49 @@ def run_batch_evaluation(
             llm_client.restore_batch_custom_ids(
                 corr_batch_id, saved_checkpoint.gemini_correction_custom_id_order
             )
+
+        # Re-submit correction batch if partial checkpoint (relevance submitted,
+        # correction never submitted).
+        if corr_batch_id is None and correction_entries:
+            corr_requests: list[BatchRequest] = []
+            for idx, (_, original, corrected) in enumerate(correction_entries):
+                custom_id = f"corr-{idx}"
+                corr_req = correction_judge.prepare_request(
+                    custom_id, original, corrected
+                )
+                corr_requests.append(corr_req)
+                corr_context[custom_id] = (original, corrected)
+
+            console.print(
+                f"[cyan]Submitting correction batch of "
+                f"{len(corr_requests)} requests...[/cyan]"
+            )
+            corr_batch_id = llm_client.submit_batch(corr_requests)
+
+            # Update checkpoint with correction info
+            gemini_corr_order = getattr(llm_client, "_batch_custom_ids", {}).get(
+                corr_batch_id, []
+            )
+            save_checkpoint(
+                output_dir,
+                config.name,
+                BatchCheckpoint(
+                    batch_id=batch_id,
+                    experiment_name=config.name,
+                    phase="relevance",
+                    request_context=saved_checkpoint.request_context,
+                    checks=saved_checkpoint.checks,
+                    correction_entries=saved_checkpoint.correction_entries,
+                    gemini_custom_id_order=saved_checkpoint.gemini_custom_id_order,
+                    correction_batch_id=corr_batch_id,
+                    correction_context={
+                        k: {"original": v[0], "corrected": v[1]}
+                        for k, v in corr_context.items()
+                    },
+                    gemini_correction_custom_id_order=gemini_corr_order,
+                ),
+            )
+
         console.print(f"[bold]Resuming batch {batch_id} for '{config.name}'...[/bold]")
     else:
         # Phase 1: Collect — call adapters and build batch requests
@@ -740,7 +783,7 @@ def run_batch_evaluation(
             return [], all_checks, metrics, []
 
         # Build correction batch requests upfront (inputs available after Phase 1)
-        corr_requests: list[BatchRequest] = []
+        corr_requests = []
         if correction_entries:
             for idx, (_, original, corrected) in enumerate(correction_entries):
                 custom_id = f"corr-{idx}"
@@ -757,20 +800,14 @@ def run_batch_evaluation(
         batch_id = llm_client.submit_batch(batch_requests)
         console.print(f"[dim]Batch ID: {batch_id}[/dim]")
 
-        if corr_requests:
-            console.print(
-                f"[cyan]Submitting correction batch of "
-                f"{len(corr_requests)} requests...[/cyan]"
-            )
-            corr_batch_id = llm_client.submit_batch(corr_requests)
-
-        # Save checkpoint after submission
+        # Save partial checkpoint immediately so the relevance batch ID
+        # survives even if the correction submit below raises.
         gemini_order = getattr(llm_client, "_batch_custom_ids", {}).get(batch_id, [])
-        gemini_corr_order = (
-            getattr(llm_client, "_batch_custom_ids", {}).get(corr_batch_id, [])
-            if corr_batch_id
-            else []
-        )
+        serialized_req_ctx = serialize_request_context(request_context)
+        serialized_checks = [asdict(c) for c in all_checks]
+        serialized_corr_entries = [
+            [idx, orig, corr] for idx, orig, corr in correction_entries
+        ]
         save_checkpoint(
             output_dir,
             config.name,
@@ -778,22 +815,46 @@ def run_batch_evaluation(
                 batch_id=batch_id,
                 experiment_name=config.name,
                 phase="relevance",
-                request_context=serialize_request_context(request_context),
-                checks=[asdict(c) for c in all_checks],
-                correction_entries=[
-                    [idx, orig, corr] for idx, orig, corr in correction_entries
-                ],
+                request_context=serialized_req_ctx,
+                checks=serialized_checks,
+                correction_entries=serialized_corr_entries,
                 gemini_custom_id_order=gemini_order,
-                correction_batch_id=corr_batch_id,
-                correction_context={
-                    k: {"original": v[0], "corrected": v[1]}
-                    for k, v in corr_context.items()
-                }
-                if corr_context
-                else None,
-                gemini_correction_custom_id_order=gemini_corr_order,
+                correction_batch_id=None,
+                correction_context=None,
+                gemini_correction_custom_id_order=[],
             ),
         )
+
+        if corr_requests:
+            console.print(
+                f"[cyan]Submitting correction batch of "
+                f"{len(corr_requests)} requests...[/cyan]"
+            )
+            corr_batch_id = llm_client.submit_batch(corr_requests)
+
+            # Update checkpoint with correction batch info
+            gemini_corr_order = getattr(llm_client, "_batch_custom_ids", {}).get(
+                corr_batch_id, []
+            )
+            save_checkpoint(
+                output_dir,
+                config.name,
+                BatchCheckpoint(
+                    batch_id=batch_id,
+                    experiment_name=config.name,
+                    phase="relevance",
+                    request_context=serialized_req_ctx,
+                    checks=serialized_checks,
+                    correction_entries=serialized_corr_entries,
+                    gemini_custom_id_order=gemini_order,
+                    correction_batch_id=corr_batch_id,
+                    correction_context={
+                        k: {"original": v[0], "corrected": v[1]}
+                        for k, v in corr_context.items()
+                    },
+                    gemini_correction_custom_id_order=gemini_corr_order,
+                ),
+            )
 
     # Phase 3: Poll for completion (both batches together)
     poll_entries: list[tuple[str, int, str]] = [

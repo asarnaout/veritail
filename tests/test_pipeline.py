@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
 from veritail.backends import EvalBackend
 from veritail.backends.file import FileBackend
-from veritail.checkpoint import BatchCheckpoint, save_checkpoint
+from veritail.checkpoint import (
+    BatchCheckpoint,
+    load_checkpoint,
+    save_checkpoint,
+    serialize_request_context,
+)
 from veritail.llm.client import BatchRequest, BatchResult, LLMClient, LLMResponse
 from veritail.pipeline import run_batch_evaluation, run_dual_evaluation, run_evaluation
 from veritail.types import (
@@ -1341,6 +1346,7 @@ class TestRunBatchEvaluation:
             rubric,
             backend,
             poll_interval=0,
+            output_dir=str(tmp_path),
         )
 
         # Both batches submitted before polling: 2 submit_batch calls
@@ -1356,6 +1362,31 @@ class TestRunBatchEvaluation:
         second_batch_reqs = llm_client.submit_batch.call_args_list[1][0][0]
         assert first_batch_reqs[0].custom_id.startswith("rel-")
         assert second_batch_reqs[0].custom_id.startswith("corr-")
+
+        # Verify incremental checkpoint saves by re-running with a spy.
+        # The checkpoint is cleared on success, so we use patch to count calls.
+        llm_client2 = _make_mock_batch_llm_client(responses)
+        with patch(
+            "veritail.pipeline.save_checkpoint", wraps=save_checkpoint
+        ) as spy_save:
+            run_batch_evaluation(
+                queries,
+                adapter,
+                config,
+                llm_client2,
+                rubric,
+                backend,
+                poll_interval=0,
+                output_dir=str(tmp_path),
+            )
+            # Saved twice: partial (relevance only) then full (both batch IDs)
+            assert spy_save.call_count == 2
+            partial_cp = spy_save.call_args_list[0][0][2]
+            full_cp = spy_save.call_args_list[1][0][2]
+            assert partial_cp.batch_id is not None
+            assert partial_cp.correction_batch_id is None
+            assert full_cp.batch_id is not None
+            assert full_cp.correction_batch_id is not None
 
     def test_batch_no_corrections_single_submit(self, tmp_path):
         """Only 1 submit_batch when there are no corrections."""
@@ -1608,3 +1639,216 @@ class TestRunBatchEvaluation:
                 backend,
                 poll_interval=0,
             )
+
+    def test_batch_correction_submit_fails_checkpoint_saved(self, tmp_path):
+        """When correction submit_batch raises, partial checkpoint is saved."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+
+        call_count = [0]
+
+        def submit_batch(requests):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return "batch-rel-123"
+            raise RuntimeError("quota exceeded")
+
+        client.submit_batch.side_effect = submit_batch
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        with pytest.raises(RuntimeError, match="quota exceeded"):
+            run_batch_evaluation(
+                queries,
+                adapter,
+                config,
+                client,
+                rubric,
+                backend,
+                poll_interval=0,
+                output_dir=str(tmp_path),
+            )
+
+        # Partial checkpoint must exist on disk
+        cp = load_checkpoint(str(tmp_path), "test-batch")
+        assert cp is not None
+        assert cp.batch_id == "batch-rel-123"
+        assert cp.correction_batch_id is None
+        assert len(cp.correction_entries) > 0
+
+    def test_batch_resume_resubmits_corrections(self, tmp_path):
+        """Resume with partial checkpoint re-submits the correction batch."""
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        result = SearchResult(
+            product_id="SKU-1",
+            title="Shoe",
+            description="desc",
+            category="Shoes",
+            price=50.0,
+            position=0,
+        )
+        req_ctx = {
+            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0)
+        }
+        # Partial checkpoint: relevance submitted, correction NOT submitted
+        cp = BatchCheckpoint(
+            batch_id="batch-rel",
+            experiment_name="test-batch",
+            phase="relevance",
+            request_context=serialize_request_context(req_ctx),
+            checks=[],
+            correction_entries=[[0, "runnign shoes", "running shoes"]],
+            correction_batch_id=None,
+            correction_context=None,
+        )
+        save_checkpoint(str(tmp_path), "test-batch", cp)
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+        client.submit_batch.return_value = "batch-corr-new"
+        client.poll_batch.return_value = ("completed", 1, 1)
+
+        client.retrieve_batch_results.side_effect = [
+            # Relevance results
+            [
+                BatchResult(
+                    custom_id="rel-0-0",
+                    response=LLMResponse(
+                        content="SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+                        model="test",
+                        input_tokens=10,
+                        output_tokens=10,
+                    ),
+                )
+            ],
+            # Correction results
+            [
+                BatchResult(
+                    custom_id="corr-0",
+                    response=LLMResponse(
+                        content="VERDICT: appropriate\nREASONING: Spelling fix.",
+                        model="test",
+                        input_tokens=10,
+                        output_tokens=10,
+                    ),
+                )
+            ],
+        ]
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            _make_mock_adapter(),
+            config,
+            client,
+            rubric,
+            backend,
+            poll_interval=0,
+            resume=True,
+            output_dir=str(tmp_path),
+        )
+
+        # submit_batch called once for the correction batch re-submission
+        assert client.submit_batch.call_count == 1
+        assert len(judgments) == 1
+        assert judgments[0].score == 3
+        assert len(corrections) == 1
+        assert corrections[0].verdict == "appropriate"
+
+    def test_batch_resume_resubmit_fails_preserves_partial_checkpoint(self, tmp_path):
+        """If correction re-submit fails on resume, partial checkpoint survives."""
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        result = SearchResult(
+            product_id="SKU-1",
+            title="Shoe",
+            description="desc",
+            category="Shoes",
+            price=50.0,
+            position=0,
+        )
+        req_ctx = {
+            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0)
+        }
+        # Partial checkpoint: relevance submitted, correction NOT submitted
+        cp = BatchCheckpoint(
+            batch_id="batch-rel",
+            experiment_name="test-batch",
+            phase="relevance",
+            request_context=serialize_request_context(req_ctx),
+            checks=[],
+            correction_entries=[[0, "runnign shoes", "running shoes"]],
+            correction_batch_id=None,
+            correction_context=None,
+        )
+        save_checkpoint(str(tmp_path), "test-batch", cp)
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+        client.submit_batch.side_effect = RuntimeError("quota exceeded again")
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        with pytest.raises(RuntimeError, match="quota exceeded again"):
+            run_batch_evaluation(
+                queries,
+                _make_mock_adapter(),
+                config,
+                client,
+                rubric,
+                backend,
+                poll_interval=0,
+                resume=True,
+                output_dir=str(tmp_path),
+            )
+
+        # Partial checkpoint must still be on disk with the relevance batch ID
+        cp_after = load_checkpoint(str(tmp_path), "test-batch")
+        assert cp_after is not None
+        assert cp_after.batch_id == "batch-rel"
+        assert cp_after.correction_batch_id is None
+        assert len(cp_after.correction_entries) > 0
