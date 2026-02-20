@@ -1146,6 +1146,11 @@ def run(
         # Open only the first (primary) report — the cross-link banner
         # lets the user navigate to the sibling report from within it.
         webbrowser.open(html_paths[0].resolve().as_uri())
+    elif html_paths:
+        console.print(
+            "\n  [bold]Tip:[/bold] use [cyan]--open[/cyan] "
+            "to view the report in your browser\n"
+        )
 
 
 if __name__ == "__main__":
