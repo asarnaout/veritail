@@ -1,8 +1,8 @@
 # veritail
 
-LLM-as-a-Judge evaluation for ecommerce search.
+LLM-as-a-Judge evaluation framework tailored for ecommerce search.
 
-veritail scores every query-result pair using an LLM judge, computes IR metrics from those scores, and runs deterministic quality checks — all in a single command. Run it on every release to track search quality, or compare two configurations side by side to measure the impact of a change before it ships.
+veritail scores every query-result pair, computes IR metrics from those scores, and runs deterministic quality checks — all in a single command. Run it on every release to track search quality, or compare two configurations side by side to measure the impact of a change before it ships.
 
 Five evaluation layers:
 - **LLM-as-a-Judge scoring** — every query-result pair scored 0-3 with structured reasoning, using any cloud or local model
