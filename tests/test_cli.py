@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from click.testing import CliRunner
 
 from veritail.cli import main
@@ -1475,3 +1477,329 @@ class TestCLI:
 
         assert result.exit_code != 0
         assert "does not support batch operations" in result.output
+
+    def test_run_requires_adapter(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--llm-model",
+                "test-model",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "--adapter is required" in result.output
+
+    def test_run_rejects_more_than_two_adapters(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_a = tmp_path / "a.py"
+        adapter_a.write_text("def search(q): return []\n")
+        adapter_b = tmp_path / "b.py"
+        adapter_b.write_text("def search(q): return []\n")
+        adapter_c = tmp_path / "c.py"
+        adapter_c.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_a),
+                "--adapter",
+                str(adapter_b),
+                "--adapter",
+                str(adapter_c),
+                "--llm-model",
+                "test-model",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "At most 2 adapter/config-name pairs" in result.output
+
+    def test_run_resume_requires_config_name(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "test-model",
+                "--resume",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "--resume requires --config-name" in result.output
+
+    def test_run_resume_nonexistent_experiment_dir(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "test-model",
+                "--config-name",
+                "nonexistent",
+                "--output-dir",
+                str(tmp_path / "results"),
+                "--resume",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "does not exist" in result.output
+
+    def test_run_resume_config_mismatch_llm_model(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        output_dir = tmp_path / "results"
+        exp_dir = output_dir / "my-config"
+        exp_dir.mkdir(parents=True)
+        config_file = exp_dir / "config.json"
+        config_file.write_text(
+            json.dumps(
+                {"llm_model": "gpt-4o", "rubric": "ecommerce-default", "top_k": 10}
+            ),
+            encoding="utf-8",
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "claude-sonnet-4-5",
+                "--config-name",
+                "my-config",
+                "--output-dir",
+                str(output_dir),
+                "--resume",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "config mismatch" in result.output
+        assert "llm_model" in result.output
+
+    def test_run_resume_config_mismatch_rubric(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        output_dir = tmp_path / "results"
+        exp_dir = output_dir / "my-config"
+        exp_dir.mkdir(parents=True)
+        config_file = exp_dir / "config.json"
+        config_file.write_text(
+            json.dumps(
+                {"llm_model": "gpt-4o", "rubric": "ecommerce-default", "top_k": 10}
+            ),
+            encoding="utf-8",
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "gpt-4o",
+                "--rubric",
+                "custom-rubric",
+                "--config-name",
+                "my-config",
+                "--output-dir",
+                str(output_dir),
+                "--resume",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "config mismatch" in result.output
+        assert "rubric" in result.output
+
+    def test_run_resume_config_mismatch_top_k(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        output_dir = tmp_path / "results"
+        exp_dir = output_dir / "my-config"
+        exp_dir.mkdir(parents=True)
+        config_file = exp_dir / "config.json"
+        config_file.write_text(
+            json.dumps(
+                {"llm_model": "gpt-4o", "rubric": "ecommerce-default", "top_k": 10}
+            ),
+            encoding="utf-8",
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "run",
+                "--queries",
+                str(queries_file),
+                "--adapter",
+                str(adapter_file),
+                "--llm-model",
+                "gpt-4o",
+                "--top-k",
+                "5",
+                "--config-name",
+                "my-config",
+                "--output-dir",
+                str(output_dir),
+                "--resume",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "config mismatch" in result.output
+        assert "top_k" in result.output
+
+    def test_run_batch_rejects_unsupported_model_search(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text("def search(q): return []\n")
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = False
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--batch",
+                ],
+            )
+        assert result.exit_code != 0
+        assert "does not support batch operations" in result.output
+
+    def test_run_dual_config_without_batch(self, tmp_path):
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_a = tmp_path / "adapter_a.py"
+        adapter_a.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+        adapter_b = tmp_path / "adapter_b.py"
+        adapter_b.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-2', title='Boot',\n"
+            "        description='A boot',\n"
+            "        category='Shoes', price=60.0, position=0)]\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+
+        mock_metrics = [
+            MetricResult(metric_name="ndcg@10", value=0.8),
+            MetricResult(metric_name="mrr", value=0.7),
+        ]
+        dual_return = ([], [], [], [], mock_metrics, mock_metrics, [], [], [])
+
+        with (
+            patch("veritail.cli.create_llm_client", return_value=mock_client),
+            patch(
+                "veritail.cli.run_dual_evaluation",
+                return_value=dual_return,
+            ) as mock_dual,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_a),
+                    "--adapter",
+                    str(adapter_b),
+                    "--config-name",
+                    "a",
+                    "--config-name",
+                    "b",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                ],
+            )
+
+        assert result.exit_code == 0
+        mock_dual.assert_called_once()

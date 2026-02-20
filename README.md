@@ -473,11 +473,11 @@ Run a single or dual-configuration evaluation.
 
 | Option | Default | Description |
 |---|---|---|
-| `--queries` | *(optional)* | Path to query set (`.csv` or `.json`). At least one of `--queries` or `--autocomplete` is required |
-| `--autocomplete` | *(optional)* | Path to autocomplete prefix set (`.csv` or `.json`). At least one of `--queries` or `--autocomplete` is required |
-| `--adapter` | *(required)* | Path to adapter module (up to 2) |
+| `--queries` | *(optional)* | Path to query set (`.csv` or `.json`). Optional, but at least one of `--queries` or `--autocomplete` is required |
+| `--autocomplete` | *(optional)* | Path to autocomplete prefix set (`.csv` or `.json`). Optional, but at least one of `--queries` or `--autocomplete` is required. The adapter must export a `suggest()` function when this flag is used |
+| `--adapter` | *(required)* | Path to adapter module. Always required; pass up to 2 for dual-config comparison mode |
 | `--config-name` | *(optional)* | Name for each configuration (up to 2). If omitted, names are auto-generated |
-| `--llm-model` | *(conditional)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`). Required when `--queries` or `--autocomplete` is provided (single adapter) |
+| `--llm-model` | *(conditional)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`). Required when `--queries` or `--autocomplete` is provided with a single adapter |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:11434/v1` for Ollama) |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
 | `--rubric` | `ecommerce-default` | Rubric name or custom rubric file path |
@@ -494,6 +494,32 @@ Run a single or dual-configuration evaluation.
 | `--resume` | off | Resume a previously interrupted run. Requires `--config-name` to identify the previous run. In non-batch mode, skips queries already judged in `judgments.jsonl`. In batch mode, resumes polling for an in-flight batch from a saved checkpoint. `--llm-model`, `--rubric`, and `--top-k` must match the original run |
 
 If `--config-name` is provided, pass one name per adapter.
+
+#### Flag requirements by mode
+
+**Search evaluation** requires `--queries`, `--adapter`, and `--llm-model`:
+
+```bash
+veritail run --queries queries.csv --adapter adapter.py --llm-model gpt-4o
+```
+
+**Autocomplete evaluation** requires `--autocomplete`, `--adapter`, and `--llm-model`:
+
+```bash
+veritail run --autocomplete prefixes.csv --adapter adapter.py --llm-model gpt-4o
+```
+
+**Combined** requires `--queries`, `--autocomplete`, `--adapter`, and `--llm-model`. Both search and autocomplete are evaluated in a single run.
+
+**Dual-config comparison** uses two `--adapter` and two `--config-name` flags:
+
+```bash
+veritail run --queries queries.csv --adapter a1.py --config-name v1 --adapter a2.py --config-name v2 --llm-model gpt-4o
+```
+
+**Batch mode** (`--batch`) additionally requires a cloud provider model (OpenAI, Anthropic, or Gemini). Not compatible with `--llm-base-url`.
+
+**Resume** (`--resume`) additionally requires `--config-name`. The experiment directory from the previous run must exist, and `--llm-model`, `--rubric`, and `--top-k` must match the original run.
 
 ### `veritail init`
 

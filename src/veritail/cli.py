@@ -564,6 +564,11 @@ def run(
     if autocomplete_prefixes and len(adapters) == 1 and not llm_model:
         raise click.UsageError("--llm-model is required for autocomplete evaluation.")
 
+    if use_resume and not config_names:
+        raise click.UsageError(
+            "--resume requires --config-name to identify the previous run."
+        )
+
     if not config_names:
         config_names = _generate_config_names(adapters)
         console.print(
@@ -575,10 +580,6 @@ def run(
         raise click.UsageError("--sample must be >= 1.")
 
     if use_resume:
-        if not config_names:
-            raise click.UsageError(
-                "--resume requires --config-name to identify the previous run."
-            )
         # Verify experiment directory exists for each config
         for cn in config_names:
             exp_dir = Path(output_dir) / cn
