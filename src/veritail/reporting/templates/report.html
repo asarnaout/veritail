@@ -703,14 +703,18 @@
         <thead>
             <tr>
                 <th>Query</th>
+                <th>Query Type</th>
                 <th>NDCG@10</th>
+                <th>Failed Checks</th>
             </tr>
         </thead>
         <tbody>
-            {% for query, value in worst_queries %}
+            {% for wq in worst_queries %}
             <tr>
-                <td>{{ query }}</td>
-                <td class="metric-value">{{ "%.4f"|format(value) }}</td>
+                <td>{% if wq.anchor_id %}<a href="#{{ wq.anchor_id }}" data-judgment-anchor="{{ wq.anchor_id }}" style="color:#4f6bed; text-decoration:none; font-weight:500;">{{ wq.query }}</a>{% else %}{{ wq.query }}{% endif %}</td>
+                <td>{{ wq.query_type }}</td>
+                <td class="metric-value">{{ "%.4f"|format(wq.ndcg) }}</td>
+                <td class="{% if wq.failed_checks > 0 %}negative{% else %}neutral{% endif %}">{{ wq.failed_checks }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -726,7 +730,7 @@
 
     <div id="judgment-list">
     {% for item in judgments_for_template %}
-    <details class="paginated-item" style="margin-bottom:12px;">
+    <details id="query-{{ loop.index0 }}" class="paginated-item" style="margin-bottom:12px;">
       <summary style="cursor:pointer; padding:10px 16px; background:white;
                       border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);
                       font-weight:600; list-style:none; display:flex;
@@ -810,7 +814,7 @@
             var totalPages = Math.ceil(items.length / PER_PAGE);
             var currentPage = 1;
 
-            function showPage(page) {
+            function showPage(page, suppressScroll) {
                 currentPage = page;
                 var start = (page - 1) * PER_PAGE;
                 var end = start + PER_PAGE;
@@ -819,7 +823,23 @@
                     if (i < start || i >= end) items[i].removeAttribute('open');
                 }
                 renderControls();
-                container.scrollIntoView({behavior: 'smooth', block: 'start'});
+                if (!suppressScroll) {
+                    container.scrollIntoView({behavior: 'smooth', block: 'start'});
+                }
+            }
+
+            function revealAnchor(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i] === el || items[i].contains(el)) {
+                        var page = Math.floor(i / PER_PAGE) + 1;
+                        showPage(page, true);
+                        el.setAttribute('open', '');
+                        setTimeout(function() { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 50);
+                        return;
+                    }
+                }
             }
 
             function renderControls() {
@@ -855,7 +875,22 @@
                 }
             });
 
+            document.addEventListener('click', function(e) {
+                var link = e.target.closest('a[data-judgment-anchor]');
+                if (link) {
+                    e.preventDefault();
+                    revealAnchor(link.getAttribute('data-judgment-anchor'));
+                }
+            });
+
             showPage(1);
+
+            if (location.hash) {
+                var anchorId = location.hash.substring(1);
+                if (anchorId.indexOf('query-') === 0) {
+                    revealAnchor(anchorId);
+                }
+            }
         }
 
         paginate('judgment-list', 'judgment-pagination');

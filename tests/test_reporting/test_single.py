@@ -565,3 +565,84 @@ class TestGenerateSingleReport:
         report = generate_single_report(_make_metrics(), checks, format="html")
         assert "obscure query" in report
         assert "Zero results returned" in report
+
+    def test_html_worst_queries_enriched(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=3,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+                query_type="broad",
+            ),
+            JudgmentRecord(
+                query="laptop",
+                product=SearchResult(
+                    product_id="SKU-2",
+                    title="Laptop",
+                    description="A laptop",
+                    category="Electronics",
+                    price=999.0,
+                    position=0,
+                ),
+                score=0,
+                reasoning="bad",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+                query_type="navigational",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "Query Type" in report
+        assert "Failed Checks" in report
+        assert "broad" in report
+        assert 'href="#query-' in report
+
+    def test_html_worst_queries_no_judgments_graceful(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        # Worst queries should still render without judgments (no anchor, no type)
+        assert "Worst Performing Queries" in report
+        assert "laptop" in report
+
+    def test_html_worst_queries_anchor_links_to_judgment(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=2,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert 'id="query-' in report

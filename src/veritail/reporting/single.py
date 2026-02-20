@@ -419,12 +419,7 @@ def _generate_html(
         (m for m in metrics if m.metric_name == "ndcg@10"),
         None,
     )
-    worst_queries = []
-    if ndcg and ndcg.per_query:
-        worst_queries = sorted(
-            ndcg.per_query.items(),
-            key=lambda x: x[1],
-        )[:10]
+    worst_queries: list[dict[str, object]] = []
 
     metadata_rows: list[dict[str, str]] = []
     if run_metadata:
@@ -485,6 +480,39 @@ def _generate_html(
             unsorted,  # type: ignore[arg-type]
             key=lambda x: float(x["avg_score"]),  # type: ignore[arg-type]
         )
+
+    # Enriched worst queries (needs judgments_for_template for anchors)
+    if ndcg and ndcg.per_query:
+        query_type_lookup: dict[str, str] = {}
+        if judgments:
+            for j in judgments:
+                if j.query not in query_type_lookup and j.query_type:
+                    query_type_lookup[j.query] = j.query_type
+
+        per_query_failed_checks: dict[str, int] = {}
+        for c in checks:
+            if not c.passed:
+                per_query_failed_checks[c.query] = (
+                    per_query_failed_checks.get(c.query, 0) + 1
+                )
+
+        query_anchor_map: dict[str, str] = {}
+        for idx, item in enumerate(judgments_for_template):
+            query_anchor_map[str(item["query"])] = f"query-{idx}"
+
+        sorted_ndcg = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:10]
+        worst_queries = [
+            {
+                "query": q,
+                "ndcg": v,
+                "query_type": QUERY_TYPE_DISPLAY_NAMES.get(
+                    query_type_lookup.get(q, ""), query_type_lookup.get(q, "")
+                ),
+                "failed_checks": per_query_failed_checks.get(q, 0),
+                "anchor_id": query_anchor_map.get(q, ""),
+            }
+            for q, v in sorted_ndcg
+        ]
 
     # Score distribution
     score_counts: dict[int, int] | None = None
