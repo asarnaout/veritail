@@ -162,6 +162,33 @@ Supported providers: OpenAI, Anthropic, and Google Gemini.
 
 Not supported with local models (`--llm-base-url`).
 
+### Resuming Interrupted Runs
+
+Use `--resume` to pick up where a previous run left off. This is useful when a run is interrupted by a network error, timeout, or Ctrl-C — you don't have to re-evaluate queries that already completed.
+
+```bash
+veritail run --queries queries.csv --adapter adapter.py \
+    --llm-model gpt-4o --config-name my-eval --resume
+```
+
+`--resume` requires `--config-name` so veritail can locate the previous run's experiment directory under `--output-dir` (default `./eval-results`). The directory must already exist from a prior run.
+
+**Config mismatch detection:** On resume, veritail checks the saved `config.json` and rejects the run if `--llm-model`, `--rubric`, or `--top-k` differ from the original. This prevents silently mixing results from different configurations.
+
+**How it works — non-batch mode:**
+
+In non-batch mode (`--resume` without `--batch`), veritail reads the existing `judgments.jsonl` file and identifies which query indices have already been judged. Completed queries are skipped and their judgments are reloaded into memory. New judgments are appended to the same file. Correction evaluations are only run for queries processed in the current resumption, not for previously completed queries.
+
+**How it works — batch mode:**
+
+In batch mode (`--resume --batch`), veritail saves a `checkpoint.json` to the experiment directory immediately after submitting a batch. The checkpoint records the batch ID, all request context (queries, results, deterministic checks), and provider-specific state. On resume, if a checkpoint exists, veritail skips adapter calls and batch submission entirely and jumps straight to polling for the in-flight batch. If the batch has already completed, results are retrieved immediately.
+
+If a batch fails (e.g. provider error or expiration), the checkpoint is automatically cleared and the error message instructs you to re-run without `--resume` to start a fresh batch.
+
+Autocomplete LLM evaluation uses a separate checkpoint (`ac-checkpoint.json`) with the same resume semantics.
+
+**Dual-config mode:** `--resume` works with dual-config comparison runs. Each configuration's experiment directory is checked independently, and each resumes from its own progress.
+
 ## Vertical Guidance
 
 `--vertical` injects domain-specific scoring guidance into the judge prompt. Each vertical teaches the LLM judge what matters most in a particular ecommerce domain — the hard constraints, industry jargon, certification requirements, and category-specific nuances that generic relevance scoring would miss.
@@ -464,6 +491,7 @@ Run a single or dual-configuration evaluation.
 | `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
 | `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
 | `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Works with both search and autocomplete evaluation. Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
+| `--resume` | off | Resume a previously interrupted run. Requires `--config-name` to identify the previous run. In non-batch mode, skips queries already judged in `judgments.jsonl`. In batch mode, resumes polling for an in-flight batch from a saved checkpoint. `--llm-model`, `--rubric`, and `--top-k` must match the original run |
 
 If `--config-name` is provided, pass one name per adapter.
 
