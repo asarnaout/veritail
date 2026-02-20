@@ -782,3 +782,106 @@ class TestGenerateSingleReport:
         ]
         report = generate_single_report(metrics, _make_checks(), format="html")
         assert "NDCG@10 Distribution" in report
+
+    def test_html_score_by_query_type(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=3,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+                query_type="broad",
+            ),
+            JudgmentRecord(
+                query="nike air max",
+                product=SearchResult(
+                    product_id="SKU-2",
+                    title="Nike Air Max",
+                    description="Shoe",
+                    category="Shoes",
+                    price=120.0,
+                    position=0,
+                ),
+                score=1,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+                query_type="navigational",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "By Query Type" in report
+        assert "broad" in report
+        assert "navigational" in report
+
+    def test_html_score_by_query_type_absent_when_all_unknown(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=2,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "By Query Type" not in report
+
+    def test_html_score_by_query_type_single_named_type(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=3,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+                query_type="broad",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "By Query Type" in report
+        assert "broad" in report

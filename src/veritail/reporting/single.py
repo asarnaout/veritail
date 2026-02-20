@@ -530,6 +530,40 @@ def _generate_html(
         else:
             score_counts = None
 
+    # Score distribution by query type
+    score_by_type: list[dict[str, object]] | None = None
+    if judgments and score_pcts:
+        from collections import defaultdict as _defaultdict
+
+        type_scores: dict[str, dict[int, int]] = _defaultdict(
+            lambda: {0: 0, 1: 0, 2: 0, 3: 0}
+        )
+        for j in judgments:
+            qt = j.query_type or "unknown"
+            type_scores[qt][j.score] += 1
+
+        named_types = [t for t in type_scores if t != "unknown"]
+        show_breakdown = len(type_scores) >= 2 or len(named_types) >= 1
+        if show_breakdown:
+            sorted_types = sorted(type_scores.keys())
+            score_by_type = []
+            for qt in sorted_types:
+                counts = type_scores[qt]
+                total = sum(counts.values())
+                if total == 0:
+                    continue
+                pcts = {s: round(c / total * 100, 1) for s, c in counts.items()}
+                display = QUERY_TYPE_DISPLAY_NAMES.get(qt, qt)
+                score_by_type.append(
+                    {
+                        "type": qt,
+                        "display_name": display,
+                        "counts": counts,
+                        "total": total,
+                        "pcts": pcts,
+                    }
+                )
+
     # NDCG@10 distribution stats
     ndcg_stats: dict[str, float] | None = None
     ndcg_histogram: list[dict[str, object]] | None = None
@@ -674,6 +708,7 @@ def _generate_html(
         score_counts=score_counts,
         score_total=score_total,
         score_pcts=score_pcts,
+        score_by_type=score_by_type,
         ndcg_stats=ndcg_stats,
         ndcg_histogram=ndcg_histogram,
         position_chart=position_chart,
