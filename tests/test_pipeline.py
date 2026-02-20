@@ -1582,7 +1582,7 @@ class TestRunBatchEvaluation:
         assert len(corrections) == 0
 
     def test_batch_correction_batch_fails(self, tmp_path):
-        """RuntimeError when correction batch fails."""
+        """RuntimeError when correction batch fails; checkpoint preserves relevance."""
         queries = [QueryEntry(query="runnign shoes", type="broad")]
 
         def adapter(query: str) -> SearchResponse:
@@ -1638,7 +1638,15 @@ class TestRunBatchEvaluation:
                 rubric,
                 backend,
                 poll_interval=0,
+                output_dir=str(tmp_path),
             )
+
+        # Checkpoint should be preserved with relevance batch intact
+        cp = load_checkpoint(str(tmp_path), "test-batch")
+        assert cp is not None
+        assert cp.batch_id == "batch-1"  # relevance batch preserved
+        assert cp.correction_batch_id is None  # correction cleared
+        assert len(cp.correction_entries) > 0  # entries kept for re-submission
 
     def test_batch_correction_submit_fails_checkpoint_saved(self, tmp_path):
         """When correction submit_batch raises, partial checkpoint is saved."""
@@ -1852,3 +1860,187 @@ class TestRunBatchEvaluation:
         assert cp_after.batch_id == "batch-rel"
         assert cp_after.correction_batch_id is None
         assert len(cp_after.correction_entries) > 0
+
+    def test_batch_relevance_batch_fails_checkpoint_cleared(self, tmp_path):
+        """When the relevance batch fails, the checkpoint IS cleared."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        client = Mock(spec=LLMClient)
+        client.supports_batch.return_value = True
+
+        submitted: list[list[BatchRequest]] = []
+
+        def submit_batch(requests):
+            submitted.append(list(requests))
+            return f"batch-{len(submitted)}"
+
+        client.submit_batch.side_effect = submit_batch
+
+        # Relevance batch fails on first poll
+        client.poll_batch.return_value = ("failed", 0, 1)
+        client.batch_error_message.return_value = None
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        with pytest.raises(RuntimeError, match="batch-1 failed"):
+            run_batch_evaluation(
+                queries,
+                adapter,
+                config,
+                client,
+                rubric,
+                backend,
+                poll_interval=0,
+                output_dir=str(tmp_path),
+            )
+
+        # Checkpoint should be fully cleared
+        assert load_checkpoint(str(tmp_path), "test-batch") is None
+
+    def test_batch_correction_fails_then_resume_recovers(self, tmp_path):
+        """End-to-end: correction fails → resume retrieves relevance + re-submits."""
+        queries = [QueryEntry(query="runnign shoes", type="broad")]
+
+        def adapter(query: str) -> SearchResponse:
+            return SearchResponse(
+                results=[
+                    SearchResult(
+                        product_id="SKU-1",
+                        title="Running Shoes",
+                        description="Great shoes",
+                        category="Shoes",
+                        price=100.0,
+                        position=0,
+                    )
+                ],
+                corrected_query="running shoes",
+            )
+
+        config = ExperimentConfig(
+            name="test-batch",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=1,
+        )
+
+        # --- Run 1: correction batch fails during polling ---
+        client1 = Mock(spec=LLMClient)
+        client1.supports_batch.return_value = True
+
+        submitted1: list[list[BatchRequest]] = []
+
+        def submit_batch1(requests):
+            submitted1.append(list(requests))
+            return f"batch-{len(submitted1)}"
+
+        client1.submit_batch.side_effect = submit_batch1
+
+        # Relevance completes, correction fails
+        client1.poll_batch.side_effect = [
+            ("completed", 1, 1),
+            ("failed", 0, 1),
+        ]
+        client1.batch_error_message.return_value = None
+
+        backend = FileBackend(output_dir=str(tmp_path))
+        rubric = ("system prompt", lambda q, r: f"Query: {q}")
+
+        with pytest.raises(RuntimeError, match="batch-2 failed"):
+            run_batch_evaluation(
+                queries,
+                adapter,
+                config,
+                client1,
+                rubric,
+                backend,
+                poll_interval=0,
+                output_dir=str(tmp_path),
+            )
+
+        # Checkpoint preserved with correction_batch_id=None
+        cp = load_checkpoint(str(tmp_path), "test-batch")
+        assert cp is not None
+        assert cp.batch_id == "batch-1"
+        assert cp.correction_batch_id is None
+
+        # --- Run 2: resume recovers relevance results + re-submits corrections ---
+        client2 = Mock(spec=LLMClient)
+        client2.supports_batch.return_value = True
+        # Re-submit for corrections
+        client2.submit_batch.return_value = "batch-corr-new"
+        # Polls: relevance (already completed) + correction (new)
+        client2.poll_batch.return_value = ("completed", 1, 1)
+
+        client2.retrieve_batch_results.side_effect = [
+            # Relevance results
+            [
+                BatchResult(
+                    custom_id="rel-0-0",
+                    response=LLMResponse(
+                        content="SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect",
+                        model="test",
+                        input_tokens=10,
+                        output_tokens=10,
+                    ),
+                )
+            ],
+            # Correction results
+            [
+                BatchResult(
+                    custom_id="corr-0",
+                    response=LLMResponse(
+                        content="VERDICT: appropriate\nREASONING: Spelling fix.",
+                        model="test",
+                        input_tokens=10,
+                        output_tokens=10,
+                    ),
+                )
+            ],
+        ]
+
+        judgments, checks, metrics, corrections = run_batch_evaluation(
+            queries,
+            adapter,
+            config,
+            client2,
+            rubric,
+            backend,
+            poll_interval=0,
+            resume=True,
+            output_dir=str(tmp_path),
+        )
+
+        # Correction batch re-submitted
+        assert client2.submit_batch.call_count == 1
+        # Both results processed
+        assert len(judgments) == 1
+        assert judgments[0].score == 3
+        assert len(corrections) == 1
+        assert corrections[0].verdict == "appropriate"
+        # Checkpoint cleared on success
+        assert load_checkpoint(str(tmp_path), "test-batch") is None

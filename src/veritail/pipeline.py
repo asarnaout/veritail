@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 from rich.console import Console
 from rich.progress import Progress
 
 from veritail.backends import EvalBackend
-from veritail.batch_utils import poll_multiple_batches, poll_until_done
+from veritail.batch_utils import (
+    BatchFailedError,
+    poll_multiple_batches,
+    poll_until_done,
+)
 from veritail.checkpoint import (
     BatchCheckpoint,
     clear_checkpoint,
@@ -871,7 +875,35 @@ def run_batch_evaluation(
             poll_entries,
             poll_interval=poll_interval,
         )
+    except BatchFailedError as exc:
+        msg = str(exc)
+        if exc.batch_id == batch_id:
+            # Relevance batch failed — corrections are useless without relevance scores
+            clear_checkpoint(output_dir, config.name)
+            msg += (
+                " Checkpoint cleared — re-run without --resume to start a fresh batch."
+            )
+        else:
+            # Correction batch failed — preserve relevance batch for recovery
+            current_cp = load_checkpoint(output_dir, config.name)
+            if current_cp is not None:
+                save_checkpoint(
+                    output_dir,
+                    config.name,
+                    replace(
+                        current_cp,
+                        correction_batch_id=None,
+                        correction_context=None,
+                        gemini_correction_custom_id_order=[],
+                    ),
+                )
+            msg += (
+                " Re-run with --resume to retrieve relevance results"
+                " and re-submit corrections."
+            )
+        raise RuntimeError(msg) from exc
     except RuntimeError as exc:
+        # Unexpected polling error (e.g. network) — preserve existing behavior
         clear_checkpoint(output_dir, config.name)
         msg = str(exc)
         if resume:

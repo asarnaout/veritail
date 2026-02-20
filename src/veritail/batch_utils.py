@@ -13,6 +13,15 @@ from veritail.llm.client import LLMClient
 console = Console()
 
 
+class BatchFailedError(RuntimeError):
+    """A batch reached a terminal failure state (failed/expired)."""
+
+    def __init__(self, message: str, *, batch_id: str, status: str) -> None:
+        super().__init__(message)
+        self.batch_id = batch_id
+        self.status = status
+
+
 def poll_until_done(
     llm_client: LLMClient,
     batch_id: str,
@@ -46,7 +55,7 @@ def poll_until_done(
                     msg += f" Error: {detail}"
                 else:
                     msg += " Check your provider's dashboard for details."
-                raise RuntimeError(msg)
+                raise BatchFailedError(msg, batch_id=batch_id, status=status)
 
             time.sleep(poll_interval)
 
@@ -89,7 +98,7 @@ def poll_multiple_batches(
                         msg += f" Error: {detail}"
                     else:
                         msg += " Check your provider's dashboard for details."
-                    raise RuntimeError(msg)
+                    raise BatchFailedError(msg, batch_id=batch_id, status=status)
 
             if pending:
                 time.sleep(poll_interval)
