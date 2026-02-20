@@ -39,6 +39,8 @@ pip install veritail[cloud]            # all three cloud providers
 pip install veritail[cloud,langfuse]   # everything
 ```
 
+The base install includes the OpenAI SDK because it doubles as the client for OpenAI-compatible local servers (Ollama, vLLM, LM Studio, etc.) — so `pip install veritail` works with both cloud and local models out of the box.
+
 ### 2. Bootstrap starter files (recommended)
 
 ```bash
