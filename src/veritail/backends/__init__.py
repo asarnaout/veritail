@@ -59,6 +59,13 @@ def create_backend(backend_type: str, **kwargs: Any) -> EvalBackend:
                 "Langfuse backend requires the langfuse extra. "
                 "Install with: pip install veritail[langfuse]"
             )
+        except Exception as exc:
+            raise ImportError(
+                f"Failed to load the Langfuse backend: {exc}. "
+                "This is typically caused by a Langfuse SDK incompatibility "
+                "with your Python version. Try Python 3.13 or earlier, "
+                "or check for a newer langfuse release."
+            ) from exc
         return LangfuseBackend(**kwargs)
     else:
         raise ValueError(

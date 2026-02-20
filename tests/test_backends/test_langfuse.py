@@ -6,18 +6,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from veritail.types import JudgmentRecord, SearchResult
+
+HAS_LANGFUSE = False
+_langfuse_skip_reason = "langfuse not installed"
+
 try:
     import langfuse  # noqa: F401
 
     HAS_LANGFUSE = True
 except ImportError:
-    HAS_LANGFUSE = False
-
-from veritail.types import JudgmentRecord, SearchResult
+    pass
+except Exception as _exc:
+    _langfuse_skip_reason = (
+        f"langfuse import failed: {_exc}. "
+        "This is likely a Langfuse SDK incompatibility with your Python version."
+    )
 
 pytestmark = pytest.mark.skipif(
     not HAS_LANGFUSE,
-    reason="langfuse not installed",
+    reason=_langfuse_skip_reason,
 )
 
 
