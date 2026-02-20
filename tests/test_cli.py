@@ -1888,3 +1888,138 @@ class TestCLI:
 
         assert result.exit_code == 0
         mock_dual.assert_called_once()
+
+    def test_batch_concurrent_both_fail(self, tmp_path):
+        """Both pipelines fail — both error messages appear in output."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult, AutocompleteResponse\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        def fail_search(**kwargs):
+            raise RuntimeError("search pipeline exploded")
+
+        def fail_ac(**kwargs):
+            raise RuntimeError("autocomplete pipeline exploded")
+
+        with (
+            patch("veritail.cli.create_llm_client", return_value=mock_client),
+            patch("veritail.cli._run_search_pipeline", side_effect=fail_search),
+            patch("veritail.cli._run_autocomplete_pipeline", side_effect=fail_ac),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert "search pipeline exploded" in result.output
+        assert "autocomplete pipeline exploded" in result.output
+
+    def test_batch_concurrent_one_fails_other_cancelled(self, tmp_path):
+        """One pipeline fails, other gets cancelled — only real error surfaces."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        prefixes_file = tmp_path / "prefixes.csv"
+        prefixes_file.write_text("prefix,type\nrun,short_prefix\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult, AutocompleteResponse\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+            "def suggest(prefix):\n"
+            "    return AutocompleteResponse(suggestions=['running shoes'])\n"
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.batch_utils import BatchCancelledError
+        from veritail.llm.client import LLMClient
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.supports_batch.return_value = True
+
+        def fail_search(**kwargs):
+            raise RuntimeError("search batch failed")
+
+        def slow_ac(**kwargs):
+            """Simulate a pipeline that checks cancel_event via polling."""
+            cancel = kwargs.get("cancel_event")
+            if cancel is not None:
+                # Wait for cancellation (simulates poll loop)
+                cancel.wait(timeout=10)
+                if cancel.is_set():
+                    raise BatchCancelledError()
+            return []
+
+        with (
+            patch("veritail.cli.create_llm_client", return_value=mock_client),
+            patch("veritail.cli._run_search_pipeline", side_effect=fail_search),
+            patch("veritail.cli._run_autocomplete_pipeline", side_effect=slow_ac),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--autocomplete",
+                    str(prefixes_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "test",
+                    "--output-dir",
+                    str(tmp_path / "results"),
+                    "--llm-model",
+                    "gpt-4o",
+                    "--batch",
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert "search batch failed" in result.output
+        # The BatchCancelledError message should NOT appear
+        assert "Batch polling cancelled" not in result.output

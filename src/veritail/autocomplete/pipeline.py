@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Callable
 from typing import Any
@@ -193,6 +194,7 @@ def run_autocomplete_batch_llm_evaluation(
     poll_interval: int = 60,
     resume: bool = False,
     output_dir: str = "./eval-results",
+    cancel_event: threading.Event | None = None,
 ) -> list[SuggestionJudgment]:
     """Run batch LLM-based semantic evaluation on autocomplete suggestions.
 
@@ -271,6 +273,7 @@ def run_autocomplete_batch_llm_evaluation(
             expected_total=len(request_context),
             poll_interval=poll_interval,
             label="Waiting for autocomplete batch...",
+            cancel_event=cancel_event,
         )
     except RuntimeError as exc:
         clear_checkpoint(output_dir, config.name, filename=AC_CHECKPOINT_FILENAME)

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import click
 from dotenv import load_dotenv
@@ -119,6 +121,7 @@ def _run_search_pipeline(  # noqa: PLR0913
     use_batch: bool,
     use_resume: bool,
     search_sibling: str | None,
+    cancel_event: threading.Event | None = None,
 ) -> list[Path]:
     """Run the search evaluation pipeline. Returns list of HTML report paths."""
     query_entries = load_queries(queries_path)
@@ -192,6 +195,9 @@ def _run_search_pipeline(  # noqa: PLR0913
         adapter_fn = load_adapter(adapters[0])
 
         pipeline_fn = run_batch_evaluation if use_batch else run_evaluation
+        batch_kwargs: dict[str, Any] = {}
+        if use_batch and cancel_event is not None:
+            batch_kwargs["cancel_event"] = cancel_event
         judgments, checks, metrics, correction_judgments = pipeline_fn(
             query_entries,
             adapter_fn,
@@ -204,6 +210,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             custom_checks=custom_check_fns,
             resume=use_resume,
             output_dir=output_dir,
+            **batch_kwargs,
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,
@@ -280,6 +287,9 @@ def _run_search_pipeline(  # noqa: PLR0913
         adapter_b = load_adapter(adapters[1])
 
         dual_fn = run_dual_batch_evaluation if use_batch else run_dual_evaluation
+        dual_batch_kwargs: dict[str, Any] = {}
+        if use_batch and cancel_event is not None:
+            dual_batch_kwargs["cancel_event"] = cancel_event
         (
             judgments_a,
             judgments_b,
@@ -304,6 +314,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             custom_checks=custom_check_fns,
             resume=use_resume,
             output_dir=output_dir,
+            **dual_batch_kwargs,
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,
@@ -393,6 +404,7 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
     use_batch: bool,
     use_resume: bool,
     ac_sibling: str | None,
+    cancel_event: threading.Event | None = None,
 ) -> list[Path]:
     """Run the autocomplete evaluation pipeline. Returns list of HTML report paths."""
     from veritail.autocomplete.adapter import load_suggest_adapter
@@ -535,6 +547,7 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
                 poll_interval=60,
                 resume=use_resume,
                 output_dir=output_dir,
+                cancel_event=cancel_event,
             )
         else:
             ac_suggestion_judgments = run_autocomplete_llm_evaluation(
@@ -1181,6 +1194,7 @@ def run(
 
     # ---- Run evaluations ----
     html_paths: list[Path] = []
+    cancel_event: threading.Event | None = None
 
     def _do_search() -> list[Path]:
         assert queries is not None
@@ -1205,6 +1219,7 @@ def run(
             use_batch=use_batch,
             use_resume=use_resume,
             search_sibling=search_sibling,
+            cancel_event=cancel_event,
         )
 
     def _do_autocomplete() -> list[Path]:
@@ -1226,18 +1241,36 @@ def run(
             use_batch=use_batch,
             use_resume=use_resume,
             ac_sibling=ac_sibling,
+            cancel_event=cancel_event,
         )
 
     # Concurrent path: both search and autocomplete in batch mode
     if queries and autocomplete_prefixes and use_batch:
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
+        from veritail.batch_utils import BatchCancelledError
+
+        cancel_event = threading.Event()
+
         with ThreadPoolExecutor(max_workers=2) as executor:
             search_future = executor.submit(_do_search)
             ac_future = executor.submit(_do_autocomplete)
+
+            errors: list[Exception] = []
             for future in as_completed([search_future, ac_future]):
-                future.result()  # re-raises any exception
-            html_paths = search_future.result() + ac_future.result()
+                try:
+                    future.result()
+                except BatchCancelledError:
+                    pass  # Side effect of the other thread's real failure
+                except Exception as exc:
+                    errors.append(exc)
+                    cancel_event.set()  # Signal the other thread to stop
+
+        if errors:
+            msg = "; ".join(str(e) for e in errors)
+            raise click.ClickException(msg)
+
+        html_paths = search_future.result() + ac_future.result()
 
     else:
         # Sequential path

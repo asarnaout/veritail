@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import asdict, replace
@@ -95,6 +96,7 @@ def _classify_missing_query_types_batch(
     context: str | None,
     vertical: str | None,
     poll_interval: int,
+    cancel_event: threading.Event | None = None,
 ) -> None:
     """Batch variant of query type classification.
 
@@ -131,6 +133,7 @@ def _classify_missing_query_types_batch(
         expected_total=len(batch_requests),
         poll_interval=poll_interval,
         label="Waiting for classification batch...",
+        cancel_event=cancel_event,
     )
 
     batch_results = llm_client.retrieve_batch_results(batch_id)
@@ -550,6 +553,7 @@ def run_batch_evaluation(
     poll_interval: int = 60,
     resume: bool = False,
     output_dir: str = "./eval-results",
+    cancel_event: threading.Event | None = None,
 ) -> tuple[
     list[JudgmentRecord],
     list[CheckResult],
@@ -606,7 +610,7 @@ def run_batch_evaluation(
 
     # Pre-pass: classify query types that are missing (batched)
     _classify_missing_query_types_batch(
-        queries, llm_client, context, vertical, poll_interval
+        queries, llm_client, context, vertical, poll_interval, cancel_event=cancel_event
     )
 
     # Check for existing checkpoint when resuming
@@ -874,6 +878,7 @@ def run_batch_evaluation(
             llm_client,
             poll_entries,
             poll_interval=poll_interval,
+            cancel_event=cancel_event,
         )
     except BatchFailedError as exc:
         msg = str(exc)
@@ -1070,6 +1075,7 @@ def run_dual_batch_evaluation(
     poll_interval: int = 60,
     resume: bool = False,
     output_dir: str = "./eval-results",
+    cancel_event: threading.Event | None = None,
 ) -> tuple[
     list[JudgmentRecord],
     list[JudgmentRecord],
@@ -1100,6 +1106,7 @@ def run_dual_batch_evaluation(
         poll_interval=poll_interval,
         resume=resume,
         output_dir=output_dir,
+        cancel_event=cancel_event,
     )
 
     judgments_b, checks_b, metrics_b, corrections_b = run_batch_evaluation(
@@ -1115,6 +1122,7 @@ def run_dual_batch_evaluation(
         poll_interval=poll_interval,
         resume=resume,
         output_dir=output_dir,
+        cancel_event=cancel_event,
     )
 
     # Run comparison checks

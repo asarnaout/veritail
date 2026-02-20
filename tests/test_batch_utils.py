@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from unittest.mock import Mock
 
 import pytest
 
-from veritail.batch_utils import poll_multiple_batches, poll_until_done
+from veritail.batch_utils import (
+    BatchCancelledError,
+    poll_multiple_batches,
+    poll_until_done,
+)
 from veritail.llm.client import LLMClient
 
 
@@ -61,6 +67,52 @@ class TestPollUntilDone:
         client.batch_error_message.return_value = None
         with pytest.raises(RuntimeError, match="dashboard"):
             poll_until_done(client, "batch-1", expected_total=5, poll_interval=0)
+
+    def test_poll_cancel_pre_set(self) -> None:
+        """Cancel event already set before calling — raises immediately."""
+        client = _make_client()
+        client.poll_batch.return_value = ("in_progress", 0, 5)
+        cancel = threading.Event()
+        cancel.set()
+        with pytest.raises(BatchCancelledError):
+            poll_until_done(
+                client,
+                "batch-1",
+                expected_total=5,
+                poll_interval=0,
+                cancel_event=cancel,
+            )
+        # Cancel is checked before poll_batch, so at most one call
+        assert client.poll_batch.call_count <= 1
+
+    def test_poll_cancel_wakes_quickly(self) -> None:
+        """Cancel event wakes the sleep within milliseconds, not poll_interval."""
+        client = _make_client()
+        client.poll_batch.return_value = ("in_progress", 0, 5)
+        cancel = threading.Event()
+        # Set cancel after 0.1s
+        timer = threading.Timer(0.1, cancel.set)
+        timer.start()
+        t0 = time.monotonic()
+        with pytest.raises(BatchCancelledError):
+            poll_until_done(
+                client,
+                "batch-1",
+                expected_total=5,
+                poll_interval=300,
+                cancel_event=cancel,
+            )
+        elapsed = time.monotonic() - t0
+        assert elapsed < 5.0  # Must not wait 300s
+
+    def test_poll_cancel_event_none_unchanged(self) -> None:
+        """cancel_event=None with completed status works as before."""
+        client = _make_client()
+        client.poll_batch.return_value = ("completed", 5, 5)
+        poll_until_done(
+            client, "batch-1", expected_total=5, poll_interval=0, cancel_event=None
+        )
+        client.poll_batch.assert_called_once_with("batch-1")
 
 
 class TestPollMultipleBatches:
@@ -128,4 +180,18 @@ class TestPollMultipleBatches:
                 client,
                 [("batch-1", 5, "My batch")],
                 poll_interval=0,
+            )
+
+    def test_poll_multiple_cancel(self) -> None:
+        """Pre-set cancel event raises BatchCancelledError."""
+        client = _make_client()
+        client.poll_batch.return_value = ("in_progress", 0, 5)
+        cancel = threading.Event()
+        cancel.set()
+        with pytest.raises(BatchCancelledError):
+            poll_multiple_batches(
+                client,
+                [("batch-1", 5, "My batch")],
+                poll_interval=0,
+                cancel_event=cancel,
             )

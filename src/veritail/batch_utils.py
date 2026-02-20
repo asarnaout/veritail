@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Sequence
 
@@ -22,6 +23,17 @@ class BatchFailedError(RuntimeError):
         self.status = status
 
 
+class BatchCancelledError(Exception):
+    """Raised when a polling loop is interrupted by a cancellation event.
+
+    Does NOT extend ``RuntimeError`` so pipeline error handlers (which manage
+    checkpoints) will not catch it.
+    """
+
+    def __init__(self, message: str = "Batch polling cancelled") -> None:
+        super().__init__(message)
+
+
 def poll_until_done(
     llm_client: LLMClient,
     batch_id: str,
@@ -29,6 +41,7 @@ def poll_until_done(
     expected_total: int,
     poll_interval: int = 60,
     label: str = "Waiting for batch completion...",
+    cancel_event: threading.Event | None = None,
 ) -> None:
     """Poll a batch until it reaches a terminal state.
 
@@ -41,6 +54,9 @@ def poll_until_done(
             total=expected_total,
         )
         while True:
+            if cancel_event is not None and cancel_event.is_set():
+                raise BatchCancelledError()
+
             status, completed, total = llm_client.poll_batch(batch_id)
             progress.update(
                 poll_task, completed=completed, total=total or expected_total
@@ -57,7 +73,11 @@ def poll_until_done(
                     msg += " Check your provider's dashboard for details."
                 raise BatchFailedError(msg, batch_id=batch_id, status=status)
 
-            time.sleep(poll_interval)
+            if cancel_event is not None:
+                if cancel_event.wait(poll_interval):
+                    raise BatchCancelledError()
+            else:
+                time.sleep(poll_interval)
 
 
 def poll_multiple_batches(
@@ -65,6 +85,7 @@ def poll_multiple_batches(
     batches: Sequence[tuple[str, int, str]],
     *,
     poll_interval: int = 60,
+    cancel_event: threading.Event | None = None,
 ) -> None:
     """Poll multiple batches concurrently in a single Rich progress context.
 
@@ -84,6 +105,9 @@ def poll_multiple_batches(
         pending = set(range(len(tasks)))
 
         while pending:
+            if cancel_event is not None and cancel_event.is_set():
+                raise BatchCancelledError()
+
             for idx in list(pending):
                 batch_id, expected_total, tid = tasks[idx]
                 status, completed, total = llm_client.poll_batch(batch_id)
@@ -101,4 +125,8 @@ def poll_multiple_batches(
                     raise BatchFailedError(msg, batch_id=batch_id, status=status)
 
             if pending:
-                time.sleep(poll_interval)
+                if cancel_event is not None:
+                    if cancel_event.wait(poll_interval):
+                        raise BatchCancelledError()
+                else:
+                    time.sleep(poll_interval)
