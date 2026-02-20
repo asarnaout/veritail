@@ -30,25 +30,7 @@ SEARCH_API_URL = os.getenv("SEARCH_API_URL", "https://api.example.com/search")
 SEARCH_API_KEY = os.getenv("SEARCH_API_KEY", "")
 
 
-def _extract_items(payload: Any) -> list[dict[str, Any]]:
-    \"\"\"Handle common response shapes: list or dict with items/results/products.\"\"\"
-    if isinstance(payload, list):
-        return [item for item in payload if isinstance(item, dict)]
-
-    if isinstance(payload, dict):
-        for key in ("results", "items", "products", "data"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                return [item for item in value if isinstance(item, dict)]
-
-    return []
-
-
-def _to_float(value: Any, default: float = 0.0) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+# -- Search (veritail calls this function) ------------------------------------
 
 
 def search(query: str) -> SearchResponse:
@@ -102,6 +84,30 @@ def search(query: str) -> SearchResponse:
     return SearchResponse(results=results)
     # To report autocorrect / "did you mean" corrections, use:
     # return SearchResponse(results=results, corrected_query="corrected query text")
+
+
+# -- Helpers (edit these to match your API response shape) --------------------
+
+
+def _extract_items(payload: Any) -> list[dict[str, Any]]:
+    \"\"\"Handle common response shapes: list or dict with items/results/products.\"\"\"
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+
+    if isinstance(payload, dict):
+        for key in ("results", "items", "products", "data"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+
+    return []
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 """
 
 QUERIES_TEMPLATE = """\
@@ -124,18 +130,7 @@ SUGGEST_API_URL = os.getenv("SUGGEST_API_URL", "https://api.example.com/suggest"
 SUGGEST_API_KEY = os.getenv("SUGGEST_API_KEY", "")
 
 
-def _extract_suggestions(payload: Any) -> list[str]:
-    \"\"\"Handle common response shapes for autocomplete APIs.\"\"\"
-    if isinstance(payload, list):
-        return [str(s) for s in payload if isinstance(s, str)]
-
-    if isinstance(payload, dict):
-        for key in ("suggestions", "completions", "results", "items", "data"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                return [str(s) for s in value if isinstance(s, str)]
-
-    return []
+# -- Suggest (veritail calls this function) -----------------------------------
 
 
 def suggest(prefix: str) -> AutocompleteResponse:
@@ -160,6 +155,23 @@ def suggest(prefix: str) -> AutocompleteResponse:
         raise RuntimeError("Suggest API response was not valid JSON.") from exc
 
     return AutocompleteResponse(suggestions=_extract_suggestions(payload))
+
+
+# -- Helpers (edit these to match your API response shape) --------------------
+
+
+def _extract_suggestions(payload: Any) -> list[str]:
+    \"\"\"Handle common response shapes for autocomplete APIs.\"\"\"
+    if isinstance(payload, list):
+        return [str(s) for s in payload if isinstance(s, str)]
+
+    if isinstance(payload, dict):
+        for key in ("suggestions", "completions", "results", "items", "data"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [str(s) for s in value if isinstance(s, str)]
+
+    return []
 """
 
 PREFIXES_TEMPLATE = """\
