@@ -125,6 +125,53 @@
     </div>
     {% endif %}
 
+    {% if scatter_plot %}
+    <h2>NDCG@10 Scatter Plot</h2>
+    <div class="card">
+        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+            Each point is a query. Points above the diagonal improved in {{ config_b }}; points below regressed.
+        </p>
+        <svg viewBox="0 0 500 500" style="width:100%; max-width:500px; display:block; margin:0 auto;" role="img" aria-label="NDCG scatter plot">
+            {% for g in scatter_plot.gridlines %}
+            <line x1="{{ scatter_plot.left }}" y1="{{ g.y }}" x2="{{ scatter_plot.right }}" y2="{{ g.y }}"
+                  stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4" />
+            <line x1="{{ g.x }}" y1="{{ scatter_plot.top }}" x2="{{ g.x }}" y2="{{ scatter_plot.bottom }}"
+                  stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4" />
+            <text x="{{ scatter_plot.left - 8 }}" y="{{ g.y + 4 }}" text-anchor="end"
+                  fill="#9ca3af" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.val }}</text>
+            <text x="{{ g.x }}" y="{{ scatter_plot.bottom + 16 }}" text-anchor="middle"
+                  fill="#9ca3af" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.val }}</text>
+            {% endfor %}
+
+            <line x1="{{ scatter_plot.left }}" y1="{{ scatter_plot.top }}" x2="{{ scatter_plot.left }}" y2="{{ scatter_plot.bottom }}" stroke="#d1d5db" stroke-width="1" />
+            <line x1="{{ scatter_plot.left }}" y1="{{ scatter_plot.bottom }}" x2="{{ scatter_plot.right }}" y2="{{ scatter_plot.bottom }}" stroke="#d1d5db" stroke-width="1" />
+
+            <line x1="{{ scatter_plot.diag_start_x }}" y1="{{ scatter_plot.diag_start_y }}"
+                  x2="{{ scatter_plot.diag_end_x }}" y2="{{ scatter_plot.diag_end_y }}"
+                  stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="6,4" />
+
+            {% for p in scatter_plot.points %}
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" opacity="0.8">
+                <title>{{ p.query }} — {{ config_a }}: {{ p.ndcg_a }}, {{ config_b }}: {{ p.ndcg_b }} ({{ p.type }})</title>
+            </circle>
+            {% endfor %}
+
+            <text x="{{ (scatter_plot.left + scatter_plot.right) / 2 }}" y="{{ scatter_plot.bottom + 34 }}" text-anchor="middle"
+                  fill="#4b5563" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ config_a }} NDCG@10</text>
+            <text x="14" y="{{ (scatter_plot.top + scatter_plot.bottom) / 2 }}" text-anchor="middle"
+                  fill="#4b5563" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+                  transform="rotate(-90, 14, {{ (scatter_plot.top + scatter_plot.bottom) / 2 }})">{{ config_b }} NDCG@10</text>
+        </svg>
+        {% if scatter_plot.legend %}
+        <div style="display:flex; gap:16px; font-size:13px; margin-top:12px; justify-content:center; flex-wrap:wrap;">
+            {% for entry in scatter_plot.legend %}
+            <span><span style="display:inline-block; width:10px; height:10px; background:{{ entry.color }}; border-radius:50%; vertical-align:middle; margin-right:4px;"></span> {{ entry.type }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     {% if score_dist_a or score_dist_b %}
     <h2>Score Distribution</h2>
     <div class="card">

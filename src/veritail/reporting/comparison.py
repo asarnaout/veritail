@@ -382,6 +382,91 @@ def _generate_html(
                 "tie_pct": round(ties / total * 100, 1),
             }
 
+    # NDCG scatter plot (A vs B)
+    scatter_plot: dict[str, object] | None = None
+    if ndcg_a and ndcg_b and ndcg_a.per_query and ndcg_b.per_query:
+        query_type_lookup: dict[str, str] = {}
+        for jlist in [judgments_a, judgments_b]:
+            if jlist:
+                for j in jlist:
+                    if j.query not in query_type_lookup and j.query_type:
+                        query_type_lookup[j.query] = j.query_type
+
+        type_colors: dict[str, str] = {
+            "broad": "#4f6bed",
+            "navigational": "#16a34a",
+            "long_tail": "#ea580c",
+            "attribute": "#8b5cf6",
+        }
+        default_color = "#6b7280"
+
+        sc_left, sc_right, sc_top, sc_bottom = 50, 480, 20, 450
+        sc_w = sc_right - sc_left
+        sc_h = sc_bottom - sc_top
+
+        def _ndcg_to_x(val: float) -> float:
+            return sc_left + val * sc_w
+
+        def _ndcg_to_y(val: float) -> float:
+            return sc_bottom - val * sc_h
+
+        scatter_points: list[dict[str, object]] = []
+        observed_types: set[str] = set()
+        for query in ndcg_a.per_query:
+            if query in ndcg_b.per_query:
+                sc_va = ndcg_a.per_query[query]
+                sc_vb = ndcg_b.per_query[query]
+                qt = query_type_lookup.get(query, "")
+                color = type_colors.get(qt, default_color)
+                if qt:
+                    observed_types.add(qt)
+                scatter_points.append(
+                    {
+                        "x": round(_ndcg_to_x(sc_va), 1),
+                        "y": round(_ndcg_to_y(sc_vb), 1),
+                        "query": query,
+                        "ndcg_a": round(sc_va, 4),
+                        "ndcg_b": round(sc_vb, 4),
+                        "type": qt or "unknown",
+                        "color": color,
+                    }
+                )
+
+        if scatter_points:
+            diag_start_x = round(_ndcg_to_x(0), 1)
+            diag_start_y = round(_ndcg_to_y(0), 1)
+            diag_end_x = round(_ndcg_to_x(1), 1)
+            diag_end_y = round(_ndcg_to_y(1), 1)
+
+            sc_gridlines = [
+                {
+                    "val": v,
+                    "x": round(_ndcg_to_x(v), 1),
+                    "y": round(_ndcg_to_y(v), 1),
+                }
+                for v in [0, 0.25, 0.5, 0.75, 1.0]
+            ]
+
+            legend_entries = [
+                {"type": qt, "color": type_colors[qt]}
+                for qt in sorted(observed_types)
+                if qt in type_colors
+            ]
+
+            scatter_plot = {
+                "points": scatter_points,
+                "diag_start_x": diag_start_x,
+                "diag_start_y": diag_start_y,
+                "diag_end_x": diag_end_x,
+                "diag_end_y": diag_end_y,
+                "gridlines": sc_gridlines,
+                "legend": legend_entries,
+                "left": sc_left,
+                "right": sc_right,
+                "top": sc_top,
+                "bottom": sc_bottom,
+            }
+
     # Biggest winners and losers (per-query NDCG@10 deltas)
     winners: list[dict[str, object]] = []
     losers: list[dict[str, object]] = []
@@ -610,6 +695,7 @@ def _generate_html(
         sibling_report=sibling_report,
         win_loss=win_loss,
         overlap_summary=overlap_summary,
+        scatter_plot=scatter_plot,
         score_dist_a=score_dist_a,
         score_dist_b=score_dist_b,
         position_line_chart=position_line_chart,

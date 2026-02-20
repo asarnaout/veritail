@@ -402,6 +402,53 @@ class TestGenerateComparisonReport:
         assert "share some products" in report  # 0.5 is in the middle range
         assert "2 queries" in report
 
+    def test_html_ndcg_scatter_plot(self):
+        """NDCG scatter plot appears with circles and diagonal."""
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+        )
+        assert "NDCG@10 Scatter Plot" in report
+        assert "<circle" in report
+        assert "stroke-dasharray" in report  # diagonal line
+
+    def test_html_ndcg_scatter_plot_with_query_types(self):
+        """Scatter plot shows color legend when judgments have query types."""
+        product = SearchResult(
+            product_id="SKU-1",
+            title="Test",
+            description="desc",
+            category="cat",
+            price=10.0,
+            position=0,
+        )
+        judgments_a = [
+            JudgmentRecord(
+                query="shoes",
+                product=product,
+                score=3,
+                reasoning="r",
+                model="m",
+                experiment="baseline",
+                query_type="broad",
+            ),
+        ]
+        report = generate_comparison_report(
+            _make_metrics_a(),
+            _make_metrics_b(),
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+            judgments_a=judgments_a,
+        )
+        assert "NDCG@10 Scatter Plot" in report
+        assert "broad" in report
+
     def test_html_mean_relevance_by_position(self):
         """Mean relevance by position chart appears with polylines."""
         product_pos0 = SearchResult(
