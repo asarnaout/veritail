@@ -579,3 +579,80 @@ class TestGenerateComparisonReport:
         assert "Biggest Regressions" in report
         assert "shoes" in report
         assert "laptop" in report
+
+    def test_html_drilldown_on_winners_and_losers(self):
+        """Drill-down details appear on winners/losers when judgments provided."""
+        metrics_a = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.5,
+                per_query={"shoes": 0.3, "laptop": 0.9},
+            )
+        ]
+        metrics_b = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.6,
+                per_query={"shoes": 0.8, "laptop": 0.4},
+            )
+        ]
+        product = SearchResult(
+            product_id="SKU-1",
+            title="Nike Shoes",
+            description="desc",
+            category="footwear",
+            price=99.0,
+            position=0,
+        )
+        judgments_a = [
+            JudgmentRecord(
+                query="shoes",
+                product=product,
+                score=1,
+                reasoning="Poor match",
+                model="m",
+                experiment="baseline",
+                attribute_verdict="mismatch",
+            ),
+            JudgmentRecord(
+                query="laptop",
+                product=product,
+                score=3,
+                reasoning="Great",
+                model="m",
+                experiment="baseline",
+            ),
+        ]
+        judgments_b = [
+            JudgmentRecord(
+                query="shoes",
+                product=product,
+                score=3,
+                reasoning="Good match",
+                model="m",
+                experiment="experiment",
+                attribute_verdict="match",
+            ),
+            JudgmentRecord(
+                query="laptop",
+                product=product,
+                score=1,
+                reasoning="Bad",
+                model="m",
+                experiment="experiment",
+            ),
+        ]
+        report = generate_comparison_report(
+            metrics_a,
+            metrics_b,
+            [],
+            "baseline",
+            "experiment",
+            format="html",
+            judgments_a=judgments_a,
+            judgments_b=judgments_b,
+        )
+        assert "Show results side-by-side" in report
+        assert "<details" in report
+        assert "Nike Shoes" in report
+        assert "SKU-1" in report

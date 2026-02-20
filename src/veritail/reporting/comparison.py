@@ -487,6 +487,61 @@ def _generate_html(
         losers = [d for d in deltas if float(str(d["delta"])) < -0.001][:10]
         winners = [d for d in reversed(deltas) if float(str(d["delta"])) > 0.001][:10]
 
+    # Enrich winners/losers with drill-down details
+    def _build_drilldown(
+        items: list[dict[str, object]],
+        ja: list[JudgmentRecord] | None,
+        jb: list[JudgmentRecord] | None,
+    ) -> list[dict[str, object]]:
+        if not ja and not jb:
+            return items
+        by_query_a: dict[str, list[JudgmentRecord]] = {}
+        by_query_b: dict[str, list[JudgmentRecord]] = {}
+        if ja:
+            for j in ja:
+                by_query_a.setdefault(j.query, []).append(j)
+        if jb:
+            for j in jb:
+                by_query_b.setdefault(j.query, []).append(j)
+        for item in items:
+            query = str(item["query"])
+            results_a_list = sorted(
+                by_query_a.get(query, []), key=lambda j: j.product.position
+            )
+            results_b_list = sorted(
+                by_query_b.get(query, []), key=lambda j: j.product.position
+            )
+            if results_a_list or results_b_list:
+                item["results_a"] = [
+                    {
+                        "position": j.product.position + 1,
+                        "title": j.product.title,
+                        "product_id": j.product.product_id,
+                        "score": j.score,
+                        "attribute_verdict": j.attribute_verdict,
+                        "reasoning": j.reasoning,
+                    }
+                    for j in results_a_list
+                ]
+                item["results_b"] = [
+                    {
+                        "position": j.product.position + 1,
+                        "title": j.product.title,
+                        "product_id": j.product.product_id,
+                        "score": j.score,
+                        "attribute_verdict": j.attribute_verdict,
+                        "reasoning": j.reasoning,
+                    }
+                    for j in results_b_list
+                ]
+                item["has_details"] = True
+            else:
+                item["has_details"] = False
+        return items
+
+    winners = _build_drilldown(winners, judgments_a, judgments_b)
+    losers = _build_drilldown(losers, judgments_a, judgments_b)
+
     # Score distributions for side-by-side comparison
     def _score_distribution(
         judgments: list[JudgmentRecord] | None,

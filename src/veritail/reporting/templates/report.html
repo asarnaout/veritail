@@ -328,6 +328,39 @@
                 <td class="metric-value">{{ "%.4f"|format(w.value_b) }}</td>
                 <td class="metric-value positive">{{ "%+.4f"|format(w.delta) }}</td>
             </tr>
+            {% if w.has_details %}
+            <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
+                <details style="padding:8px 16px;">
+                    <summary style="cursor:pointer; font-size:13px; color:#6b7280;">Show results side-by-side</summary>
+                    <div style="display:flex; gap:24px; margin-top:10px; flex-wrap:wrap;">
+                        {% for label, results in [(config_a, w.results_a), (config_b, w.results_b)] %}
+                        {% if results %}
+                        <div style="flex:1; min-width:260px;">
+                            <div style="font-weight:600; font-size:13px; margin-bottom:6px;">{{ label }}</div>
+                            <table style="font-size:13px;">
+                                <thead><tr><th style="padding:6px 8px;">#</th><th style="padding:6px 8px;">Product</th><th style="padding:6px 8px;">Score</th><th style="padding:6px 8px;">Attributes</th></tr></thead>
+                                <tbody>
+                                {% for r in results %}
+                                <tr title="{{ r.reasoning }}">
+                                    <td style="padding:4px 8px; color:#9ca3af;">{{ r.position }}</td>
+                                    <td style="padding:4px 8px;"><strong>{{ r.title }}</strong><br><span style="color:#9ca3af; font-size:11px;">{{ r.product_id }}</span></td>
+                                    <td style="padding:4px 8px;" class="metric-value {% if r.score == 3 %}positive{% elif r.score >= 2 %}{% elif r.score == 1 %}{% else %}negative{% endif %}" >
+                                        <span style="color:{% if r.score == 3 %}#16a34a{% elif r.score == 2 %}#ca8a04{% elif r.score == 1 %}#ea580c{% else %}#dc2626{% endif %}">{{ r.score }}/3</span>
+                                    </td>
+                                    <td style="padding:4px 8px; color:{% if r.attribute_verdict == 'match' %}#16a34a{% elif r.attribute_verdict == 'partial' %}#ca8a04{% elif r.attribute_verdict == 'mismatch' %}#dc2626{% else %}#9ca3af{% endif %}">
+                                        {{ r.attribute_verdict }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </details>
+            </td></tr>
+            {% endif %}
             {% endfor %}
         </tbody>
     </table></div>
@@ -352,6 +385,39 @@
                 <td class="metric-value">{{ "%.4f"|format(l.value_b) }}</td>
                 <td class="metric-value negative">{{ "%+.4f"|format(l.delta) }}</td>
             </tr>
+            {% if l.has_details %}
+            <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
+                <details style="padding:8px 16px;">
+                    <summary style="cursor:pointer; font-size:13px; color:#6b7280;">Show results side-by-side</summary>
+                    <div style="display:flex; gap:24px; margin-top:10px; flex-wrap:wrap;">
+                        {% for label, results in [(config_a, l.results_a), (config_b, l.results_b)] %}
+                        {% if results %}
+                        <div style="flex:1; min-width:260px;">
+                            <div style="font-weight:600; font-size:13px; margin-bottom:6px;">{{ label }}</div>
+                            <table style="font-size:13px;">
+                                <thead><tr><th style="padding:6px 8px;">#</th><th style="padding:6px 8px;">Product</th><th style="padding:6px 8px;">Score</th><th style="padding:6px 8px;">Attributes</th></tr></thead>
+                                <tbody>
+                                {% for r in results %}
+                                <tr title="{{ r.reasoning }}">
+                                    <td style="padding:4px 8px; color:#9ca3af;">{{ r.position }}</td>
+                                    <td style="padding:4px 8px;"><strong>{{ r.title }}</strong><br><span style="color:#9ca3af; font-size:11px;">{{ r.product_id }}</span></td>
+                                    <td style="padding:4px 8px;" class="metric-value">
+                                        <span style="color:{% if r.score == 3 %}#16a34a{% elif r.score == 2 %}#ca8a04{% elif r.score == 1 %}#ea580c{% else %}#dc2626{% endif %}">{{ r.score }}/3</span>
+                                    </td>
+                                    <td style="padding:4px 8px; color:{% if r.attribute_verdict == 'match' %}#16a34a{% elif r.attribute_verdict == 'partial' %}#ca8a04{% elif r.attribute_verdict == 'mismatch' %}#dc2626{% else %}#9ca3af{% endif %}">
+                                        {{ r.attribute_verdict }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </details>
+            </td></tr>
+            {% endif %}
             {% endfor %}
         </tbody>
     </table></div>
