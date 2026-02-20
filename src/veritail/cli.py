@@ -993,6 +993,8 @@ def generate_queries_cmd(
     help=(
         "Business context for the LLM judge — describes your business, "
         "customer base, and how queries should be interpreted. "
+        "Can include enterprise-specific evaluation guidance such as brand "
+        "priorities, certification requirements, or domain jargon. "
         "Accepts a string or a path to a text file."
     ),
 )

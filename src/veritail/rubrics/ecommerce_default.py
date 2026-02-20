@@ -38,7 +38,12 @@ for? If the query says "red running shoes", the product should be red running sh
 given the business context above (if provided)? When a business context is provided, \
 interpret the query from the perspective of that business's typical customer — not a \
 generic consumer. For example, on a foodservice supply site "latex free gloves" means \
-food-safe latex-free gloves, not medical exam gloves.
+food-safe latex-free gloves, not medical exam gloves. The business context may include \
+enterprise-specific evaluation guidance such as brand priorities, certification \
+requirements, or domain jargon. Apply these as refinements within the scoring \
+framework \
+above — they inform how to interpret queries and weigh product attributes, but they do \
+not redefine what scores 0, 1, 2, or 3 mean.
 
 3. **Category alignment**: Is the product in the right product category? \
 A "laptop stand" query should return laptop stands, not laptops or standing desks.

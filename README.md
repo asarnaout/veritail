@@ -496,7 +496,7 @@ Run a single or dual-configuration evaluation.
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
 | `--top-k` | `10` | Maximum number of results to evaluate per query (must be `>= 1`) |
 | `--open` | off | Open HTML report in browser |
-| `--context` | *(none)* | Business context for LLM judge — business identity, customer base, query interpretation guidance. Accepts a string or a path to a text file |
+| `--context` | *(none)* | Business context for LLM judge — business identity, customer base, query interpretation guidance, and enterprise-specific evaluation rules (brand priorities, certification requirements, domain jargon). Accepts a string or a path to a text file |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable) |
 | `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
@@ -617,6 +617,63 @@ Then run with:
 ```bash
 veritail run --queries queries.csv --adapter my_adapter.py --rubric my_rubric.py --llm-model gpt-4o
 ```
+
+## Enterprise Context
+
+`--context` accepts a short business description or a detailed file with enterprise-specific evaluation guidance. Use a file when your business has domain rules, brand priorities, or jargon that the LLM judge should consider during scoring.
+
+Example `context.txt` for a foodservice supplier:
+
+```text
+WebstaurantStore is a B2B commercial foodservice equipment and supplies distributor.
+Our customers are restaurant owners, caterers, and institutional buyers.
+
+Key evaluation guidance:
+- NSF certification is a hard requirement for all food-contact surfaces. Products
+  missing NSF certification should be penalized when the query implies food contact.
+- "Cambro" is a major brand in our catalog. Do not confuse it with "Camaro" — queries
+  for Cambro products should match Cambro brand items specifically.
+- "Hotel pan" always means a steam table pan (gastronorm), not a cooking pan for hotels.
+- "Plats" is a common shorthand for "plates" in our customer base.
+- Smallwares queries (e.g., "tongs", "ladle", "spatula") should prioritize
+  commercial-grade NSF-listed items over residential kitchen tools.
+```
+
+```bash
+veritail run \
+  --queries queries.csv \
+  --adapter adapter.py \
+  --vertical foodservice \
+  --context context.txt \
+  --llm-model gpt-4o
+```
+
+The context is injected into the LLM system prompt alongside the vertical and rubric. Enterprise rules refine scoring within the existing framework — they guide how the judge interprets queries and weighs product attributes, but they do not override the scoring scale.
+
+### Extending the default rubric
+
+For rare cases where you need a fundamentally different scoring framework, you can extend the built-in rubric instead of writing one from scratch:
+
+```python
+# my_rubric.py
+from veritail.rubrics.ecommerce_default import (
+    SYSTEM_PROMPT as BASE_PROMPT,
+    format_user_prompt,
+)
+
+SYSTEM_PROMPT = BASE_PROMPT + """
+
+## Additional Scoring Criteria
+- When the query specifies a dietary restriction (gluten-free, vegan, kosher),
+  treat it as a hard attribute constraint with the same weight as brand or size.
+"""
+```
+
+```bash
+veritail run --queries queries.csv --adapter adapter.py --rubric my_rubric.py --llm-model gpt-4o
+```
+
+This preserves the full default rubric (scale definitions, evaluation criteria, response format) while adding your own rules.
 
 ## Custom Checks
 
