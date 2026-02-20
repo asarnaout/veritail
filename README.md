@@ -227,6 +227,19 @@ veritail run \
   <em>Two search configurations compared head-to-head: per-query NDCG deltas, win/loss/tie analysis, rank correlation, and result overlap.</em>
 </p>
 
+---
+
+### Langfuse observability
+
+<br>
+
+<p align="center">
+  <img src="assets/langfuse.gif" alt="Langfuse observability demo" width="900">
+</p>
+<p align="center">
+  <em>Every judgment, score, and LLM call traced and grouped by evaluation run — with full prompt/response visibility.</em>
+</p>
+
 ## Documentation
 
 | Guide | Description |
