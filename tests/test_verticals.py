@@ -117,7 +117,7 @@ FOODSERVICE_OVERLAY_KEYS = [
     "dry_goods",
     "food_prep",
     "furniture",
-    "ice_cream",
+    "frozen_dessert_equipment",
     "prepared_foods",
     "produce",
     "proteins",
@@ -172,8 +172,9 @@ class TestFoodserviceOverlays:
     def test_ventilation_mentions_hood(self):
         assert "hood" in FOODSERVICE.overlays["ventilation"].content.lower()
 
-    def test_ice_cream_mentions_soft_serve(self):
-        assert "soft serve" in FOODSERVICE.overlays["ice_cream"].content.lower()
+    def test_frozen_dessert_equipment_mentions_soft_serve(self):
+        content = FOODSERVICE.overlays["frozen_dessert_equipment"].content.lower()
+        assert "soft serve" in content
 
     def test_furniture_mentions_booth(self):
         assert "booth" in FOODSERVICE.overlays["furniture"].content.lower()
@@ -236,8 +237,8 @@ class TestFoodserviceOverlays:
             ("smallwares", "lexan"),
             ("ventilation", "grease hood"),
             ("ventilation", "ansul"),
-            ("ice_cream", "batch freezer"),
-            ("ice_cream", "dipping cabinet"),
+            ("frozen_dessert_equipment", "batch freezer"),
+            ("frozen_dessert_equipment", "dipping cabinet"),
             ("furniture", "banquet chair"),
             ("dry_goods", "powdered sugar"),
             ("dry_goods", "#10"),

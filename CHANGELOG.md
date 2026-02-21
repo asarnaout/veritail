@@ -14,13 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `QueryEntry.overlay` field for classified overlay keys in query CSV/JSON files
 - Classifier determines query type and overlay key in a single LLM call (zero extra cost)
 - Overlay classifier supports `none` option for queries outside all domain overlays, with bias-toward-matching to prevent overuse
-- Foodservice vertical split into core + 18 category overlays: beverage_equipment, beverages, cooking, dairy_eggs, disposables, dry_goods, food_prep, furniture, ice_cream, prepared_foods, produce, proteins, refrigeration, serving_holding, smallwares, tabletop, ventilation, warewash
+- Foodservice vertical split into core + 18 category overlays: beverage_equipment, beverages, cooking, dairy_eggs, disposables, dry_goods, food_prep, furniture, frozen_dessert_equipment, prepared_foods, produce, proteins, refrigeration, serving_holding, smallwares, tabletop, ventilation, warewash
 - Foodservice terminology equivalences split between core (cross-cutting terms) and overlays (category-specific terms) to reduce context dilution
-- 10 new foodservice category overlays: ventilation (exhaust hoods, makeup air, fire suppression), ice_cream (soft serve, batch freezers, gelato cases), furniture (seating, tables, booths), disposables (cups, to-go containers, paper products, gloves), dry_goods (pantry staples, canned goods, baking, oils, sauces, condiments, spices), beverages (consumable drink products — coffee, tea, juice, soda syrup), dairy_eggs (dairy products, eggs, butter, cheese, cream, cultured dairy), proteins (meat, poultry, seafood), prepared_foods (frozen entrees, appetizers, soups, bakery, desserts, pizza, CN labeling), produce (fresh fruits, vegetables, herbs, USDA grades, PLU codes, processed forms)
+- 10 new foodservice category overlays: ventilation (exhaust hoods, makeup air, fire suppression), frozen_dessert_equipment (soft serve, batch freezers, gelato cases), furniture (seating, tables, booths), disposables (cups, to-go containers, paper products, gloves), dry_goods (pantry staples, canned goods, baking, oils, sauces, condiments, spices), beverages (consumable drink products — coffee, tea, juice, soda syrup), dairy_eggs (dairy products, eggs, butter, cheese, cream, cultured dairy), proteins (meat, poultry, seafood), prepared_foods (frozen entrees, appetizers, soups, bakery, desserts, pizza, CN labeling), produce (fresh fruits, vegetables, herbs, USDA grades, PLU codes, processed forms)
 
 ### Changed
 
-- Beverage equipment overlay renamed from `beverage` to `beverage_equipment` to distinguish from new `beverages` consumable overlay; soft serve moved to new ice_cream overlay
+- Beverage equipment overlay renamed from `beverage` to `beverage_equipment` to distinguish from new `beverages` consumable overlay; soft serve moved to new frozen_dessert_equipment overlay
 - Smallwares overlay: disposables moved to new disposables overlay; smallwares now focuses on durable kitchen tools, pans, and food storage
 
 - `load_vertical()` returns `VerticalContext` instead of `str`; custom file verticals are wrapped automatically

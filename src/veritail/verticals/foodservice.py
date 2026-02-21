@@ -650,7 +650,7 @@ intent aligns):
 - four-top = table for four
 - T-mold edge = vinyl edge banding (table top edge finish)""",
         ),
-        "ice_cream": VerticalOverlay(
+        "frozen_dessert_equipment": VerticalOverlay(
             description=(
                 "Soft serve machines, batch freezers, gelato cases, "
                 "and frozen dessert equipment"
