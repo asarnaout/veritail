@@ -46,6 +46,7 @@ def _load_csv(path: Path) -> list[QueryEntry]:
                     query=query,
                     type=row.get("type", "").strip() or None,
                     category=row.get("category", "").strip() or None,
+                    overlay=row.get("overlay", "").strip() or None,
                 )
             )
     if not entries:
@@ -73,6 +74,7 @@ def _load_json(path: Path) -> list[QueryEntry]:
                 query=query,
                 type=item.get("type"),
                 category=item.get("category"),
+                overlay=item.get("overlay"),
             )
         )
     if not entries:

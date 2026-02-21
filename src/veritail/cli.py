@@ -33,7 +33,7 @@ from veritail.scaffold import (
     DEFAULT_QUERIES_FILENAME,
     scaffold_project,
 )
-from veritail.types import ExperimentConfig
+from veritail.types import ExperimentConfig, VerticalContext
 
 console = Console()
 
@@ -118,7 +118,7 @@ def _run_search_pipeline(  # noqa: PLR0913
     backend_url: str | None,
     top_k: int,
     context: str | None,
-    vertical_context: str | None,
+    vertical_context: VerticalContext | None,
     vertical_raw: str | None,
     check_modules: tuple[str, ...],
     sample: int | None,
@@ -412,7 +412,7 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
     output_dir: str,
     top_k: int,
     context: str | None,
-    vertical_context: str | None,
+    vertical_context: VerticalContext | None,
     autocomplete_check_modules: tuple[str, ...],
     sample: int | None,
     use_batch: bool,
@@ -559,7 +559,7 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
         ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
         prefix_parts: list[str] = []
         if vertical_context:
-            prefix_parts.append(f"## Store Vertical\n{vertical_context}")
+            prefix_parts.append(f"## Store Vertical\n{vertical_context.core}")
         if context:
             prefix_parts.append(f"## Business Context\n{context}")
         if prefix_parts:
@@ -815,11 +815,11 @@ def vertical_show(name: str) -> None:
     from veritail.verticals import load_vertical
 
     try:
-        text = load_vertical(name)
+        vc = load_vertical(name)
     except FileNotFoundError as exc:
         raise click.ClickException(str(exc)) from exc
 
-    click.echo(text)
+    click.echo(vc.core)
 
 
 @main.command("generate-queries")
@@ -1248,7 +1248,7 @@ def run(
     if context and Path(context).is_file():
         context = Path(context).read_text(encoding="utf-8").rstrip()
 
-    vertical_context: str | None = None
+    vertical_context: VerticalContext | None = None
     if vertical:
         from veritail.verticals import load_vertical
 

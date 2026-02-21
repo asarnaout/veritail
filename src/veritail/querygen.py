@@ -243,7 +243,7 @@ def generate_queries(
         from veritail.verticals import load_vertical
 
         vertical_name = vertical
-        vertical_text = load_vertical(vertical)
+        vertical_text = load_vertical(vertical).core
 
     # Read context from file if it looks like a file path
     if context and Path(context).is_file():
