@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from veritail.types import VerticalContext
 from veritail.verticals import (
     _BUILTIN_VERTICALS,
     AUTOMOTIVE,
@@ -45,8 +46,9 @@ class TestBuiltinVerticals:
     @pytest.mark.parametrize("name", ALL_BUILTINS)
     def test_builtin_loads(self, name):
         result = load_vertical(name)
-        assert "## Vertical:" in result
-        assert "Scoring considerations" in result
+        assert isinstance(result, VerticalContext)
+        assert "## Vertical:" in result.core
+        assert "Scoring considerations" in result.core
 
     @pytest.mark.parametrize(
         "name,constant",
@@ -72,7 +74,7 @@ class TestBuiltinVerticals:
 
     @pytest.mark.parametrize("name", ALL_BUILTINS)
     def test_builtin_min_length(self, name):
-        assert len(load_vertical(name)) > 100
+        assert len(load_vertical(name).core) > 100
 
     @pytest.mark.parametrize(
         "name",
@@ -95,10 +97,48 @@ class TestBuiltinVerticals:
     )
     def test_builtin_case_insensitive(self, name):
         result = load_vertical(name)
-        assert "## Vertical:" in result
+        assert isinstance(result, VerticalContext)
+        assert "## Vertical:" in result.core
 
     def test_registry_has_all_fourteen(self):
         assert set(_BUILTIN_VERTICALS.keys()) == set(ALL_BUILTINS)
+
+    @pytest.mark.parametrize("name", ALL_BUILTINS)
+    def test_builtin_is_vertical_context(self, name):
+        assert isinstance(_BUILTIN_VERTICALS[name], VerticalContext)
+
+
+class TestFoodserviceOverlays:
+    def test_foodservice_has_overlays(self):
+        assert len(FOODSERVICE.overlays) == 4
+
+    def test_overlay_keys(self):
+        assert set(FOODSERVICE.overlays.keys()) == {
+            "hot_side",
+            "cold_side",
+            "smallwares",
+            "warewash",
+        }
+
+    @pytest.mark.parametrize("key", ["hot_side", "cold_side", "smallwares", "warewash"])
+    def test_overlay_content_non_empty(self, key):
+        overlay = FOODSERVICE.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    @pytest.mark.parametrize(
+        "name",
+        [n for n in ALL_BUILTINS if n != "foodservice"],
+    )
+    def test_other_verticals_have_no_overlays(self, name):
+        vertical = load_vertical(name)
+        assert vertical.overlays == {}
+
+    def test_hot_side_mentions_cooking(self):
+        assert "cooking" in FOODSERVICE.overlays["hot_side"].content.lower()
+
+    def test_cold_side_mentions_refrigeration(self):
+        assert "refriger" in FOODSERVICE.overlays["cold_side"].content.lower()
 
 
 class TestCustomVertical:
@@ -110,14 +150,16 @@ class TestCustomVertical:
         )
 
         result = load_vertical(str(custom))
-        assert "Custom scoring guidance" in result
+        assert isinstance(result, VerticalContext)
+        assert "Custom scoring guidance" in result.core
+        assert result.overlays == {}
 
     def test_file_trailing_whitespace_stripped(self, tmp_path):
         custom = tmp_path / "v.txt"
         custom.write_text("content\n\n\n", encoding="utf-8")
 
         result = load_vertical(str(custom))
-        assert result == "content"
+        assert result.core == "content"
 
 
 class TestUnknownVertical:

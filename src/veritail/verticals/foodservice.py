@@ -1,6 +1,9 @@
 """Foodservice vertical context for LLM judge guidance."""
 
-FOODSERVICE = """\
+from veritail.types import VerticalContext, VerticalOverlay
+
+FOODSERVICE = VerticalContext(
+    core="""\
 ## Vertical: Foodservice
 
 You are evaluating search results for a commercial foodservice equipment and \
@@ -39,19 +42,6 @@ requirement when query-specified — often mandated by institutional \
 procurement), ADA compliance (≤ 34" serving surfaces for schools, hospitals, \
 public facilities). When a query specifies a certification, treat it as a \
 hard requirement.
-- **Exact sizing for disposables and smallwares**: "8 oz" means 8 oz; \
-"6×6 clamshell" means 6×6. Compostable and foam are mutually exclusive \
-materials — returning foam for a "compostable" query is a hard failure, as \
-foam is banned in many jurisdictions.
-- **Multi-axis categories**: Some categories carry multiple independent hard \
-constraints that must all match simultaneously (e.g., ice machines: ice \
-type — cube, half-cube, nugget, flake are functionally distinct products; \
-machine configuration — modular head-only vs undercounter self-contained; \
-cooling method — air-cooled vs water-cooled). Mismatching any single axis \
-is a hard failure even when others match.
-- **Pan configuration**: full, half, third, quarter, sixth, ninth hotel \
-pans; GN 1/1 vs GN 1/2. US hotel pans and European GN pans are \
-dimensionally incompatible — different corner radii and rim profiles.
 
 ### Category and Grade Alignment
 
@@ -95,22 +85,135 @@ when intent aligns:
 physically incompatible)
 - cambro = insulated food carrier / food pan carrier (genericized brand)
 - bain-marie = hot food well = steam table = food warmer
-- salamander = high-heat overhead broiler (1500–1800 °F, finishing/browning) \
-— a salamander query should not return a cheese melter (lower-heat, \
-≤ 550 °F), but a cheese melter query may accept a salamander as overpowered \
-but functional
+- salamander = high-heat overhead broiler (1500–1800 °F, finishing/browning)
 - combi / combi oven = combination oven (steam + convection)
 - speed rack = sheet pan rack = bun pan rack
 - lowboy = undercounter refrigerator / freezer
 - reach-in = upright commercial refrigerator / freezer
-- flat top = griddle — distinct from flat top range (range with solid \
-French-style top plate)
+- flat top = griddle — distinct from flat top range
 - charbroiler = char grill = char
 - impinger = conveyor oven (genericized from Lincoln brand)
 - lexan = clear polycarbonate food storage container (genericized brand)
 - bus tub = dish tub
 - dunnage rack = floor rack (keeps items off floor per health code)
-- chef base = refrigerated equipment stand (mounted under griddles, \
-charbroilers)
+- chef base = refrigerated equipment stand
 - deck oven = stone-deck baking / pizza oven
-- pan sizes: full, half, third, quarter, sixth, ninth (US hotel pan system)"""
+- pan sizes: full, half, third, quarter, sixth, ninth (US hotel pan system)""",
+    overlays={
+        "hot_side": VerticalOverlay(
+            description="Cooking equipment: ovens, fryers, griddles, salamanders",
+            content="""\
+### Hot-Side Cooking Equipment — Scoring Guidance
+
+This query involves cooking equipment (ovens, fryers, griddles, ranges, \
+broilers, steamers, or related accessories).
+
+**Critical distinctions to enforce:**
+
+- **Salamander vs cheese melter**: A salamander operates at 1500–1800 °F for \
+finishing and browning; a cheese melter operates ≤ 550 °F for melting and \
+holding. A salamander query must not return a cheese melter. A cheese melter \
+query may accept a salamander as overpowered but functional (score 2 max).
+- **Combi oven vs convection oven**: A combi oven provides both steam and \
+convection modes; a standard convection oven does not inject steam. \
+Returning a convection oven for a "combi oven" query is a category error.
+- **Flat top / griddle vs flat top range**: A griddle is a standalone cooking \
+surface; a flat top range is a range with a solid French-style plate. \
+These are different product categories.
+- **Fryer type**: Countertop vs floor model, tube vs open-pot vs flat-bottom \
+are distinct designs suited to different volumes and oil management needs.
+- **BTU / burner count**: When specified, these are hard requirements. A \
+6-burner range is not interchangeable with a 4-burner + griddle combo \
+unless the query is ambiguous.
+
+**Gas vs electric**: For cooking equipment, gas type (NG vs LP) and voltage/\
+phase are especially critical. Restaurant kitchens are wired for specific \
+services; mismatching can require costly electrical upgrades.""",
+        ),
+        "cold_side": VerticalOverlay(
+            description="Refrigeration and ice machines",
+            content="""\
+### Cold-Side Equipment — Scoring Guidance
+
+This query involves refrigeration, freezers, ice machines, or cold-storage \
+equipment.
+
+**Critical distinctions to enforce:**
+
+- **Reach-in vs undercounter vs walk-in**: These are fundamentally different \
+form factors and capacities. Undercounter units must be ≤ 34.5" height. \
+Walk-in queries should not return reach-in units.
+- **Ice machine configuration**: Three independent axes must all match: \
+(1) ice type — cube, half-cube, nugget, flake are functionally distinct; \
+(2) machine type — modular head-only vs self-contained undercounter; \
+(3) cooling method — air-cooled vs water-cooled. Mismatching any single \
+axis is a hard failure.
+- **Temperature range**: Refrigerator (33–41 °F) vs freezer (−10–0 °F) vs \
+dual-temp (convertible) — confusing these is a critical error. A "freezer" \
+query must not return a refrigerator, even from the same product line.
+- **Ice bin vs ice machine**: An ice bin is passive storage; an ice machine \
+produces ice. Do not conflate them.
+- **Prep table types**: Refrigerated prep tables (sandwich/salad prep) vs \
+non-refrigerated work tables are different categories despite similar names.
+
+**Daily production capacity**: For ice machines, lbs/day ratings at specific \
+ambient temperatures (70 °F and 90 °F) are key specs. When a query specifies \
+capacity, match the production range — a 500 lb/day machine is not a match \
+for a "1000 lb ice machine" query.""",
+        ),
+        "smallwares": VerticalOverlay(
+            description="Pans, disposables, utensils, and small equipment",
+            content="""\
+### Smallwares and Disposables — Scoring Guidance
+
+This query involves pans, food storage, disposables, utensils, or other \
+smallwares.
+
+**Critical distinctions to enforce:**
+
+- **Pan systems**: US hotel pans (full, half, third, quarter, sixth, ninth) \
+and European GN pans (1/1, 1/2, 1/3, 2/3, etc.) are dimensionally \
+incompatible — different corner radii and rim profiles. Do not cross-match \
+hotel pan queries with GN products or vice versa.
+- **Exact sizing for disposables**: "8 oz" means 8 oz; "6×6 clamshell" means \
+6×6. Size is a hard constraint for disposables.
+- **Material exclusivity**: Compostable and foam are mutually exclusive \
+materials — returning foam for a "compostable" query is a hard failure, as \
+foam is banned in many jurisdictions. Similarly, BPA-free is a hard \
+requirement when specified.
+- **Pan depth**: Steam table pans come in standard depths (2.5", 4", 6"). \
+Depth is a hard requirement when specified — a 2.5" pan cannot substitute \
+for a 6" pan.
+
+**Commercial pack sizing**: Disposables and chemicals are sold in case packs \
+(e.g., 1000-count, 500-count). Retail-size packaging (10-count) is a weak \
+match for commercial queries. Conversely, do not penalize single-unit results \
+when the query specifies a single item.""",
+        ),
+        "warewash": VerticalOverlay(
+            description="Dishwashers, sanitation, and chemical supplies",
+            content="""\
+### Warewash and Sanitation — Scoring Guidance
+
+This query involves commercial dishwashers, glasswashers, sanitizing \
+equipment, or cleaning chemicals.
+
+**Critical distinctions to enforce:**
+
+- **Dishwasher type**: Undercounter, door-type (upright), conveyor, and \
+flight-type are fundamentally different machines for different operation \
+scales. A bar glasswasher is not a match for a "conveyor dishwasher" query.
+- **High-temp vs low-temp**: High-temp machines sanitize with 180 °F+ rinse \
+water; low-temp (chemical) machines use chemical sanitizer. These are \
+different systems with different infrastructure requirements (high-temp needs \
+a booster heater). When the query specifies a sanitation method, it is a \
+hard requirement.
+- **Rack size**: Standard 20×20 racks vs smaller glasswasher racks — rack \
+compatibility is a hard constraint for door-type and conveyor machines.
+
+**Chemical compatibility**: Dishwasher detergents, rinse aids, and sanitizers \
+are formulated for specific machine types. When a query specifies a machine \
+brand or model, chemical results should be compatible with that system.""",
+        ),
+    },
+)
