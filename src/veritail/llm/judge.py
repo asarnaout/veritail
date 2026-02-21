@@ -59,13 +59,17 @@ class RelevanceJudge:
         *,
         query_type: str | None = None,
         corrected_query: str | None = None,
+        overlay: str | None = None,
     ) -> JudgmentRecord:
         """Judge the relevance of a single search result to a query."""
+        kwargs: dict[str, str] = {}
         if corrected_query is not None:
+            kwargs["corrected_query"] = corrected_query
+        if overlay is not None:
+            kwargs["overlay"] = overlay
+        if kwargs:
             try:
-                user_prompt = self._format_user_prompt(
-                    query, result, corrected_query=corrected_query
-                )
+                user_prompt = self._format_user_prompt(query, result, **kwargs)
             except TypeError:
                 user_prompt = self._format_user_prompt(query, result)
         else:
@@ -96,13 +100,17 @@ class RelevanceJudge:
         result: SearchResult,
         *,
         corrected_query: str | None = None,
+        overlay: str | None = None,
     ) -> BatchRequest:
         """Build a BatchRequest for a single query-result pair."""
+        kwargs: dict[str, str] = {}
         if corrected_query is not None:
+            kwargs["corrected_query"] = corrected_query
+        if overlay is not None:
+            kwargs["overlay"] = overlay
+        if kwargs:
             try:
-                user_prompt = self._format_user_prompt(
-                    query, result, corrected_query=corrected_query
-                )
+                user_prompt = self._format_user_prompt(query, result, **kwargs)
             except TypeError:
                 user_prompt = self._format_user_prompt(query, result)
         else:

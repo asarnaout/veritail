@@ -180,6 +180,29 @@ class TestRelevanceJudge:
         assert judgment.attribute_verdict == "n/a"
         assert judgment.reasoning == "Decent match."
 
+    def test_judge_passes_overlay_to_format(self):
+        """Overlay kwarg is forwarded to format_user_prompt."""
+        calls: list[dict] = []
+
+        def fmt(query, result, *, overlay=None):
+            calls.append({"overlay": overlay})
+            return f"Query: {query}\nProduct: {result.title}"
+
+        client = _make_mock_client("SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect.")
+        judge = RelevanceJudge(client, "system", fmt, "exp-1")
+        judge.judge("fryer", _make_result(), overlay="Hot-side equipment guidance.")
+        assert calls[0]["overlay"] == "Hot-side equipment guidance."
+
+    def test_judge_overlay_fallback_for_custom_rubric(self):
+        """When format_user_prompt doesn't accept overlay, falls back gracefully."""
+        client = _make_mock_client("SCORE: 2\nATTRIBUTES: n/a\nREASONING: Fallback.")
+        # _format_user_prompt doesn't accept overlay kwarg
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+        judgment = judge.judge(
+            "fryer", _make_result(), overlay="Hot-side equipment guidance."
+        )
+        assert judgment.score == 2
+
 
 class TestRelevanceJudgeBatch:
     def test_prepare_request_basic(self):
@@ -235,6 +258,38 @@ class TestRelevanceJudgeBatch:
         assert judgment.experiment == "exp-1"
         assert judgment.query_type == "broad"
         assert judgment.metadata["input_tokens"] == 100
+
+    def test_prepare_request_with_overlay(self):
+        """Overlay kwarg is forwarded to format_user_prompt in batch mode."""
+
+        def fmt(query, result, *, overlay=None):
+            if overlay:
+                return f"Query: {query}\nOverlay: {overlay}\nProduct: {result.title}"
+            return f"Query: {query}\nProduct: {result.title}"
+
+        client = _make_mock_client("unused")
+        judge = RelevanceJudge(client, "system", fmt, "exp-1")
+
+        req = judge.prepare_request(
+            "req-0",
+            "commercial fryer",
+            _make_result(),
+            overlay="Hot-side scoring guidance.",
+        )
+        assert "Overlay: Hot-side scoring guidance." in req.user_prompt
+
+    def test_prepare_request_overlay_fallback(self):
+        """When format_user_prompt doesn't accept overlay, falls back gracefully."""
+        client = _make_mock_client("unused")
+        judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
+
+        req = judge.prepare_request(
+            "req-0",
+            "fryer",
+            _make_result(),
+            overlay="Hot-side scoring guidance.",
+        )
+        assert "fryer" in req.user_prompt
 
     def test_parse_batch_result_bad_score_raises(self):
         client = _make_mock_client("unused")

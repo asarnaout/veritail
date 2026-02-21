@@ -80,6 +80,7 @@ def format_user_prompt(
     result: SearchResult,
     *,
     corrected_query: str | None = None,
+    overlay: str | None = None,
 ) -> str:
     """Format a query-product pair into a user prompt for the LLM judge."""
     attrs_str = ""
@@ -100,8 +101,12 @@ def format_user_prompt(
     else:
         query_section = f"## Search Query\n{query}"
 
+    overlay_section = ""
+    if overlay:
+        overlay_section = f"\n\n## Domain-Specific Scoring Guidance\n{overlay}"
+
     return f"""\
-{query_section}
+{query_section}{overlay_section}
 
 ## Product
 - **Title**: {result.title}

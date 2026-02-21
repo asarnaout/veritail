@@ -40,3 +40,34 @@ def test_format_user_prompt_with_correction():
     assert "running shoes" in prompt
     # Should NOT have the plain "## Search Query" header
     assert "## Search Query\n" not in prompt
+
+
+def test_format_user_prompt_with_overlay():
+    prompt = format_user_prompt(
+        "commercial fryer",
+        _make_result(),
+        overlay="Ovens, fryers, and griddles for commercial kitchens.",
+    )
+    assert "## Domain-Specific Scoring Guidance" in prompt
+    assert "Ovens, fryers, and griddles" in prompt
+    # Overlay section should appear before Product section
+    overlay_pos = prompt.index("## Domain-Specific Scoring Guidance")
+    product_pos = prompt.index("## Product")
+    assert overlay_pos < product_pos
+
+
+def test_format_user_prompt_without_overlay():
+    prompt = format_user_prompt("running shoes", _make_result())
+    assert "## Domain-Specific Scoring Guidance" not in prompt
+
+
+def test_format_user_prompt_with_correction_and_overlay():
+    prompt = format_user_prompt(
+        "runnign shoes",
+        _make_result(),
+        corrected_query="running shoes",
+        overlay="Footwear scoring guidance.",
+    )
+    assert "## Original Search Query" in prompt
+    assert "## Domain-Specific Scoring Guidance" in prompt
+    assert "Footwear scoring guidance." in prompt

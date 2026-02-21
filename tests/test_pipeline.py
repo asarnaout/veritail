@@ -892,6 +892,61 @@ class TestRunEvaluation:
         ndcg = next(m for m in metrics if m.metric_name == "ndcg@10")
         assert "navigational" in ndcg.by_query_type
 
+    def test_overlay_injected_into_user_prompt(self, tmp_path):
+        """When query has overlay and vertical has overlays, overlay text
+        is forwarded to format_user_prompt."""
+        from veritail.types import VerticalContext, VerticalOverlay
+
+        queries = [
+            QueryEntry(
+                query="commercial fryer",
+                type="broad",
+                overlay="hot_side",
+            ),
+        ]
+        adapter = _make_mock_adapter()
+        config = ExperimentConfig(
+            name="test-exp",
+            adapter_path="test.py",
+            llm_model="test-model",
+            rubric="ecommerce-default",
+            top_k=3,
+        )
+        llm_client = _make_mock_llm_client()
+        backend = FileBackend(output_dir=str(tmp_path))
+
+        # Track what the format_user_prompt receives
+        overlay_calls: list[str | None] = []
+
+        def fmt(query, result, *, corrected_query=None, overlay=None):
+            overlay_calls.append(overlay)
+            return f"Query: {query}\nProduct: {result.title}"
+
+        vertical = VerticalContext(
+            core="## Vertical: Foodservice\nCore guidance.",
+            overlays={
+                "hot_side": VerticalOverlay(
+                    description="Hot-side equipment",
+                    content="Ovens, fryers, griddles scoring guidance.",
+                ),
+            },
+        )
+
+        run_evaluation(
+            queries,
+            adapter,
+            config,
+            llm_client,
+            ("system prompt", fmt),
+            backend,
+            vertical=vertical,
+        )
+
+        # All 3 results should have received the overlay text
+        assert len(overlay_calls) == 3
+        for call in overlay_calls:
+            assert call == "Ovens, fryers, griddles scoring guidance."
+
 
 def _make_mock_batch_llm_client(responses: list[str]) -> LLMClient:
     """Create a mock LLM client with batch support.
@@ -1449,7 +1504,7 @@ class TestRunBatchEvaluation:
             position=0,
         )
         req_ctx = {
-            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0)
+            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0, None)
         }
         cp = BatchCheckpoint(
             batch_id="batch-rel",
@@ -1540,7 +1595,7 @@ class TestRunBatchEvaluation:
             price=50.0,
             position=0,
         )
-        req_ctx = {"rel-0-0": ("shoes", result, "broad", None, [], 0)}
+        req_ctx = {"rel-0-0": ("shoes", result, "broad", None, [], 0, None)}
         cp = BatchCheckpoint(
             batch_id="batch-rel",
             experiment_name="test-batch",
@@ -1734,7 +1789,7 @@ class TestRunBatchEvaluation:
             position=0,
         )
         req_ctx = {
-            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0)
+            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0, None)
         }
         # Partial checkpoint: relevance submitted, correction NOT submitted
         cp = BatchCheckpoint(
@@ -1823,7 +1878,7 @@ class TestRunBatchEvaluation:
             position=0,
         )
         req_ctx = {
-            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0)
+            "rel-0-0": ("runnign shoes", result, "broad", "running shoes", [], 0, None)
         }
         # Partial checkpoint: relevance submitted, correction NOT submitted
         cp = BatchCheckpoint(

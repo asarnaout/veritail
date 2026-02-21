@@ -74,7 +74,15 @@ def clear_checkpoint(
 def serialize_request_context(
     context: dict[
         str,
-        tuple[str, SearchResult, str | None, str | None, list[dict[str, str]], int],
+        tuple[
+            str,
+            SearchResult,
+            str | None,
+            str | None,
+            list[dict[str, str]],
+            int,
+            str | None,
+        ],
     ],
 ) -> dict[str, dict[str, Any]]:
     """Convert in-memory request context tuples to JSON-safe dicts."""
@@ -86,6 +94,7 @@ def serialize_request_context(
         corrected_query,
         failed_checks,
         query_index,
+        overlay_key,
     ) in context.items():
         serialized[custom_id] = {
             "query": query,
@@ -94,6 +103,7 @@ def serialize_request_context(
             "corrected_query": corrected_query,
             "failed_checks": failed_checks,
             "query_index": query_index,
+            "overlay_key": overlay_key,
         }
     return serialized
 
@@ -102,12 +112,28 @@ def deserialize_request_context(
     data: dict[str, dict[str, Any]],
 ) -> dict[
     str,
-    tuple[str, SearchResult, str | None, str | None, list[dict[str, str]], int],
+    tuple[
+        str,
+        SearchResult,
+        str | None,
+        str | None,
+        list[dict[str, str]],
+        int,
+        str | None,
+    ],
 ]:
     """Restore in-memory request context from serialized checkpoint data."""
     context: dict[
         str,
-        tuple[str, SearchResult, str | None, str | None, list[dict[str, str]], int],
+        tuple[
+            str,
+            SearchResult,
+            str | None,
+            str | None,
+            list[dict[str, str]],
+            int,
+            str | None,
+        ],
     ] = {}
     for custom_id, entry in data.items():
         result = SearchResult(**entry["result"])
@@ -118,5 +144,6 @@ def deserialize_request_context(
             entry["corrected_query"],
             entry["failed_checks"],
             entry["query_index"],
+            entry.get("overlay_key"),
         )
     return context

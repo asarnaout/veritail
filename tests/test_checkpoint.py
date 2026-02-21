@@ -5,9 +5,12 @@ from __future__ import annotations
 from veritail.checkpoint import (
     BatchCheckpoint,
     clear_checkpoint,
+    deserialize_request_context,
     load_checkpoint,
     save_checkpoint,
+    serialize_request_context,
 )
+from veritail.types import SearchResult
 
 
 def _make_checkpoint(name: str = "exp") -> BatchCheckpoint:
@@ -101,3 +104,82 @@ class TestCheckpointCorrectionFields:
         assert loaded.gemini_correction_custom_id_order == []
         assert loaded.correction_batch_id is None
         assert loaded.correction_context is None
+
+
+def _make_result() -> SearchResult:
+    return SearchResult(
+        product_id="SKU-001",
+        title="Test Product",
+        description="A test product",
+        category="Test",
+        price=9.99,
+        position=0,
+    )
+
+
+class TestRequestContextOverlayKey:
+    def test_serialize_round_trip_with_overlay_key(self) -> None:
+        """Request context with overlay_key serializes and deserializes."""
+        result = _make_result()
+        context = {
+            "rel-0-0": (
+                "commercial fryer",
+                result,
+                "broad",
+                None,
+                [],
+                0,
+                "hot_side",
+            ),
+        }
+        serialized = serialize_request_context(context)
+        assert serialized["rel-0-0"]["overlay_key"] == "hot_side"
+
+        restored = deserialize_request_context(serialized)
+        assert restored["rel-0-0"][6] == "hot_side"
+
+    def test_serialize_round_trip_without_overlay_key(self) -> None:
+        """Request context with None overlay_key round-trips correctly."""
+        result = _make_result()
+        context = {
+            "rel-0-0": (
+                "running shoes",
+                result,
+                "broad",
+                None,
+                [],
+                0,
+                None,
+            ),
+        }
+        serialized = serialize_request_context(context)
+        assert serialized["rel-0-0"]["overlay_key"] is None
+
+        restored = deserialize_request_context(serialized)
+        assert restored["rel-0-0"][6] is None
+
+    def test_deserialize_backward_compat_missing_overlay_key(self) -> None:
+        """Old checkpoint data without overlay_key deserializes with None."""
+        data = {
+            "rel-0-0": {
+                "query": "shoes",
+                "result": {
+                    "product_id": "SKU-001",
+                    "title": "Test",
+                    "description": "Desc",
+                    "category": "Cat",
+                    "price": 9.99,
+                    "position": 0,
+                    "attributes": {},
+                    "in_stock": True,
+                    "metadata": {},
+                },
+                "query_type": "broad",
+                "corrected_query": None,
+                "failed_checks": [],
+                "query_index": 0,
+                # No overlay_key field — simulates old checkpoint
+            }
+        }
+        restored = deserialize_request_context(data)
+        assert restored["rel-0-0"][6] is None

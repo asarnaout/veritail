@@ -357,6 +357,15 @@ def run_evaluation(
                         }
                     )
 
+            # Look up overlay content for this query
+            overlay_text = (
+                vertical.overlays[query_entry.overlay].content
+                if vertical
+                and query_entry.overlay
+                and query_entry.overlay in vertical.overlays
+                else None
+            )
+
             # Step 3: LLM judgment for each result
             for result in results:
                 product_failed_checks = failed_checks_by_product.get(
@@ -370,6 +379,7 @@ def run_evaluation(
                         result,
                         query_type=query_entry.type,
                         corrected_query=corrected_query,
+                        overlay=overlay_text,
                     )
                 except Exception as e:
                     console.print(
@@ -805,6 +815,15 @@ def run_batch_evaluation(
                             }
                         )
 
+                # Look up overlay content for this query
+                overlay_text = (
+                    vertical.overlays[query_entry.overlay].content
+                    if vertical
+                    and query_entry.overlay
+                    and query_entry.overlay in vertical.overlays
+                    else None
+                )
+
                 # Build batch requests for each result
                 for result_idx, result in enumerate(results):
                     custom_id = f"rel-{query_index}-{result_idx}"
@@ -818,6 +837,7 @@ def run_batch_evaluation(
                             query_entry.query,
                             result,
                             corrected_query=corrected_query,
+                            overlay=overlay_text,
                         )
                         batch_requests.append(batch_req)
                         request_context[custom_id] = (
@@ -827,6 +847,7 @@ def run_batch_evaluation(
                             corrected_query,
                             product_failed_checks,
                             query_index,
+                            query_entry.overlay,
                         )
                     except Exception as e:
                         console.print(
@@ -984,6 +1005,7 @@ def run_batch_evaluation(
             corrected_query,
             product_failed_checks,
             query_index,
+            overlay_key,
         ) = ctx
 
         batch_result = results_by_id.get(custom_id)
