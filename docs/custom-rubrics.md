@@ -2,6 +2,8 @@
 
 veritail ships with a default ecommerce relevance rubric (`ecommerce-default`) that works well for most use cases. When you need domain-specific scoring criteria or enterprise evaluation rules, you can provide a custom rubric module, inject business context via `--context`, or both.
 
+> **Note:** Custom rubric modules are loaded and executed as Python code at runtime. Only use rubric files from sources you trust.
+
 ## Custom Rubric Module
 
 A custom rubric is a Python file that defines two things:

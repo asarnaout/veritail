@@ -2,6 +2,8 @@
 
 veritail includes a set of built-in deterministic checks (zero results, price outliers, near-duplicates, etc.). When you need domain-specific quality checks, you can add your own without modifying veritail itself by providing a custom check module.
 
+> **Note:** Custom check modules are loaded and executed as Python code at runtime. Only use check files from sources you trust.
+
 ## Check Function Signature
 
 A check module is a Python file containing one or more functions whose names start with `check_`. Each function must accept a `QueryEntry` and a `list[SearchResult]`, and return a `list[CheckResult]`:

@@ -2,6 +2,8 @@
 
 veritail provides four commands: `run` for evaluation, `init` for project scaffolding, `generate-queries` for LLM-based query generation, and `vertical` for inspecting built-in verticals. This page documents every flag, its default value, and the requirements for each mode.
 
+> **Security note:** `--adapter`, `--checks`, `--autocomplete-checks`, and `--rubric` all load local Python files and execute them directly. This is intentional — veritail is a developer tool designed to run your code. Only point these flags at files you trust, the same as you would with any Python script.
+
 ## `veritail run`
 
 Run a single or dual-configuration evaluation.
