@@ -94,12 +94,13 @@ brand; the generic kitchen term usually means a large plastic container)
     overlays={
         "beverage": VerticalOverlay(
             description=(
-                "Coffee, espresso, fountain, frozen beverage, and draft beer equipment"
+                "Coffee, espresso, fountain, frozen drinks, tea, "
+                "and draft beer equipment"
             ),
             content="""\
 ### Beverage Equipment — Scoring Guidance
 
-This query involves coffee, espresso, fountain, frozen beverage, tea, or \
+This query involves coffee, espresso, fountain, frozen drinks, tea, or \
 draft beer equipment.
 
 **Critical distinctions to enforce:**
@@ -114,10 +115,9 @@ plumbing). Gallon-per-batch capacity is a hard spec.
 - **Carbonation / fountain**: Bag-in-box vs pre-mix vs post-mix are \
 incompatible syrup delivery systems. Number of flavor valves is a hard spec. \
 Carbonator included vs separate is a critical configuration distinction.
-- **Frozen beverage**: Granita (non-carbonated slush, no dairy) vs frozen \
-carbonated vs soft serve (dairy, different cleaning protocols) are completely \
-different machines despite visual similarity — confusing them is a category \
-error.
+- **Frozen drink machines**: Granita (non-carbonated slush, no dairy) vs \
+frozen carbonated beverage machines are different machines despite visual \
+similarity — confusing them is a category error.
 - **Draft beer**: Direct draw (short draw, no glycol) vs long-draw \
 (glycol-cooled lines) are different systems. Number of taps and kegerator vs \
 jockey box are hard specs.
@@ -204,8 +204,106 @@ distinct equipment categories.
 rounders are bakery-specific equipment — each serves a distinct step in \
 dough processing.""",
         ),
+        "furniture": VerticalOverlay(
+            description=(
+                "Restaurant seating, tables, booths, bar stools, "
+                "and dining room furniture"
+            ),
+            content="""\
+### Restaurant Furniture — Scoring Guidance
+
+This query involves restaurant seating, tables, booths, bar stools, or \
+other commercial dining room furniture.
+
+**Critical distinctions to enforce:**
+
+- **Seating height classes**: Dining (17–19" seat height), counter (24–26"), \
+bar (28–30") — hard constraint, must match table or counter height. A "bar \
+stool" query must not return dining-height chairs.
+- **Commercial vs residential grade**: Commercial furniture must withstand \
+100+ seatings per day. BIFMA certifications (X5.1, X5.4, X5.6) indicate \
+commercial durability. Welded steel frames, high-density foam (1.8+ lb/ft³), \
+commercial-grade upholstery. Residential furniture fails within months at \
+restaurant traffic levels.
+- **Booth seating**: Single vs double, wall-mounted vs floor-mounted, length \
+(36/42/48" per seat) are hard specs. Vinyl vs fabric upholstery. \
+Channel-back, smooth, tufted are distinct styles.
+- **Indoor vs outdoor**: Outdoor requires weather-resistant materials \
+(powder-coated aluminum, resin, teak, marine-grade polymer). Indoor \
+upholstered furniture will deteriorate outdoors. Hard failure when \
+"patio" or "outdoor" is specified.
+- **Stacking**: Stackable chairs are a distinct feature for banquet and \
+multi-purpose use. Stack capacity and dolly compatibility matter.
+- **Fabric durability**: Wyzenbeek abrasion test — under 15,000 double \
+rubs = residential, 30,000+ = commercial. Vinyl is standard for restaurants \
+(easy clean, bleach-resistant). Material type is a hard constraint when \
+specified.
+- **Fire safety**: CA TB 133 for upholstered seating in public occupancy \
+buildings. Hard requirement when specified.
+- **Table tops vs bases**: Often sold separately in commercial settings. \
+When query specifies "table top" or "table base," return only that \
+component. Shape, size, and material are hard specs.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- banquet chair = stacking banquet chair = ballroom chair
+- captain's chair = arm chair (restaurant seating with armrests)
+- deuce = two-top = table for two
+- four-top = table for four
+- T-mold edge = vinyl edge banding (table top edge finish)""",
+        ),
+        "ice_cream": VerticalOverlay(
+            description=(
+                "Soft serve machines, batch freezers, gelato cases, "
+                "and frozen dessert equipment"
+            ),
+            content="""\
+### Frozen Dessert Equipment — Scoring Guidance
+
+This query involves soft serve machines, batch freezers, gelato cases, \
+dipping cabinets, or other frozen dessert equipment.
+
+**Critical distinctions to enforce:**
+
+- **Soft serve vs batch freezer vs dipping cabinet**: Fundamentally \
+different machines. Soft serve = continuous freezer dispensing on demand \
+(servings/hour). Batch freezer = discrete batches (quart capacity per \
+cycle, 2–30+ qt). Dipping cabinet = passive cold display for pre-made \
+tubs (tub count 4–12+). Confusing any pair is a category error.
+- **Soft serve**: Flavor count (single, twin-twist/two-flavor, \
+three-flavor) is a hard spec. Feed system — gravity (hopper-on-top, \
+lower volume) vs pressurized (separate mix cabinet, higher overrun) — \
+determines capacity. Overrun % affects economics. Countertop vs floor is \
+a form factor constraint.
+- **Batch freezer**: Quart capacity per batch is a hard spec. Cycle time \
+determines throughput. Manual vs auto extraction. Water-cooled vs \
+air-cooled compressor.
+- **Dipping cabinet**: Tub count (4, 6, 8, 12) is a hard spec. Curved \
+glass vs flat glass vs solid lid. Forced-air vs gravity-cold. LED lighting.
+- **Frozen yogurt machines vs soft serve**: Mechanically similar but \
+frozen yogurt machines optimize for yogurt-based mixes (different viscosity, \
+acidity, overrun). Do not penalize interchangeable use unless the query \
+specifies a technical distinction.
+- **Gelato vs ice cream batch freezers**: Gelato = lower speed (20–30% \
+overrun vs 50–100%), served at higher temp (−10 to −12 °C vs −18 °C). \
+When query specifies "gelato," prefer gelato-specific equipment.
+- **Shake machines**: Spindle-type mixers that blend pre-made ice cream — \
+distinct from soft serve and batch freezers, which freeze mix.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- soft serve = soft-serve = softy machine
+- batch freezer = ice cream maker (commercial context)
+- dipping cabinet = ice cream display case = dipping case
+- gelato case = gelato display = gelato showcase
+- FroYo machine = frozen yogurt machine
+- twist = twin-twist = two-flavor (soft serve with swirl)""",
+        ),
         "refrigeration": VerticalOverlay(
-            description=("Refrigeration, freezers, ice machines, and cold storage"),
+            description=(
+                "Refrigeration, freezers, ice machines, and cold storage "
+                "(not frozen dessert equipment)"
+            ),
             content="""\
 ### Refrigeration Equipment — Scoring Guidance
 
@@ -360,6 +458,54 @@ from the same brand is a mismatch.
 - **Serviceware sizing**: Charger plates, bread plates, dinner plates are \
 distinct sizes — returning a 10" dinner plate for a "6 inch bread plate" \
 query is a size error.""",
+        ),
+        "ventilation": VerticalOverlay(
+            description=(
+                "Kitchen ventilation: exhaust hoods, makeup air units, "
+                "fire suppression, ductwork, and fans"
+            ),
+            content="""\
+### Kitchen Ventilation — Scoring Guidance
+
+This query involves kitchen exhaust hoods, makeup air units, fire \
+suppression systems, ductwork, or exhaust fans.
+
+**Critical distinctions to enforce:**
+
+- **Type I (grease) vs Type II (heat/steam/condensate) hoods**: \
+Code-critical distinction. Type I requires grease-rated baffle filters \
+and is mandatory over grease-producing equipment (fryers, griddles, \
+broilers). Type II handles steam and heat from dishwashers, steam tables. \
+Returning a Type II hood for a Type I query is a building code violation.
+- **Hood configuration**: Wall-mount (canopy), island, proximity \
+(backshelf/low-profile), ventless (self-contained recirculating) — \
+different infrastructure requirements. Configuration is a hard constraint \
+when specified.
+- **Fire suppression**: UL 300 wet-chemical systems are required for all \
+Type I hoods. Pre-piped vs field-piped, nozzle count, and coverage area \
+are hard specs. Hoods sold "without fire suppression" need separate systems.
+- **CFM (cubic feet per minute)**: Airflow capacity determined by hood \
+size and equipment BTU output. Hard spec when specified.
+- **Makeup air units (MAU)**: Supply tempered replacement air. CFM \
+capacity and heating method (gas vs electric) are hard specs. A MAU is \
+NOT an exhaust fan — confusing supply vs exhaust is a category error.
+- **Ductwork**: Grease duct (16-gauge welded per NFPA 96) is \
+fundamentally different from standard HVAC duct. Using HVAC ductwork on \
+a grease run is a fire code violation.
+- **Exhaust fans**: Upblast vs utility/inline vs sidewall — different \
+installation positions. Belt-driven vs direct-drive are distinct \
+motor configurations.
+- **Ventless/recirculating systems**: Multi-stage filtration (HEPA, \
+activated carbon, ESP), no ductwork required. Limited to specific \
+equipment types — not a universal replacement for ducted hoods.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- grease hood = Type I hood
+- condensate hood = heat hood = vapor hood = Type II hood
+- MAU = makeup air unit
+- upblast = roof exhaust fan (upward discharge)
+- Ansul = wet chemical fire suppression (genericized brand)""",
         ),
         "warewash": VerticalOverlay(
             description=(
