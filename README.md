@@ -1,5 +1,10 @@
 # veritail
 
+[![PyPI version](https://img.shields.io/pypi/v/veritail.svg)](https://pypi.org/project/veritail/)
+[![Python versions](https://img.shields.io/pypi/pyversions/veritail.svg)](https://pypi.org/project/veritail/)
+[![License](https://img.shields.io/pypi/l/veritail.svg)](https://github.com/asarnaout/veritail/blob/main/LICENSE)
+[![CI](https://github.com/asarnaout/veritail/actions/workflows/ci.yml/badge.svg)](https://github.com/asarnaout/veritail/actions/workflows/ci.yml)
+
 LLM evals framework tailored for ecommerce search.
 
 veritail scores every query-result pair, computes IR metrics from those scores, and runs deterministic quality checks — all in a single command. Run it on every release to track search quality, or compare two configurations side by side to measure the impact of a change before it ships.
