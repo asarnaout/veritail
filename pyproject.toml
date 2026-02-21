@@ -57,6 +57,7 @@ dev = [
 Homepage = "https://github.com/asarnaout/veritail"
 Repository = "https://github.com/asarnaout/veritail"
 Documentation = "https://github.com/asarnaout/veritail/tree/main/docs"
+"Bug Tracker" = "https://github.com/asarnaout/veritail/issues"
 
 [project.scripts]
 veritail = "veritail.cli:main"
