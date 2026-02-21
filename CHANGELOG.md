@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Tiered vertical overlays: verticals support a core system prompt plus category-specific overlays injected per-query into the user prompt, reducing context rot and cost for deep domain knowledge
+- New types: `VerticalOverlay` and `VerticalContext` for structured vertical definitions
+- `QueryEntry.overlay` field for classified overlay keys in query CSV/JSON files
+- Classifier determines query type and overlay key in a single LLM call (zero extra cost)
+- Foodservice vertical split into core + 4 category overlays (hot_side, cold_side, smallwares, warewash) as proof of concept
+
+### Changed
+
+- `load_vertical()` returns `VerticalContext` instead of `str`; custom file verticals are wrapped automatically
+- Classification pre-pass runs for all queries when overlays are available (to assign overlay keys), preserving pre-existing query types
+- Batch checkpoint expanded to include overlay key (backward compatible with old checkpoints)
+
 ## [0.1.1] - 2026-02-20
 
 ### Fixed
