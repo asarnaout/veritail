@@ -109,7 +109,7 @@ class TestBuiltinVerticals:
 
 
 FOODSERVICE_OVERLAY_KEYS = [
-    "beverage",
+    "beverage_equipment",
     "beverages",
     "cooking",
     "dairy_eggs",
@@ -157,8 +157,8 @@ class TestFoodserviceOverlays:
     def test_refrigeration_mentions_refrigeration(self):
         assert "refriger" in FOODSERVICE.overlays["refrigeration"].content.lower()
 
-    def test_beverage_mentions_espresso(self):
-        assert "espresso" in FOODSERVICE.overlays["beverage"].content.lower()
+    def test_beverage_equipment_mentions_espresso(self):
+        assert "espresso" in FOODSERVICE.overlays["beverage_equipment"].content.lower()
 
     def test_food_prep_mentions_mixer(self):
         assert "mixer" in FOODSERVICE.overlays["food_prep"].content.lower()
@@ -178,8 +178,9 @@ class TestFoodserviceOverlays:
     def test_furniture_mentions_booth(self):
         assert "booth" in FOODSERVICE.overlays["furniture"].content.lower()
 
-    def test_beverage_does_not_mention_soft_serve(self):
-        assert "soft serve" not in FOODSERVICE.overlays["beverage"].content.lower()
+    def test_beverage_equipment_does_not_mention_soft_serve(self):
+        content = FOODSERVICE.overlays["beverage_equipment"].content.lower()
+        assert "soft serve" not in content
 
     def test_proteins_mentions_imps(self):
         assert "imps" in FOODSERVICE.overlays["proteins"].content.lower()

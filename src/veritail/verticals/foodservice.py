@@ -92,7 +92,7 @@ brand; the generic kitchen term usually means a large plastic container)
 - bus tub = dish tub
 - pan sizes: full, half, third, quarter, sixth, ninth (US hotel pan system)""",
     overlays={
-        "beverage": VerticalOverlay(
+        "beverage_equipment": VerticalOverlay(
             description=(
                 "Beverage EQUIPMENT — coffee machines, espresso machines, "
                 "fountain dispensers, frozen drink machines, tea brewers, "
