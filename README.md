@@ -270,6 +270,7 @@ veritail run \
 | [CLI Reference](docs/cli-reference.md) | Complete flag reference for all commands |
 | [Backends](docs/backends.md) | File and Langfuse storage backends |
 | [Development](docs/development.md) | Local development setup and running tests |
+| [Contributing](contributing.md) | Contribution workflow and pull request checklist |
 
 ## Disclaimer
 
