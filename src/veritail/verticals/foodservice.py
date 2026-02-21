@@ -85,7 +85,8 @@ per-query domain guidance when present):
 
 - hotel pan = steam table pan = GN container (but US and GN systems are \
 physically incompatible)
-- cambro = insulated food carrier / food pan carrier (genericized brand)
+- cambro = food storage container / insulated food pan carrier (genericized \
+brand; the generic kitchen term usually means a large plastic container)
 - speed rack = sheet pan rack = bun pan rack
 - dunnage rack = floor rack (keeps items off floor per health code)
 - bus tub = dish tub
