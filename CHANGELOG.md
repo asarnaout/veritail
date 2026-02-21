@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `veritail init` and the first `veritail run` (file backend) now print a tip reminding users to add the output directory to `.gitignore`
+
 ### Changed
 
 - Langfuse backend docstring and docs now clearly document its write-only nature and limitations

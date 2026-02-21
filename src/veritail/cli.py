@@ -777,6 +777,10 @@ def init(
         f"--autocomplete {prefixes} "
         f"--adapter {adapter} --llm-model <model>[/dim]"
     )
+    console.print(
+        "\n[dim]Tip: add eval-results/ to .gitignore to avoid committing "
+        "catalog data to version control.[/dim]"
+    )
 
 
 @main.group()
@@ -1240,6 +1244,7 @@ def run(
         vertical_context = load_vertical(vertical)
 
     # ---- Run evaluations ----
+    output_dir_is_new = backend_type == "file" and not Path(output_dir).exists()
     html_paths: list[Path] = []
     cancel_event: threading.Event | None = None
 
@@ -1340,6 +1345,12 @@ def run(
         console.print(
             "\n  [bold]Tip:[/bold] use [cyan]--open[/cyan] "
             "to view the report in your browser\n"
+        )
+
+    if output_dir_is_new:
+        console.print(
+            f"  [bold]Tip:[/bold] add [cyan]{output_dir}/[/cyan] to "
+            "[cyan].gitignore[/cyan] to avoid committing catalog data.\n"
         )
 
 

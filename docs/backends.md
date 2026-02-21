@@ -24,6 +24,8 @@ eval-results/
 
 No extra install or configuration is needed -- the file backend is included with the base package.
 
+> **Tip:** Add `eval-results/` (or your custom `--output-dir`) to `.gitignore` to avoid accidentally committing catalog data to version control.
+
 ## Langfuse backend
 
 [Langfuse](https://langfuse.com/) provides a richer experience with trace-level visibility, built-in annotation queues, and experiment versioning.
