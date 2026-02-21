@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-02-20
+
+### Fixed
+
+- `.env` file was not loaded when veritail was installed from PyPI. `load_dotenv()` was searching from the package directory in `site-packages` instead of the user's current working directory.
+
 ## [0.1.0] - 2026-02-20
 
 ### Added

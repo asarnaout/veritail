@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import click
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from rich.console import Console
 
 from veritail.adapter import load_adapter
@@ -39,7 +39,11 @@ console = Console()
 
 # Load environment variables from .env file if it exists
 # Search in current directory, then parent directories
-load_dotenv(verbose=False, override=False)
+load_dotenv(
+    find_dotenv(usecwd=True, raise_error_if_not_found=False),
+    verbose=False,
+    override=False,
+)
 
 
 def _slugify_name(raw: str) -> str:
