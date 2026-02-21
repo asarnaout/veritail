@@ -53,6 +53,11 @@ dev = [
     "mypy>=1.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/asarnaout/veritail"
+Repository = "https://github.com/asarnaout/veritail"
+Documentation = "https://github.com/asarnaout/veritail/tree/main/docs"
+
 [project.scripts]
 veritail = "veritail.cli:main"
 
