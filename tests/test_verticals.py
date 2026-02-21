@@ -111,6 +111,7 @@ class TestBuiltinVerticals:
 FOODSERVICE_OVERLAY_KEYS = [
     "beverage",
     "cooking",
+    "disposables",
     "food_prep",
     "furniture",
     "ice_cream",
@@ -125,7 +126,7 @@ FOODSERVICE_OVERLAY_KEYS = [
 
 class TestFoodserviceOverlays:
     def test_foodservice_has_overlays(self):
-        assert len(FOODSERVICE.overlays) == 11
+        assert len(FOODSERVICE.overlays) == 12
 
     def test_overlay_keys(self):
         assert set(FOODSERVICE.overlays.keys()) == set(FOODSERVICE_OVERLAY_KEYS)
@@ -174,6 +175,12 @@ class TestFoodserviceOverlays:
     def test_beverage_does_not_mention_soft_serve(self):
         assert "soft serve" not in FOODSERVICE.overlays["beverage"].content.lower()
 
+    def test_disposables_mentions_clamshell(self):
+        assert "clamshell" in FOODSERVICE.overlays["disposables"].content.lower()
+
+    def test_smallwares_does_not_mention_disposables(self):
+        assert "disposable" not in FOODSERVICE.overlays["smallwares"].content.lower()
+
     def test_core_has_cross_cutting_terminology(self):
         core = FOODSERVICE.core.lower()
         assert "hotel pan" in core
@@ -207,6 +214,8 @@ class TestFoodserviceOverlays:
             ("ice_cream", "batch freezer"),
             ("ice_cream", "dipping cabinet"),
             ("furniture", "banquet chair"),
+            ("disposables", "clamshell"),
+            ("disposables", "sterno"),
         ],
     )
     def test_category_terminology_in_overlay(self, key, term):

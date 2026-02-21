@@ -128,8 +128,14 @@ def _build_overlay_prompt_section(
         lines.append(f"- **{key}**: {description}")
     lines.append("")
     lines.append(
+        "If the query is even partially related to a category above, select that "
+        "category. Only use `none` when the query is entirely outside all listed "
+        'domains (e.g., "restaurant insurance", "chef hiring", "food truck financing").'
+    )
+    lines.append("")
+    lines.append(
         "Add a second line to your response:\n\n"
-        "OVERLAY: <" + "|".join(sorted(overlay_keys)) + ">"
+        "OVERLAY: <" + "|".join(sorted(overlay_keys)) + "|none>"
     )
     return "\n".join(lines)
 

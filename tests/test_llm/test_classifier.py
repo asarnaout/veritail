@@ -149,6 +149,12 @@ class TestParseClassificationWithOverlay:
         qtype, overlay = parse_classification_with_overlay(content, _OVERLAY_KEYS)
         assert overlay == "cold_side"
 
+    def test_none_overlay_returns_none(self) -> None:
+        content = "QUERY_TYPE: broad\nOVERLAY: none"
+        qtype, overlay = parse_classification_with_overlay(content, _OVERLAY_KEYS)
+        assert qtype == "broad"
+        assert overlay is None
+
     def test_no_type_but_overlay_present(self) -> None:
         content = "I think this is hot side"
         qtype, overlay = parse_classification_with_overlay(content, _OVERLAY_KEYS)
@@ -178,6 +184,21 @@ class TestClassifyQuery:
         assert "## Overlay Classification" in system_prompt
         assert "hot_side" in system_prompt
         assert "cold_side" in system_prompt
+
+    def test_overlay_prompt_includes_none_with_bias(self) -> None:
+        client = _make_client("QUERY_TYPE: broad\nOVERLAY: none")
+        classify_query(client, "restaurant insurance", overlay_keys=_OVERLAY_KEYS)
+        system_prompt = client.complete.call_args[0][0]
+        assert "|none>" in system_prompt
+        assert "partially related" in system_prompt
+
+    def test_overlay_none_returns_none(self) -> None:
+        client = _make_client("QUERY_TYPE: broad\nOVERLAY: none")
+        qtype, overlay = classify_query(
+            client, "restaurant insurance", overlay_keys=_OVERLAY_KEYS
+        )
+        assert qtype == "broad"
+        assert overlay is None
 
     def test_llm_error_returns_none_none(self) -> None:
         client = Mock(spec=LLMClient)

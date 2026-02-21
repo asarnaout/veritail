@@ -171,6 +171,68 @@ intent aligns):
 - impinger = conveyor oven (genericized from Lincoln brand)
 - deck oven = stone-deck baking / pizza oven""",
         ),
+        "disposables": VerticalOverlay(
+            description=(
+                "Disposable food packaging, cups, lids, to-go containers, "
+                "paper products, and single-use supplies"
+            ),
+            content="""\
+### Disposables — Scoring Guidance
+
+This query involves disposable food packaging, cups, lids, to-go \
+containers, bags, paper products, gloves, or other single-use supplies.
+
+**Critical distinctions to enforce:**
+
+- **Hot cups vs cold cups**: Functionally incompatible. Paper hot cups \
+(PE-lined) handle 200 °F+; PET cold cups deform above ~140 °F. PLA \
+(compostable plastic) cups are cold-only — heat deflection at ~115–135 °F. \
+Returning a cold cup for a "hot cup" query is a hard failure.
+- **Cup/lid compatibility**: Lid fit depends on top diameter (commonly \
+80 mm or 90 mm), wall thickness, and seal design (friction fit vs tab \
+lock). Lids are often brand/line-specific — a Solo Traveler lid fits \
+Solo hot cups but not Dart cups of the same nominal size. Returning an \
+incompatible lid is a hard failure.
+- **Material constraints — regulatory**: Expanded polystyrene (EPS/foam) \
+is banned for foodservice in 12+ US states (NY, CA, MD, ME, VT, NJ, CO, \
+VA, WA, DE, OR, RI). Returning foam products for queries from \
+ban-affected jurisdictions or for "eco-friendly" / "compostable" queries \
+is a hard failure.
+- **Compostable certifications**: BPI Certified Compostable (ASTM D6400 \
+for products, ASTM D6868 for coated items) is the US commercial standard. \
+"Biodegradable" and "compostable" are legally distinct claims in multiple \
+states — do not treat them as equivalent. "Plant-based" or "bio-based" \
+does not imply compostable.
+- **Container sizing**: All dimensions are hard specs. Cups: oz (8, 12, \
+16, 20, 24, 32). Clamshells: L×W (6×6, 8×8, 9×9). Deli containers: oz. \
+Food wrap rolls: width in inches (12", 18", 24"). An 8 oz cup is not a \
+substitute for a 12 oz cup.
+- **To-go container types**: Clamshell (hinged-lid), two-piece \
+(base + separate lid), compartmentalized (2 or 3 sections), and soup \
+containers are distinct form factors — each serves different menu items.
+- **Microwave safety**: PP containers are microwave-safe; PS and PET are \
+not. Hard constraint when "microwave-safe" is specified.
+- **Glove material**: Nitrile, vinyl, latex, and poly are distinct \
+materials with different puncture resistance, allergen profiles (latex \
+allergy), and cost. Powdered vs powder-free is a hard spec. Material is \
+a hard constraint when specified.
+- **Catering disposables**: Disposable aluminum steam table pans and lids, \
+chafing fuel (Sterno), and disposable serving utensils are catering-specific \
+— distinct from everyday disposables.
+
+**Commercial pack sizing**: Disposables are sold in case packs (1000-count \
+cups, 500-count containers, 200-count plates). Retail-size packaging \
+(10-count, 50-count) is a weak match for commercial queries. Do not \
+penalize single-unit results when the query specifies a single item.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- clamshell = hinged container = take-out container
+- SOS bag = self-opening sack (flat-bottom paper bag)
+- Sterno = chafing fuel (genericized brand)
+- deli container = round plastic container with lid
+- poly gloves = food handling gloves (thin, loose-fit polyethylene)""",
+        ),
         "food_prep": VerticalOverlay(
             description=(
                 "Mixers, slicers, food processors, and powered preparation equipment"
@@ -385,13 +447,14 @@ intent aligns):
         ),
         "smallwares": VerticalOverlay(
             description=(
-                "Pans, food storage, disposables, utensils, and kitchen hand tools"
+                "Pans, food storage, utensils, cookware, "
+                "and kitchen hand tools (not disposables)"
             ),
             content="""\
-### Smallwares and Disposables — Scoring Guidance
+### Smallwares — Scoring Guidance
 
-This query involves pans, food storage, disposables, utensils, or other \
-smallwares and kitchen hand tools.
+This query involves pans, food storage containers, utensils, cookware, \
+or other durable kitchen hand tools and supplies.
 
 **Critical distinctions to enforce:**
 
@@ -399,12 +462,6 @@ smallwares and kitchen hand tools.
 and European GN pans (1/1, 1/2, 1/3, 2/3, etc.) are dimensionally \
 incompatible — different corner radii and rim profiles. Do not cross-match \
 hotel pan queries with GN products or vice versa.
-- **Exact sizing for disposables**: "8 oz" means 8 oz; "6×6 clamshell" means \
-6×6. Size is a hard constraint for disposables.
-- **Material exclusivity**: Compostable and foam are mutually exclusive \
-materials — returning foam for a "compostable" query is a hard failure, as \
-foam is banned in many jurisdictions. Similarly, BPA-free is a hard \
-requirement when specified.
 - **Pan depth**: Steam table pans come in standard depths (2.5", 4", 6"). \
 Depth is a hard requirement when specified — a 2.5" pan cannot substitute \
 for a 6" pan.
@@ -414,15 +471,19 @@ aesthetics — color is a hard requirement when specified.
 - **Food storage containers**: Round vs square, capacity, and lid \
 compatibility matter. Cambro and Carlisle container systems are not always \
 interchangeable.
-
-**Commercial pack sizing**: Disposables and chemicals are sold in case packs \
-(e.g., 1000-count, 500-count). Retail-size packaging (10-count) is a weak \
-match for commercial queries. Conversely, do not penalize single-unit results \
-when the query specifies a single item.
+- **Cookware gauge**: Heavier gauge (lower number) = thicker, more durable. \
+Commercial sheet pans: 18-gauge (standard) vs 16-gauge (heavy duty) vs \
+perforated (baking) are distinct. Gauge is a hard spec when specified.
+- **Utensil material**: Stainless steel vs silicone vs nylon vs wood — \
+material determines heat resistance and food safety compliance. \
+Stainless is standard for commercial; nylon and silicone for non-stick \
+surfaces. Material is a hard constraint when specified.
 
 **Terminology equivalences** (do not penalize lexical mismatches when \
 intent aligns):
-- lexan = clear polycarbonate food storage container (genericized brand)""",
+- lexan = clear polycarbonate food storage container (genericized brand)
+- sheet pan = bun pan = half sheet (18×13) or full sheet (18×26)
+- hotel pan = steam table pan = GN container (but US and GN are incompatible)""",
         ),
         "tabletop": VerticalOverlay(
             description=(

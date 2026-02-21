@@ -13,13 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New types: `VerticalOverlay` and `VerticalContext` for structured vertical definitions
 - `QueryEntry.overlay` field for classified overlay keys in query CSV/JSON files
 - Classifier determines query type and overlay key in a single LLM call (zero extra cost)
-- Foodservice vertical split into core + 11 category overlays: beverage, cooking, food_prep, furniture, ice_cream, refrigeration, serving_holding, smallwares, tabletop, ventilation, warewash
+- Overlay classifier supports `none` option for queries outside all domain overlays, with bias-toward-matching to prevent overuse
+- Foodservice vertical split into core + 12 category overlays: beverage, cooking, disposables, food_prep, furniture, ice_cream, refrigeration, serving_holding, smallwares, tabletop, ventilation, warewash
 - Foodservice terminology equivalences split between core (cross-cutting terms) and overlays (category-specific terms) to reduce context dilution
-- 3 new foodservice category overlays: ventilation (exhaust hoods, makeup air, fire suppression), ice_cream (soft serve, batch freezers, gelato cases), furniture (seating, tables, booths)
+- 4 new foodservice category overlays: ventilation (exhaust hoods, makeup air, fire suppression), ice_cream (soft serve, batch freezers, gelato cases), furniture (seating, tables, booths), disposables (cups, to-go containers, paper products, gloves)
 
 ### Changed
 
 - Beverage overlay: soft serve moved to new ice_cream overlay; beverage now focuses on drink equipment (coffee, fountain, frozen drinks, tea, draft beer)
+- Smallwares overlay: disposables moved to new disposables overlay; smallwares now focuses on durable kitchen tools, pans, and food storage
 
 - `load_vertical()` returns `VerticalContext` instead of `str`; custom file verticals are wrapped automatically
 - Classification pre-pass runs for all queries when overlays are available (to assign overlay keys), preserving pre-existing query types
