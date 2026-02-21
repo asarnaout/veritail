@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Langfuse backend docstring and docs now clearly document its write-only nature and limitations
+
+### Fixed
+
+- `--resume` with `--backend langfuse` now fails fast with a clear error instead of silently re-running all queries
+
 ## [0.1.0] - 2026-02-20
 
 ### Added

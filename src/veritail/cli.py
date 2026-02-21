@@ -1153,6 +1153,13 @@ def run(
     if autocomplete_prefixes and len(adapters) == 1 and not llm_model:
         raise click.UsageError("--llm-model is required for autocomplete evaluation.")
 
+    if use_resume and backend_type == "langfuse":
+        raise click.UsageError(
+            "--resume is not supported with --backend langfuse. "
+            "The Langfuse backend is write-only and cannot retrieve "
+            "previous judgments. Use --backend file for resumable runs."
+        )
+
     if use_resume and not config_names:
         raise click.UsageError(
             "--resume requires --config-name to identify the previous run."

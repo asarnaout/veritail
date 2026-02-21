@@ -12,13 +12,15 @@ from veritail.types import CorrectionJudgment, JudgmentRecord, SuggestionJudgmen
 
 
 class LangfuseBackend(EvalBackend):
-    """Backend using Langfuse for tracing, scoring, and human annotation.
+    """Write-only observability backend using Langfuse for tracing and scoring.
 
-    Provides the richest experience:
-    - Every LLM judge call stored as a trace with full prompt/response
-    - Score storage for both LLM-generated and human-annotated scores
-    - Built-in annotation queue UI for human review
-    - Experiment tracking and versioning across runs
+    Sends every LLM judge call to Langfuse as a trace with full prompt/response
+    details and numeric scores, enabling review and annotation in the Langfuse UI.
+
+    Limitations:
+        - Cannot retrieve judgments (Langfuse SDK v3 removed fetch APIs).
+        - Does not support --resume (use the file backend for resumable runs).
+        - Judgment retrieval requires the Langfuse REST API directly.
 
     Configuration can be provided via constructor args or environment variables:
         LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL

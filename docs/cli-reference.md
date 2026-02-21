@@ -57,7 +57,7 @@ veritail run --queries queries.csv \
 
 **Batch mode** (`--batch`) additionally requires a cloud provider model (OpenAI, Anthropic, or Gemini). Not compatible with `--llm-base-url`.
 
-**Resume** (`--resume`) additionally requires `--config-name`. The experiment directory from the previous run must exist, and `--llm-model`, `--rubric`, and `--top-k` must match the original run.
+**Resume** (`--resume`) additionally requires `--config-name`. The experiment directory from the previous run must exist, and `--llm-model`, `--rubric`, and `--top-k` must match the original run. Not compatible with `--backend langfuse` (the Langfuse backend is write-only).
 
 ## `veritail init`
 

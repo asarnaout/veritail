@@ -59,6 +59,15 @@ veritail run \
 
 Each LLM judgment is stored as a Langfuse trace with full prompt/response details and a `relevance` score, making it straightforward to review, annotate, and compare experiments in the Langfuse UI.
 
+### Limitations
+
+The Langfuse backend is **write-only** — it sends judgments, scores, and traces to Langfuse but cannot read them back. This means:
+
+- `--resume` is not supported with `--backend langfuse`. Use the file backend for resumable evaluation runs.
+- Metrics, reports, and `judgments.jsonl` are not persisted locally. The file backend handles these automatically.
+
+If you need both local persistence and Langfuse observability, run with the file backend and export results to Langfuse separately via the [Langfuse REST API](https://langfuse.com/docs/api).
+
 ## See also
 
 - [Supported LLM Providers](supported-llm-providers.md) -- provider setup and model guidance

@@ -32,6 +32,8 @@ veritail run --queries queries.csv --adapter adapter.py \
 
 `--resume` requires `--config-name` so veritail can locate the previous run's experiment directory under `--output-dir` (default `./eval-results`). The directory must already exist from a prior run.
 
+> **Note:** `--resume` is not supported with `--backend langfuse`. The Langfuse backend is write-only and cannot retrieve previous judgments. Use the default file backend for resumable runs.
+
 ### Config mismatch detection
 
 On resume, veritail checks the saved `config.json` and rejects the run if `--llm-model`, `--rubric`, or `--top-k` differ from the original. This prevents silently mixing results from different configurations.
