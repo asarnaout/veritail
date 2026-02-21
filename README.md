@@ -18,6 +18,16 @@ Five evaluation layers:
 
 Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context and rubrics. Optional [Langfuse](docs/backends.md#langfuse-backend) integration for full observability — every judgment, score, and LLM call traced and grouped by evaluation run.
 
+## Why veritail
+
+Ecommerce search is one of the hardest systems to evaluate. A "wedding guest dress" query that surfaces white dresses fails a constraint so obvious it goes unstated in human review — but not in veritail's fashion vertical. A "wire for 20-amp circuit" query returning 14 AWG wire isn't a budget option — it's a code violation and a fire hazard. Generic relevance frameworks don't know any of this. Your engineers shouldn't have to encode it from scratch every time.
+
+The typical alternative is human annotation: pull a sample of queries, have someone manually grade the results, average the scores. It's slow, expensive, inconsistent across annotators, and gone the moment your search config changes. You can't run it on every PR. You can't run it at 2am before a deployment.
+
+veritail replaces that workflow. It wires directly into your search API through a thin adapter, sends every query-result pair to an LLM judge that already understands your vertical's domain rules, computes NDCG/MRR/MAP/Precision from those scores, and runs a battery of deterministic checks — all in a single command. You get a full evaluation report in the time it used to take just to assign annotators.
+
+The result: search quality becomes something you can measure on every release, compare across configurations, and track over time — the same way you track latency or error rates. Not a quarterly audit. A continuous signal.
+
 <p align="center">
   <img src="assets/main.gif" alt="Search relevance evaluation demo" width="900">
 </p>
