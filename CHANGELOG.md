@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `veritail init` and the first `veritail run` (file backend) now print a tip reminding users to add the output directory to `.gitignore`
 
+### Fixed
+
+- `--config-name` values containing path separators (`/`, `\`) or parent references (`..`) are now rejected with a clear error, preventing potential directory traversal outside the output directory
+
 ### Changed
 
 - Langfuse backend docstring and docs now clearly document its write-only nature and limitations

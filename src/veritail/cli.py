@@ -1148,6 +1148,13 @@ def run(
             "Or omit --config-name to auto-generate names."
         )
 
+    for cn in config_names:
+        if "/" in cn or "\\" in cn or ".." in cn:
+            raise click.UsageError(
+                f"--config-name '{cn}' contains invalid characters. "
+                "Config names must not contain path separators or parent references."
+            )
+
     if len(adapters) > 2:
         raise click.UsageError("At most 2 adapter/config-name pairs are supported.")
 
