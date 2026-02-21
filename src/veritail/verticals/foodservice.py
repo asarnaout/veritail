@@ -100,10 +100,47 @@ physically incompatible)
 - deck oven = stone-deck baking / pizza oven
 - pan sizes: full, half, third, quarter, sixth, ninth (US hotel pan system)""",
     overlays={
-        "hot_side": VerticalOverlay(
-            description="Cooking equipment: ovens, fryers, griddles, salamanders",
+        "beverage": VerticalOverlay(
+            description=(
+                "Coffee, espresso, fountain, frozen beverage, and draft beer equipment"
+            ),
             content="""\
-### Hot-Side Cooking Equipment — Scoring Guidance
+### Beverage Equipment — Scoring Guidance
+
+This query involves coffee, espresso, fountain, frozen beverage, tea, or \
+draft beer equipment.
+
+**Critical distinctions to enforce:**
+
+- **Espresso machines**: Group head count (1 vs 2 vs 3) determines volume \
+capacity and is a hard spec. Boiler type — single, dual, heat exchanger — \
+affects temperature stability and simultaneous steaming. Volumetric vs \
+semi-automatic dosing are distinct control systems.
+- **Coffee brewers**: Drip vs pour-over vs satellite vs airpot are different \
+serving systems with different infrastructure needs (pour-over requires no \
+plumbing). Gallon-per-batch capacity is a hard spec.
+- **Carbonation / fountain**: Bag-in-box vs pre-mix vs post-mix are \
+incompatible syrup delivery systems. Number of flavor valves is a hard spec. \
+Carbonator included vs separate is a critical configuration distinction.
+- **Frozen beverage**: Granita (non-carbonated slush, no dairy) vs frozen \
+carbonated vs soft serve (dairy, different cleaning protocols) are completely \
+different machines despite visual similarity — confusing them is a category \
+error.
+- **Draft beer**: Direct draw (short draw, no glycol) vs long-draw \
+(glycol-cooled lines) are different systems. Number of taps and kegerator vs \
+jockey box are hard specs.
+- **Tea equipment**: Hot tea brewers vs iced tea brewers are different \
+machines. Capacity (3 gal vs 5 gal) is a hard spec.
+- **Bar blenders**: Sound-enclosed bar blenders (drink-specific programs) vs \
+high-performance blenders (smoothie programs, power-focused) serve different \
+operational needs.""",
+        ),
+        "cooking": VerticalOverlay(
+            description=(
+                "Cooking equipment: ovens, fryers, ranges, griddles, steamers, broilers"
+            ),
+            content="""\
+### Cooking Equipment — Scoring Guidance
 
 This query involves cooking equipment (ovens, fryers, griddles, ranges, \
 broilers, steamers, or related accessories).
@@ -125,15 +162,51 @@ are distinct designs suited to different volumes and oil management needs.
 - **BTU / burner count**: When specified, these are hard requirements. A \
 6-burner range is not interchangeable with a 4-burner + griddle combo \
 unless the query is ambiguous.
+- **Oven types**: Convection, combi, deck/stone-deck, conveyor/impinger, \
+rotary/rack are fundamentally different cooking methods — each serves \
+distinct menu applications and should not be conflated.
 
 **Gas vs electric**: For cooking equipment, gas type (NG vs LP) and voltage/\
 phase are especially critical. Restaurant kitchens are wired for specific \
 services; mismatching can require costly electrical upgrades.""",
         ),
-        "cold_side": VerticalOverlay(
-            description="Refrigeration and ice machines",
+        "food_prep": VerticalOverlay(
+            description=(
+                "Mixers, slicers, food processors, and powered preparation equipment"
+            ),
             content="""\
-### Cold-Side Equipment — Scoring Guidance
+### Food Preparation Equipment — Scoring Guidance
+
+This query involves mixers, slicers, food processors, or other powered \
+preparation equipment.
+
+**Critical distinctions to enforce:**
+
+- **Mixers**: Quart capacity is a hard spec (5 qt countertop, 20 qt light \
+commercial, 30–60 qt floor, 80+ qt industrial). Planetary vs spiral are \
+fundamentally different — planetary for batter/cream/dough versatility, \
+spiral for dough-specific with rotating bowl. Confusing these is a category \
+error.
+- **Slicers**: Blade diameter (9", 10", 12", 13") determines max product \
+size and is a hard spec. Manual vs automatic (auto-carriage) are distinct \
+operating modes. Gravity feed vs vertical feed and belt-driven vs \
+gear-driven are further distinctions.
+- **Food processors**: Batch bowl (fixed capacity) vs continuous feed \
+(unlimited throughput via chute) are different machines for different \
+workflows. Bowl capacity is a hard spec for batch processors.
+- **Vegetable prep**: Cut sizes (1/4", 3/8", 1/2") are hard requirements. \
+Manual vs electric dicers and cutters are different product categories.
+- **Meat processing**: Grinder plate size (#12, #22, #32) determines \
+capacity and is a hard spec. Tenderizers, band saws, and grinders are \
+distinct equipment categories.
+- **Dough equipment**: Sheeters (countertop vs floor), dividers, and \
+rounders are bakery-specific equipment — each serves a distinct step in \
+dough processing.""",
+        ),
+        "refrigeration": VerticalOverlay(
+            description=("Refrigeration, freezers, ice machines, and cold storage"),
+            content="""\
+### Refrigeration Equipment — Scoring Guidance
 
 This query involves refrigeration, freezers, ice machines, or cold-storage \
 equipment.
@@ -155,19 +228,61 @@ query must not return a refrigerator, even from the same product line.
 produces ice. Do not conflate them.
 - **Prep table types**: Refrigerated prep tables (sandwich/salad prep) vs \
 non-refrigerated work tables are different categories despite similar names.
+- **Walk-in panels**: Insulation thickness, floor vs floorless, and door \
+type (solid vs glass) are hard specs for walk-in cooler/freezer projects.
+- **Blast chillers vs standard freezers**: Blast chillers perform rapid \
+cooling for food safety compliance (HACCP); standard freezers are for \
+long-term storage — these are distinct product categories.
 
 **Daily production capacity**: For ice machines, lbs/day ratings at specific \
 ambient temperatures (70 °F and 90 °F) are key specs. When a query specifies \
 capacity, match the production range — a 500 lb/day machine is not a match \
 for a "1000 lb ice machine" query.""",
         ),
+        "serving_holding": VerticalOverlay(
+            description=(
+                "Holding cabinets, steam tables, food warmers, "
+                "buffet, and display merchandisers"
+            ),
+            content="""\
+### Serving and Holding Equipment — Scoring Guidance
+
+This query involves holding cabinets, steam tables, food warmers, buffet \
+equipment, or display merchandisers.
+
+**Critical distinctions to enforce:**
+
+- **Hot holding vs cold holding vs ambient display**: These are \
+fundamentally different thermal systems — confusing them is a critical error.
+- **Holding cabinets**: Full-size vs half-size vs undercounter are different \
+form factors. Humidity-controlled (bread/pastry) vs dry heat cabinets serve \
+different food types. Proofing cabinets (dough fermentation) look similar \
+to holding cabinets but are a completely different product category — \
+confusing them is a category error.
+- **Steam tables**: Wet well (water bath) vs dry well (radiant heat) have \
+different food safety characteristics. Number of wells and well size (full, \
+half, third) are hard specs.
+- **Buffet equipment**: Drop-in wells (require counter cutout) vs portable \
+(self-contained) vs modular are different installation types — installation \
+type is a hard constraint when specified.
+- **Food merchandisers**: Heated (grab-and-go), refrigerated \
+(beverages/pre-made), and ambient (bakery) are distinct thermal categories \
+— returning the wrong thermal type is a critical error.
+- **Serving counters**: Hot food vs cold food vs frost top \
+(ice cream/gelato) are distinct product lines with different infrastructure.
+- **Catering equipment**: Chafing dishes (fuel-heated) vs electric chafers \
+vs induction warmers use different heat sources and have different \
+operational requirements.""",
+        ),
         "smallwares": VerticalOverlay(
-            description="Pans, disposables, utensils, and small equipment",
+            description=(
+                "Pans, food storage, disposables, utensils, and kitchen hand tools"
+            ),
             content="""\
 ### Smallwares and Disposables — Scoring Guidance
 
 This query involves pans, food storage, disposables, utensils, or other \
-smallwares.
+smallwares and kitchen hand tools.
 
 **Critical distinctions to enforce:**
 
@@ -184,14 +299,57 @@ requirement when specified.
 - **Pan depth**: Steam table pans come in standard depths (2.5", 4", 6"). \
 Depth is a hard requirement when specified — a 2.5" pan cannot substitute \
 for a 6" pan.
+- **Cutting board color-coding**: HACCP color protocols (green = produce, \
+red = raw meat, blue = cooked meat, etc.) are food safety standards, not \
+aesthetics — color is a hard requirement when specified.
+- **Food storage containers**: Round vs square, capacity, and lid \
+compatibility matter. Cambro and Carlisle container systems are not always \
+interchangeable.
 
 **Commercial pack sizing**: Disposables and chemicals are sold in case packs \
 (e.g., 1000-count, 500-count). Retail-size packaging (10-count) is a weak \
 match for commercial queries. Conversely, do not penalize single-unit results \
 when the query specifies a single item.""",
         ),
+        "tabletop": VerticalOverlay(
+            description=(
+                "Dinnerware, flatware, glassware, and barware for front-of-house"
+            ),
+            content="""\
+### Tabletop — Scoring Guidance
+
+This query involves dinnerware, flatware, glassware, or barware for \
+front-of-house service.
+
+**Critical distinctions to enforce:**
+
+- **Dinnerware material**: Vitrified china (commercial standard) vs melamine \
+(break-resistant, cannot microwave) vs stoneware vs bone china (fine dining) \
+— material is a hard constraint when specified. Each material has distinct \
+durability, presentation, and operational trade-offs.
+- **Flatware grading**: 18/10 (highest corrosion resistance) vs 18/8 \
+(standard commercial) vs 18/0 (no nickel, budget) — grade is a hard spec \
+when specified. Weight class (heavy, medium, economy) is a separate \
+dimension from grade.
+- **Glassware**: Tempered vs non-tempered is a critical distinction \
+(tempered required by many commercial operations for safety). Stemware vs \
+tumblers are different categories. Capacity in oz is a hard spec.
+- **Barware glass types**: Rocks, highball, pilsner, snifter, coupe, \
+martini, wine, shot, pint are functionally distinct shapes for specific \
+beverages — returning a pilsner glass for a "rocks glass" query is a \
+category error.
+- **Pattern / collection matching**: Operations buy to match existing table \
+settings. Brand + collection (e.g., "Libbey Embassy", "Homer Laughlin \
+Fiesta") identifies a specific pattern — returning a different collection \
+from the same brand is a mismatch.
+- **Serviceware sizing**: Charger plates, bread plates, dinner plates are \
+distinct sizes — returning a 10" dinner plate for a "6 inch bread plate" \
+query is a size error.""",
+        ),
         "warewash": VerticalOverlay(
-            description="Dishwashers, sanitation, and chemical supplies",
+            description=(
+                "Dishwashers, glasswashers, sanitation, and cleaning chemicals"
+            ),
             content="""\
 ### Warewash and Sanitation — Scoring Guidance
 
@@ -210,6 +368,12 @@ a booster heater). When the query specifies a sanitation method, it is a \
 hard requirement.
 - **Rack size**: Standard 20×20 racks vs smaller glasswasher racks — rack \
 compatibility is a hard constraint for door-type and conveyor machines.
+- **Waste handling**: Trash compactors, pulpers, and waste disposers are \
+distinct product categories. Grease traps vs grease interceptors differ in \
+capacity and installation — GPM (gallons per minute) rating is a hard spec.
+- **Sanitizer type**: Quat-based vs chlorine-based vs iodine-based \
+sanitizers have different concentrations, material compatibility, and \
+regulatory approvals — they are not interchangeable.
 
 **Chemical compatibility**: Dishwasher detergents, rinse aids, and sanitizers \
 are formulated for specific machine types. When a query specifies a machine \

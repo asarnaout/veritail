@@ -108,19 +108,26 @@ class TestBuiltinVerticals:
         assert isinstance(_BUILTIN_VERTICALS[name], VerticalContext)
 
 
+FOODSERVICE_OVERLAY_KEYS = [
+    "beverage",
+    "cooking",
+    "food_prep",
+    "refrigeration",
+    "serving_holding",
+    "smallwares",
+    "tabletop",
+    "warewash",
+]
+
+
 class TestFoodserviceOverlays:
     def test_foodservice_has_overlays(self):
-        assert len(FOODSERVICE.overlays) == 4
+        assert len(FOODSERVICE.overlays) == 8
 
     def test_overlay_keys(self):
-        assert set(FOODSERVICE.overlays.keys()) == {
-            "hot_side",
-            "cold_side",
-            "smallwares",
-            "warewash",
-        }
+        assert set(FOODSERVICE.overlays.keys()) == set(FOODSERVICE_OVERLAY_KEYS)
 
-    @pytest.mark.parametrize("key", ["hot_side", "cold_side", "smallwares", "warewash"])
+    @pytest.mark.parametrize("key", FOODSERVICE_OVERLAY_KEYS)
     def test_overlay_content_non_empty(self, key):
         overlay = FOODSERVICE.overlays[key]
         assert len(overlay.content) > 50
@@ -134,11 +141,23 @@ class TestFoodserviceOverlays:
         vertical = load_vertical(name)
         assert vertical.overlays == {}
 
-    def test_hot_side_mentions_cooking(self):
-        assert "cooking" in FOODSERVICE.overlays["hot_side"].content.lower()
+    def test_cooking_mentions_cooking(self):
+        assert "cooking" in FOODSERVICE.overlays["cooking"].content.lower()
 
-    def test_cold_side_mentions_refrigeration(self):
-        assert "refriger" in FOODSERVICE.overlays["cold_side"].content.lower()
+    def test_refrigeration_mentions_refrigeration(self):
+        assert "refriger" in FOODSERVICE.overlays["refrigeration"].content.lower()
+
+    def test_beverage_mentions_espresso(self):
+        assert "espresso" in FOODSERVICE.overlays["beverage"].content.lower()
+
+    def test_food_prep_mentions_mixer(self):
+        assert "mixer" in FOODSERVICE.overlays["food_prep"].content.lower()
+
+    def test_serving_holding_mentions_holding(self):
+        assert "holding" in FOODSERVICE.overlays["serving_holding"].content.lower()
+
+    def test_tabletop_mentions_dinnerware(self):
+        assert "dinnerware" in FOODSERVICE.overlays["tabletop"].content.lower()
 
 
 class TestCustomVertical:
