@@ -79,25 +79,16 @@ unless the query asks for a complete installation package or kit.
 ### Terminology Equivalences
 
 Foodservice uses dense trade jargon. Do not penalize lexical mismatches \
-when intent aligns:
+when intent aligns. The following cross-cutting equivalences apply across \
+all product categories (category-specific terms are listed in the \
+per-query domain guidance when present):
 
 - hotel pan = steam table pan = GN container (but US and GN systems are \
 physically incompatible)
 - cambro = insulated food carrier / food pan carrier (genericized brand)
-- bain-marie = hot food well = steam table = food warmer
-- salamander = high-heat overhead broiler (1500–1800 °F, finishing/browning)
-- combi / combi oven = combination oven (steam + convection)
 - speed rack = sheet pan rack = bun pan rack
-- lowboy = undercounter refrigerator / freezer
-- reach-in = upright commercial refrigerator / freezer
-- flat top = griddle — distinct from flat top range
-- charbroiler = char grill = char
-- impinger = conveyor oven (genericized from Lincoln brand)
-- lexan = clear polycarbonate food storage container (genericized brand)
-- bus tub = dish tub
 - dunnage rack = floor rack (keeps items off floor per health code)
-- chef base = refrigerated equipment stand
-- deck oven = stone-deck baking / pizza oven
+- bus tub = dish tub
 - pan sizes: full, half, third, quarter, sixth, ninth (US hotel pan system)""",
     overlays={
         "beverage": VerticalOverlay(
@@ -168,7 +159,16 @@ distinct menu applications and should not be conflated.
 
 **Gas vs electric**: For cooking equipment, gas type (NG vs LP) and voltage/\
 phase are especially critical. Restaurant kitchens are wired for specific \
-services; mismatching can require costly electrical upgrades.""",
+services; mismatching can require costly electrical upgrades.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- salamander = high-heat overhead broiler (1500–1800 °F, finishing/browning)
+- combi / combi oven = combination oven (steam + convection)
+- flat top = griddle — distinct from flat top range
+- charbroiler = char grill = char
+- impinger = conveyor oven (genericized from Lincoln brand)
+- deck oven = stone-deck baking / pizza oven""",
         ),
         "food_prep": VerticalOverlay(
             description=(
@@ -237,7 +237,13 @@ long-term storage — these are distinct product categories.
 **Daily production capacity**: For ice machines, lbs/day ratings at specific \
 ambient temperatures (70 °F and 90 °F) are key specs. When a query specifies \
 capacity, match the production range — a 500 lb/day machine is not a match \
-for a "1000 lb ice machine" query.""",
+for a "1000 lb ice machine" query.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- lowboy = undercounter refrigerator / freezer
+- reach-in = upright commercial refrigerator / freezer
+- chef base = refrigerated equipment stand""",
         ),
         "serving_holding": VerticalOverlay(
             description=(
@@ -272,7 +278,11 @@ type is a hard constraint when specified.
 (ice cream/gelato) are distinct product lines with different infrastructure.
 - **Catering equipment**: Chafing dishes (fuel-heated) vs electric chafers \
 vs induction warmers use different heat sources and have different \
-operational requirements.""",
+operational requirements.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- bain-marie = hot food well = steam table = food warmer""",
         ),
         "smallwares": VerticalOverlay(
             description=(
@@ -309,7 +319,11 @@ interchangeable.
 **Commercial pack sizing**: Disposables and chemicals are sold in case packs \
 (e.g., 1000-count, 500-count). Retail-size packaging (10-count) is a weak \
 match for commercial queries. Conversely, do not penalize single-unit results \
-when the query specifies a single item.""",
+when the query specifies a single item.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- lexan = clear polycarbonate food storage container (genericized brand)""",
         ),
         "tabletop": VerticalOverlay(
             description=(

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `QueryEntry.overlay` field for classified overlay keys in query CSV/JSON files
 - Classifier determines query type and overlay key in a single LLM call (zero extra cost)
 - Foodservice vertical split into core + 8 category overlays: beverage, cooking, food_prep, refrigeration, serving_holding, smallwares, tabletop, warewash
+- Foodservice terminology equivalences split between core (cross-cutting terms) and overlays (category-specific terms) to reduce context dilution
 
 ### Changed
 

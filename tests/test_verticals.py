@@ -159,6 +159,39 @@ class TestFoodserviceOverlays:
     def test_tabletop_mentions_dinnerware(self):
         assert "dinnerware" in FOODSERVICE.overlays["tabletop"].content.lower()
 
+    def test_core_has_cross_cutting_terminology(self):
+        core = FOODSERVICE.core.lower()
+        assert "hotel pan" in core
+        assert "cambro" in core
+        assert "speed rack" in core
+        assert "dunnage rack" in core
+        assert "pan sizes" in core
+
+    def test_core_does_not_have_category_specific_terminology(self):
+        core = FOODSERVICE.core.lower()
+        assert "salamander" not in core
+        assert "lowboy" not in core
+        assert "bain-marie" not in core
+        assert "lexan" not in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("cooking", "salamander"),
+            ("cooking", "combi"),
+            ("cooking", "charbroiler"),
+            ("cooking", "impinger"),
+            ("cooking", "deck oven"),
+            ("refrigeration", "lowboy"),
+            ("refrigeration", "reach-in"),
+            ("refrigeration", "chef base"),
+            ("serving_holding", "bain-marie"),
+            ("smallwares", "lexan"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in FOODSERVICE.overlays[key].content.lower()
+
 
 class TestCustomVertical:
     def test_load_from_file(self, tmp_path):
