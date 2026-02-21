@@ -1,6 +1,9 @@
 """Marketplace vertical context for LLM judge guidance."""
 
-MARKETPLACE = """\
+from veritail.types import VerticalContext
+
+MARKETPLACE = VerticalContext(
+    core="""\
 ## Vertical: Marketplace
 
 You are evaluating search results for a multi-seller marketplace platform (similar to \
@@ -93,3 +96,4 @@ monopolized by a single seller's listings. When evaluating individual results, n
 that a result from a seller who already dominates the result set provides diminishing \
 relevance value — the tenth listing from the same seller adds less buyer utility than \
 a first listing from a competitive alternative, even if the product match is identical."""
+)

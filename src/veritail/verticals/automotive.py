@@ -1,6 +1,9 @@
 """Automotive vertical context for LLM judge guidance."""
 
-AUTOMOTIVE = """\
+from veritail.types import VerticalContext
+
+AUTOMOTIVE = VerticalContext(
+    core="""\
 ## Vertical: Automotive Parts
 
 You are evaluating search results for an automotive parts and accessories \
@@ -107,3 +110,4 @@ Query: "2019 Honda Civic front brake pads"
 Result: "Front brake pad set for 2019 Honda Accord"
 → Irrelevant (wrong vehicle model — Accord is not Civic; YMM mismatch \
 is a hard disqualifier regardless of part similarity)"""
+)

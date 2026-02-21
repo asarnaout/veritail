@@ -114,3 +114,38 @@ def test_load_unsupported_format(tmp_path):
 def test_load_file_not_found():
     with pytest.raises(FileNotFoundError):
         load_queries("/nonexistent/queries.csv")
+
+
+def test_load_csv_with_overlay(tmp_path):
+    csv_file = tmp_path / "queries.csv"
+    csv_file.write_text(
+        "query,type,category,overlay\n"
+        "commercial fryer,broad,Kitchen,hot_side\n"
+        "walk-in cooler,broad,Refrigeration,cold_side\n"
+    )
+
+    entries = load_queries(str(csv_file))
+    assert len(entries) == 2
+    assert entries[0].overlay == "hot_side"
+    assert entries[1].overlay == "cold_side"
+
+
+def test_load_csv_without_overlay_column(tmp_path):
+    csv_file = tmp_path / "queries.csv"
+    csv_file.write_text("query,type\nrunning shoes,broad\n")
+
+    entries = load_queries(str(csv_file))
+    assert entries[0].overlay is None
+
+
+def test_load_json_with_overlay(tmp_path):
+    json_file = tmp_path / "queries.json"
+    data = [
+        {"query": "commercial fryer", "type": "broad", "overlay": "hot_side"},
+        {"query": "running shoes", "type": "broad"},
+    ]
+    json_file.write_text(json.dumps(data))
+
+    entries = load_queries(str(json_file))
+    assert entries[0].overlay == "hot_side"
+    assert entries[1].overlay is None

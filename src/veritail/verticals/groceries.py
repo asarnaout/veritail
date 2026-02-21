@@ -1,6 +1,9 @@
 """Groceries vertical context for LLM judge guidance."""
 
-GROCERIES = """\
+from veritail.types import VerticalContext
+
+GROCERIES = VerticalContext(
+    core="""\
 ## Vertical: Groceries
 
 You are evaluating search results for an online grocery ecommerce site. Think \
@@ -127,3 +130,4 @@ scent, size, brand, and formulation ("Free & Clear," "sensitive skin," \
 non-food results on a grocery platform for being non-food; these are \
 expected categories. However, do not return non-food items for food queries \
 or vice versa unless the query is ambiguous."""
+)

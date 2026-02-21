@@ -1,6 +1,9 @@
 """Medical supplies vertical context for LLM judge guidance."""
 
-MEDICAL = """\
+from veritail.types import VerticalContext
+
+MEDICAL = VerticalContext(
+    core="""\
 ## Vertical: Medical Supplies
 
 You are evaluating search results for a medical supplies and clinical \
@@ -147,3 +150,4 @@ contract-eligible products from major contracted manufacturers should be \
 prioritized. Recognized GPO-contract manufacturers in a product category \
 are generally more relevant than unknown or non-contracted brands for \
 institutional buyers, even when specifications are otherwise identical."""
+)

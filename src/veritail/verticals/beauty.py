@@ -1,6 +1,9 @@
 """Beauty & personal care vertical context for LLM judge guidance."""
 
-BEAUTY = """\
+from veritail.types import VerticalContext
+
+BEAUTY = VerticalContext(
+    core="""\
 ## Vertical: Beauty & Personal Care
 
 You are evaluating search results for a beauty and personal care ecommerce \
@@ -110,3 +113,4 @@ tested", "dermatologist recommended", and "hypoallergenic" are \
 unregulated. When a query uses these terms, match on the label claim \
 itself — but do not treat them as equivalent to verified certifications \
 (like "USDA Organic")."""
+)

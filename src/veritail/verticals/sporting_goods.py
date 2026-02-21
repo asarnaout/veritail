@@ -1,6 +1,9 @@
 """Sporting goods vertical context for LLM judge guidance."""
 
-SPORTING_GOODS = """\
+from veritail.types import VerticalContext
+
+SPORTING_GOODS = VerticalContext(
+    core="""\
 ## Vertical: Sporting Goods
 
 You are evaluating search results for a sporting goods and athletic equipment \
@@ -189,3 +192,4 @@ midweight, heavyweight) corresponds to activity level and temperature. When \
 the query includes seasonal or climate context, results should align with \
 those conditions — returning a 2mm shorty wetsuit for a "cold water winter \
 wetsuit" query is a functional mismatch that could result in hypothermia."""
+)

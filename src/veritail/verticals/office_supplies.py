@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-OFFICE_SUPPLIES = """\
+from veritail.types import VerticalContext
+
+OFFICE_SUPPLIES = VerticalContext(
+    core="""\
 ## Vertical: Office Supplies
 
 You are evaluating search results for an office supplies ecommerce site. \
@@ -199,3 +202,4 @@ chemicals and toner cartridges under OSHA's Hazard Communication Standard. \
 When a query references a safety standard or compliance requirement, treat \
 it as a hard constraint — non-compliant alternatives are relevance penalties \
 regardless of price or functional similarity."""
+)

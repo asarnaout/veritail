@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-FURNITURE = """\
+from veritail.types import VerticalContext
+
+FURNITURE = VerticalContext(
+    core="""\
 ## Vertical: Furniture
 
 You are evaluating search results for a furniture and home-furnishings \
@@ -174,3 +177,4 @@ signals budget-conscious, self-assembly, and Scandinavian-influenced \
 design. Mixing price tiers by returning a $200 mass-market sofa for a \
 luxury query or a $5,000 designer piece for a budget query misreads the \
 buyer's quality expectations, purchase context, and likely use case."""
+)

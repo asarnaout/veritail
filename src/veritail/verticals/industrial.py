@@ -1,6 +1,9 @@
 """Industrial vertical context for LLM judge guidance."""
 
-INDUSTRIAL = """\
+from veritail.types import VerticalContext
+
+INDUSTRIAL = VerticalContext(
+    core="""\
 ## Vertical: Industrial
 
 You are evaluating search results for an industrial supply / MRO \
@@ -91,3 +94,4 @@ manufacturer's system or a particular product formulation, not expressing \
 casual brand loyalty. Treat manufacturer names as hard constraints when \
 they appear alongside a part number, and as strong signals when they \
 appear with a product category."""
+)

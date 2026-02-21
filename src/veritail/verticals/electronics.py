@@ -1,6 +1,9 @@
 """Electronics vertical context for LLM judge guidance."""
 
-ELECTRONICS = """\
+from veritail.types import VerticalContext
+
+ELECTRONICS = VerticalContext(
+    core="""\
 ## Vertical: Electronics
 
 You are evaluating search results for a consumer electronics or computer components \
@@ -102,3 +105,4 @@ information. Queries containing full or partial model numbers ("WD Black SN850X"
 Returning a different product from the same brand line (SN770 instead of SN850X) is a \
 relevance failure, not a close match—the specs, performance tier, and price point \
 diverge substantially even within the same product family."""
+)

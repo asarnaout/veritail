@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-PET_SUPPLIES = """\
+from veritail.types import VerticalContext
+
+PET_SUPPLIES = VerticalContext(
+    core="""\
 ## Vertical: Pet Supplies
 
 You are evaluating search results for a pet supplies ecommerce site. Think \
@@ -200,3 +203,4 @@ the accessory is the target. Returning replacement filters for a fountain \
 query (or vice versa) is a category-level mismatch. Additionally, ensure \
 that accessories are compatible with the specified primary product — a \
 replacement filter cartridge must match the fountain brand and model."""
+)

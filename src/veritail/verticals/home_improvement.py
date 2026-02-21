@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-HOME_IMPROVEMENT = """\
+from veritail.types import VerticalContext
+
+HOME_IMPROVEMENT = VerticalContext(
+    core="""\
 ## Vertical: Home Improvement
 
 You are evaluating search results for a home improvement ecommerce site. \
@@ -179,3 +182,4 @@ application-specific and non-interchangeable. Joist hangers, post bases, \
 hurricane ties, and structural connectors from Simpson Strong-Tie or \
 MiTek carry specific load tables tied to exact model numbers. When the \
 query specifies any fastener attribute, treat it as a hard constraint."""
+)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from veritail.types import VerticalContext
 from veritail.verticals.automotive import AUTOMOTIVE
 from veritail.verticals.beauty import BEAUTY
 from veritail.verticals.electronics import ELECTRONICS
@@ -38,7 +39,7 @@ __all__ = [
     "load_vertical",
 ]
 
-_BUILTIN_VERTICALS: dict[str, str] = {
+_BUILTIN_VERTICALS: dict[str, VerticalContext] = {
     "automotive": AUTOMOTIVE,
     "beauty": BEAUTY,
     "electronics": ELECTRONICS,
@@ -61,7 +62,7 @@ def list_verticals() -> list[str]:
     return sorted(_BUILTIN_VERTICALS)
 
 
-def load_vertical(name: str) -> str:
+def load_vertical(name: str) -> VerticalContext:
     """Load vertical context by built-in name or file path.
 
     Args:
@@ -71,7 +72,8 @@ def load_vertical(name: str) -> str:
               pet-supplies, sporting-goods) or path to a plain text file.
 
     Returns:
-        Vertical context string ready for system prompt injection.
+        VerticalContext with core text (and overlays for built-in verticals
+        that define them).
 
     Raises:
         FileNotFoundError: If name is not a built-in vertical and the file
@@ -83,7 +85,7 @@ def load_vertical(name: str) -> str:
 
     path = Path(name)
     if path.is_file():
-        return path.read_text(encoding="utf-8").rstrip()
+        return VerticalContext(core=path.read_text(encoding="utf-8").rstrip())
 
     available = ", ".join(sorted(_BUILTIN_VERTICALS))
     raise FileNotFoundError(

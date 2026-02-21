@@ -1,6 +1,9 @@
 """Fashion vertical context for LLM judge guidance."""
 
-FASHION = """\
+from veritail.types import VerticalContext
+
+FASHION = VerticalContext(
+    core="""\
 ## Vertical: Fashion
 
 You are evaluating search results for a fashion and apparel site. Judge whether each \
@@ -100,3 +103,4 @@ visibly worn items is a mismatch. "Vintage" typically implies 20+ years old and 
 carries authentication expectations for luxury brands. "Pre-owned" vs "vintage" vs \
 "deadstock" (new-old-stock, never sold) are distinct conditions with different shopper \
 expectations. Era terms in resale contexts are both aesthetic and temporal descriptors."""
+)
