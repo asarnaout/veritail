@@ -14,6 +14,8 @@ from veritail.types import (
     QueryEntry,
     SearchResponse,
     SearchResult,
+    VerticalContext,
+    VerticalOverlay,
 )
 
 __all__ = [
@@ -28,4 +30,6 @@ __all__ = [
     "QueryEntry",
     "SearchResponse",
     "SearchResult",
+    "VerticalContext",
+    "VerticalOverlay",
 ]

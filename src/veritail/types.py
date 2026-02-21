@@ -43,12 +43,29 @@ class CorrectionJudgment:
 
 
 @dataclass
+class VerticalOverlay:
+    """A category-specific overlay injected into the user prompt per-query."""
+
+    description: str  # brief label for classifier prompt
+    content: str  # full text injected into user prompt
+
+
+@dataclass
+class VerticalContext:
+    """Tiered vertical context: core system prompt + optional category overlays."""
+
+    core: str
+    overlays: dict[str, VerticalOverlay] = field(default_factory=dict)
+
+
+@dataclass
 class QueryEntry:
     """A query from the input query set (CSV or JSON)."""
 
     query: str
     type: str | None = None  # navigational | broad | long_tail | attribute
     category: str | None = None  # expected product category
+    overlay: str | None = None  # overlay key classified by the LLM
 
 
 @dataclass

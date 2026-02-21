@@ -9,6 +9,8 @@ from veritail.types import (
     QueryEntry,
     SearchResponse,
     SearchResult,
+    VerticalContext,
+    VerticalOverlay,
 )
 
 
@@ -48,6 +50,7 @@ def test_query_entry_defaults():
     entry = QueryEntry(query="running shoes")
     assert entry.type is None
     assert entry.category is None
+    assert entry.overlay is None
 
 
 def test_query_entry_full():
@@ -59,6 +62,15 @@ def test_query_entry_full():
     assert entry.query == "running shoes"
     assert entry.type == "broad"
     assert entry.category == "Shoes > Running"
+
+
+def test_query_entry_with_overlay():
+    entry = QueryEntry(
+        query="commercial fryer",
+        type="broad",
+        overlay="hot_side",
+    )
+    assert entry.overlay == "hot_side"
 
 
 def test_judgment_record(sample_search_result):
@@ -159,3 +171,37 @@ def test_correction_judgment_with_metadata():
         metadata={"input_tokens": 100},
     )
     assert cj.metadata["input_tokens"] == 100
+
+
+def test_vertical_overlay_construction():
+    overlay = VerticalOverlay(
+        description="Hot-side cooking equipment",
+        content="Ovens, fryers, griddles, salamanders.",
+    )
+    assert overlay.description == "Hot-side cooking equipment"
+    assert "fryers" in overlay.content
+
+
+def test_vertical_context_defaults():
+    ctx = VerticalContext(core="## Vertical: Test\nSome guidance.")
+    assert ctx.core == "## Vertical: Test\nSome guidance."
+    assert ctx.overlays == {}
+
+
+def test_vertical_context_with_overlays():
+    ctx = VerticalContext(
+        core="## Vertical: Foodservice\nCore guidance.",
+        overlays={
+            "hot_side": VerticalOverlay(
+                description="Hot-side equipment",
+                content="Ovens and fryers.",
+            ),
+            "cold_side": VerticalOverlay(
+                description="Refrigeration",
+                content="Reach-ins and undercounters.",
+            ),
+        },
+    )
+    assert len(ctx.overlays) == 2
+    assert "hot_side" in ctx.overlays
+    assert ctx.overlays["cold_side"].description == "Refrigeration"
