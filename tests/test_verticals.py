@@ -110,11 +110,17 @@ class TestBuiltinVerticals:
 
 FOODSERVICE_OVERLAY_KEYS = [
     "beverage",
+    "beverages",
     "cooking",
+    "dairy_eggs",
     "disposables",
+    "dry_goods",
     "food_prep",
     "furniture",
     "ice_cream",
+    "prepared_foods",
+    "produce",
+    "proteins",
     "refrigeration",
     "serving_holding",
     "smallwares",
@@ -126,7 +132,7 @@ FOODSERVICE_OVERLAY_KEYS = [
 
 class TestFoodserviceOverlays:
     def test_foodservice_has_overlays(self):
-        assert len(FOODSERVICE.overlays) == 12
+        assert len(FOODSERVICE.overlays) == 18
 
     def test_overlay_keys(self):
         assert set(FOODSERVICE.overlays.keys()) == set(FOODSERVICE_OVERLAY_KEYS)
@@ -175,6 +181,24 @@ class TestFoodserviceOverlays:
     def test_beverage_does_not_mention_soft_serve(self):
         assert "soft serve" not in FOODSERVICE.overlays["beverage"].content.lower()
 
+    def test_proteins_mentions_imps(self):
+        assert "imps" in FOODSERVICE.overlays["proteins"].content.lower()
+
+    def test_proteins_mentions_usda(self):
+        assert "usda" in FOODSERVICE.overlays["proteins"].content.lower()
+
+    def test_prepared_foods_mentions_cn_label(self):
+        assert "cn label" in FOODSERVICE.overlays["prepared_foods"].content.lower()
+
+    def test_prepared_foods_mentions_parbaked(self):
+        assert "parbaked" in FOODSERVICE.overlays["prepared_foods"].content.lower()
+
+    def test_prepared_foods_mentions_rte(self):
+        assert "ready-to-eat" in FOODSERVICE.overlays["prepared_foods"].content.lower()
+
+    def test_dry_goods_mentions_flour(self):
+        assert "flour" in FOODSERVICE.overlays["dry_goods"].content.lower()
+
     def test_disposables_mentions_clamshell(self):
         assert "clamshell" in FOODSERVICE.overlays["disposables"].content.lower()
 
@@ -214,6 +238,26 @@ class TestFoodserviceOverlays:
             ("ice_cream", "batch freezer"),
             ("ice_cream", "dipping cabinet"),
             ("furniture", "banquet chair"),
+            ("dry_goods", "powdered sugar"),
+            ("dry_goods", "#10"),
+            ("dry_goods", "smoke point"),
+            ("proteins", "filet mignon"),
+            ("proteins", "imps"),
+            ("proteins", "catch weight"),
+            ("proteins", "iqf"),
+            ("proteins", "ny strip"),
+            ("produce", "plu"),
+            ("produce", "iqf"),
+            ("produce", "fresh-cut"),
+            ("produce", "markon"),
+            ("produce", "usda organic"),
+            ("produce", "extra fancy"),
+            ("produce", "count-per-case"),
+            ("prepared_foods", "cn label"),
+            ("prepared_foods", "parbaked"),
+            ("prepared_foods", "soup base"),
+            ("prepared_foods", "dough ball"),
+            ("prepared_foods", "thaw-and-serve"),
             ("disposables", "clamshell"),
             ("disposables", "sterno"),
         ],
