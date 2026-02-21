@@ -22,6 +22,7 @@ from veritail.types import (
     QueryEntry,
     SearchResponse,
     SearchResult,
+    VerticalContext,
 )
 
 
@@ -169,7 +170,9 @@ class TestRunEvaluation:
         backend = FileBackend(output_dir=str(tmp_path))
         rubric = ("You are an expert judge.", lambda q, r: f"Query: {q}")
 
-        vertical_text = "## Vertical: Foodservice\nFood-safety certs matter."
+        vertical_ctx = VerticalContext(
+            core="## Vertical: Foodservice\nFood-safety certs matter."
+        )
 
         run_evaluation(
             queries,
@@ -178,7 +181,7 @@ class TestRunEvaluation:
             llm_client,
             rubric,
             backend,
-            vertical=vertical_text,
+            vertical=vertical_ctx,
         )
 
         # The system prompt passed to RelevanceJudge should contain the vertical
@@ -212,7 +215,9 @@ class TestRunEvaluation:
             rubric,
             backend,
             context="BBQ restaurant supplier",
-            vertical="## Vertical: Foodservice\nScoring guidance here.",
+            vertical=VerticalContext(
+                core="## Vertical: Foodservice\nScoring guidance here."
+            ),
         )
 
         system_prompt_used = (
@@ -248,7 +253,7 @@ class TestRunEvaluation:
             llm_client,
             rubric,
             backend,
-            vertical="## Vertical: Foodservice\nGuidance.",
+            vertical=VerticalContext(core="## Vertical: Foodservice\nGuidance."),
         )
 
         system_prompt_used = (

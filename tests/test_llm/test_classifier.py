@@ -7,8 +7,10 @@ from unittest.mock import Mock
 from veritail.llm.classifier import (
     CLASSIFICATION_SYSTEM_PROMPT,
     build_classification_system_prompt,
+    classify_query,
     classify_query_type,
     parse_classification_response,
+    parse_classification_with_overlay,
 )
 from veritail.llm.client import LLMClient, LLMResponse
 
@@ -68,11 +70,11 @@ class TestClassifyQueryType:
         system_prompt = client.complete.call_args[0][0]
         assert "Foodservice" in system_prompt
 
-    def test_max_tokens_is_64(self) -> None:
+    def test_max_tokens_is_96(self) -> None:
         client = _make_client("QUERY_TYPE: broad")
         classify_query_type(client, "shoes")
         call_kwargs = client.complete.call_args
-        assert call_kwargs[1]["max_tokens"] == 64
+        assert call_kwargs[1]["max_tokens"] == 96
 
 
 class TestParseClassificationResponse:
@@ -115,3 +117,71 @@ class TestBuildClassificationSystemPrompt:
         ctx_pos = prompt.index("BBQ supplier")
         vert_pos = prompt.index("## Vertical: Food")
         assert ctx_pos < vert_pos
+
+
+_OVERLAY_KEYS = {
+    "hot_side": "Cooking equipment: ovens, fryers, griddles",
+    "cold_side": "Refrigeration and ice machines",
+}
+
+
+class TestParseClassificationWithOverlay:
+    def test_both_type_and_overlay(self) -> None:
+        content = "QUERY_TYPE: broad\nOVERLAY: hot_side"
+        qtype, overlay = parse_classification_with_overlay(content, _OVERLAY_KEYS)
+        assert qtype == "broad"
+        assert overlay == "hot_side"
+
+    def test_type_only_no_overlay_keys(self) -> None:
+        content = "QUERY_TYPE: navigational"
+        qtype, overlay = parse_classification_with_overlay(content, None)
+        assert qtype == "navigational"
+        assert overlay is None
+
+    def test_invalid_overlay_key(self) -> None:
+        content = "QUERY_TYPE: broad\nOVERLAY: nonexistent"
+        qtype, overlay = parse_classification_with_overlay(content, _OVERLAY_KEYS)
+        assert qtype == "broad"
+        assert overlay is None
+
+    def test_overlay_case_insensitive(self) -> None:
+        content = "QUERY_TYPE: broad\noverlay: Cold_Side"
+        qtype, overlay = parse_classification_with_overlay(content, _OVERLAY_KEYS)
+        assert overlay == "cold_side"
+
+    def test_no_type_but_overlay_present(self) -> None:
+        content = "I think this is hot side"
+        qtype, overlay = parse_classification_with_overlay(content, _OVERLAY_KEYS)
+        assert qtype is None
+        assert overlay is None
+
+
+class TestClassifyQuery:
+    def test_without_overlay_keys_delegates(self) -> None:
+        client = _make_client("QUERY_TYPE: broad")
+        qtype, overlay = classify_query(client, "shoes")
+        assert qtype == "broad"
+        assert overlay is None
+
+    def test_with_overlay_keys(self) -> None:
+        client = _make_client("QUERY_TYPE: broad\nOVERLAY: hot_side")
+        qtype, overlay = classify_query(
+            client, "commercial fryer", overlay_keys=_OVERLAY_KEYS
+        )
+        assert qtype == "broad"
+        assert overlay == "hot_side"
+
+    def test_overlay_section_in_prompt(self) -> None:
+        client = _make_client("QUERY_TYPE: broad\nOVERLAY: hot_side")
+        classify_query(client, "fryer", overlay_keys=_OVERLAY_KEYS)
+        system_prompt = client.complete.call_args[0][0]
+        assert "## Overlay Classification" in system_prompt
+        assert "hot_side" in system_prompt
+        assert "cold_side" in system_prompt
+
+    def test_llm_error_returns_none_none(self) -> None:
+        client = Mock(spec=LLMClient)
+        client.complete.side_effect = RuntimeError("API down")
+        qtype, overlay = classify_query(client, "fryer", overlay_keys=_OVERLAY_KEYS)
+        assert qtype is None
+        assert overlay is None

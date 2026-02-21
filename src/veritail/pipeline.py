@@ -37,8 +37,8 @@ from veritail.checks.correction import (
 from veritail.llm.classifier import (
     CLASSIFICATION_MAX_TOKENS,
     build_classification_system_prompt,
-    classify_query_type,
-    parse_classification_response,
+    classify_query,
+    parse_classification_with_overlay,
 )
 from veritail.llm.client import BatchRequest, LLMClient
 from veritail.llm.judge import CORRECTION_SYSTEM_PROMPT, CorrectionJudge, RelevanceJudge
@@ -52,6 +52,7 @@ from veritail.types import (
     QueryEntry,
     SearchResponse,
     SearchResult,
+    VerticalContext,
 )
 
 console = Console()
@@ -61,57 +62,81 @@ def _classify_missing_query_types(
     queries: list[QueryEntry],
     llm_client: LLMClient,
     context: str | None,
-    vertical: str | None,
+    vertical: VerticalContext | None,
+    overlay_keys: dict[str, str] | None = None,
 ) -> None:
     """Pre-pass: classify queries that have no type using a single LLM call each.
 
     Mutates query_entry.type in-place for entries where type is None.
+    When *overlay_keys* is provided, ALL queries are classified (not just
+    untyped) so that overlay keys are assigned.
     """
-    missing = [(i, q) for i, q in enumerate(queries) if q.type is None]
-    if not missing:
+    if overlay_keys:
+        # Classify all queries when overlays are present
+        targets = list(enumerate(queries))
+    else:
+        targets = [(i, q) for i, q in enumerate(queries) if q.type is None]
+    if not targets:
         return
 
-    console.print(f"[cyan]Classifying {len(missing)} query type(s) via LLM...[/cyan]")
+    vertical_text = vertical.core if vertical else None
+    console.print(f"[cyan]Classifying {len(targets)} query type(s) via LLM...[/cyan]")
     classified = 0
     with Progress(console=console) as progress:
         task = progress.add_task(
             "[cyan]Classifying query types...",
-            total=len(missing),
+            total=len(targets),
         )
-        for _i, query_entry in missing:
-            inferred = classify_query_type(
-                llm_client, query_entry.query, context=context, vertical=vertical
+        for _i, query_entry in targets:
+            inferred_type, inferred_overlay = classify_query(
+                llm_client,
+                query_entry.query,
+                context=context,
+                vertical=vertical_text,
+                overlay_keys=overlay_keys,
             )
-            if inferred is not None:
-                query_entry.type = inferred
+            if inferred_type is not None and query_entry.type is None:
+                query_entry.type = inferred_type
                 classified += 1
+            if inferred_overlay is not None:
+                query_entry.overlay = inferred_overlay
             progress.advance(task)
 
-    console.print(f"[dim]Classified {classified}/{len(missing)} queries[/dim]")
+    console.print(f"[dim]Classified {classified}/{len(targets)} queries[/dim]")
 
 
 def _classify_missing_query_types_batch(
     queries: list[QueryEntry],
     llm_client: LLMClient,
     context: str | None,
-    vertical: str | None,
+    vertical: VerticalContext | None,
     poll_interval: int,
     cancel_event: threading.Event | None = None,
+    overlay_keys: dict[str, str] | None = None,
 ) -> None:
     """Batch variant of query type classification.
 
     Submits all untyped queries as a single batch request, polls for
-    completion, then parses and assigns types.  Falls back to the
-    synchronous path when there are no missing types.
+    completion, then parses and assigns types.  When *overlay_keys* is
+    provided, ALL queries are classified so that overlay keys are assigned.
+    Falls back to the synchronous path when there are no targets.
     """
-    missing = [(i, q) for i, q in enumerate(queries) if q.type is None]
-    if not missing:
+    if overlay_keys:
+        targets = list(enumerate(queries))
+    else:
+        targets = [(i, q) for i, q in enumerate(queries) if q.type is None]
+    if not targets:
         return
 
-    system_prompt = build_classification_system_prompt(context, vertical)
+    vertical_text = vertical.core if vertical else None
+    system_prompt = build_classification_system_prompt(context, vertical_text)
+    if overlay_keys:
+        from veritail.llm.classifier import _build_overlay_prompt_section
+
+        system_prompt += _build_overlay_prompt_section(overlay_keys)
 
     batch_requests: list[BatchRequest] = []
-    for idx, query_entry in missing:
+    for idx, query_entry in targets:
         batch_requests.append(
             BatchRequest(
                 custom_id=f"cls-{idx}",
@@ -140,15 +165,19 @@ def _classify_missing_query_types_batch(
     results_by_id = {r.custom_id: r for r in batch_results}
 
     classified = 0
-    for idx, query_entry in missing:
+    for idx, query_entry in targets:
         result = results_by_id.get(f"cls-{idx}")
         if result and result.response:
-            inferred = parse_classification_response(result.response.content)
-            if inferred is not None:
-                query_entry.type = inferred
+            inferred_type, inferred_overlay = parse_classification_with_overlay(
+                result.response.content, overlay_keys
+            )
+            if inferred_type is not None and query_entry.type is None:
+                query_entry.type = inferred_type
                 classified += 1
+            if inferred_overlay is not None:
+                query_entry.overlay = inferred_overlay
 
-    console.print(f"[dim]Classified {classified}/{len(missing)} queries[/dim]")
+    console.print(f"[dim]Classified {classified}/{len(targets)} queries[/dim]")
 
 
 def run_evaluation(
@@ -159,7 +188,7 @@ def run_evaluation(
     rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
-    vertical: str | None = None,
+    vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
@@ -187,7 +216,7 @@ def run_evaluation(
     if context:
         prefix_parts.append(f"## Business Context\n{context}")
     if vertical:
-        prefix_parts.append(vertical)
+        prefix_parts.append(vertical.core)
     if prefix_parts:
         prefix = "\n\n".join(prefix_parts)
         system_prompt = f"{prefix}\n\n{system_prompt}"
@@ -224,8 +253,17 @@ def run_evaluation(
     except Exception as e:
         console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
 
+    # Extract overlay keys from vertical
+    overlay_keys = (
+        {k: v.description for k, v in vertical.overlays.items()}
+        if vertical and vertical.overlays
+        else None
+    )
+
     # Pre-pass: classify query types that are missing
-    _classify_missing_query_types(queries, llm_client, context, vertical)
+    _classify_missing_query_types(
+        queries, llm_client, context, vertical, overlay_keys=overlay_keys
+    )
 
     all_judgments: list[JudgmentRecord] = []
     all_checks: list[CheckResult] = []
@@ -441,7 +479,7 @@ def run_dual_evaluation(
     rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
-    vertical: str | None = None,
+    vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
@@ -546,7 +584,7 @@ def run_batch_evaluation(
     rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
-    vertical: str | None = None,
+    vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
@@ -571,7 +609,7 @@ def run_batch_evaluation(
     if context:
         prefix_parts.append(f"## Business Context\n{context}")
     if vertical:
-        prefix_parts.append(vertical)
+        prefix_parts.append(vertical.core)
     if prefix_parts:
         prefix = "\n\n".join(prefix_parts)
         system_prompt = f"{prefix}\n\n{system_prompt}"
@@ -608,9 +646,22 @@ def run_batch_evaluation(
     except Exception as e:
         console.print(f"[yellow]Warning: failed to log experiment to backend: {e}")
 
+    # Extract overlay keys from vertical
+    overlay_keys = (
+        {k: v.description for k, v in vertical.overlays.items()}
+        if vertical and vertical.overlays
+        else None
+    )
+
     # Pre-pass: classify query types that are missing (batched)
     _classify_missing_query_types_batch(
-        queries, llm_client, context, vertical, poll_interval, cancel_event=cancel_event
+        queries,
+        llm_client,
+        context,
+        vertical,
+        poll_interval,
+        cancel_event=cancel_event,
+        overlay_keys=overlay_keys,
     )
 
     # Check for existing checkpoint when resuming
@@ -1068,7 +1119,7 @@ def run_dual_batch_evaluation(
     rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
-    vertical: str | None = None,
+    vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
     ) = None,
