@@ -7,22 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- `veritail init` and the first `veritail run` (file backend) now print a tip reminding users to add the output directory to `.gitignore`
-
-### Fixed
-
-- `--config-name` values containing path separators (`/`, `\`) or parent references (`..`) are now rejected with a clear error, preventing potential directory traversal outside the output directory
-
-### Changed
-
-- Langfuse backend docstring and docs now clearly document its write-only nature and limitations
-
-### Fixed
-
-- `--resume` with `--backend langfuse` now fails fast with a clear error instead of silently re-running all queries
-
 ## [0.1.0] - 2026-02-20
 
 ### Added
@@ -80,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--sample N` to evaluate a random subset of queries
 - `--open` to open the HTML report in a browser after evaluation
 - Preflight check validates LLM credentials before running
+- `veritail init` and the first `veritail run` (file backend) print a tip reminding users to add the output directory to `.gitignore`
 
 [Unreleased]: https://github.com/asarnaout/veritail/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/asarnaout/veritail/releases/tag/v0.1.0
