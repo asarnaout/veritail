@@ -117,12 +117,14 @@ FOODSERVICE_OVERLAY_KEYS = [
     "dry_goods",
     "food_prep",
     "furniture",
+    "janitorial",
     "frozen_dessert_equipment",
     "prepared_foods",
     "produce",
     "proteins",
     "refrigeration",
     "serving_holding",
+    "storage_transport",
     "smallwares",
     "tabletop",
     "ventilation",
@@ -132,7 +134,7 @@ FOODSERVICE_OVERLAY_KEYS = [
 
 class TestFoodserviceOverlays:
     def test_foodservice_has_overlays(self):
-        assert len(FOODSERVICE.overlays) == 18
+        assert len(FOODSERVICE.overlays) == 20
 
     def test_overlay_keys(self):
         assert set(FOODSERVICE.overlays.keys()) == set(FOODSERVICE_OVERLAY_KEYS)
@@ -262,6 +264,18 @@ class TestFoodserviceOverlays:
             ("prepared_foods", "thaw-and-serve"),
             ("disposables", "clamshell"),
             ("disposables", "sterno"),
+            ("janitorial", "quat"),
+            ("janitorial", "ecolab"),
+            ("janitorial", "haccp"),
+            ("janitorial", "burnisher"),
+            ("janitorial", "can liner"),
+            ("janitorial", "j-fill"),
+            ("storage_transport", "dunnage"),
+            ("storage_transport", "nsf"),
+            ("storage_transport", "camshelving"),
+            ("storage_transport", "queen mary"),
+            ("storage_transport", "camdolly"),
+            ("storage_transport", "metromax"),
         ],
     )
     def test_category_terminology_in_overlay(self, key, term):

@@ -650,6 +650,91 @@ intent aligns):
 - four-top = table for four
 - T-mold edge = vinyl edge banding (table top edge finish)""",
         ),
+        "janitorial": VerticalOverlay(
+            description=(
+                "Facility cleaning: sanitizers, floor care, mops, "
+                "can liners, paper dispensers, dilution systems"
+            ),
+            content="""\
+### Janitorial / Facility Cleaning — Scoring Guidance
+
+For dishwasher chemicals and warewashing equipment, see the warewash overlay.
+
+This query involves facility cleaning products — sanitizers, disinfectants, \
+floor care equipment, mops, brooms, can liners, paper towel dispensers, \
+restroom supplies, or dilution control chemicals.
+
+**Critical distinctions to enforce:**
+
+- **EPA registration for sanitizers/disinfectants**: All sanitizers and \
+disinfectants sold in the US must be EPA-registered under FIFRA. \
+Food-contact sanitizers require 99.999% kill (5-log reduction) in \
+60 seconds. Non-food-contact disinfectants require only 99.9% (3-log) \
+in 5 minutes. Returning a non-food-contact sanitizer for a food-contact \
+query is a regulatory hard failure.
+- **FDA Food Code sanitizer concentrations**: Three approved food-contact \
+sanitizer types with specific ppm ranges — Chlorine 50–100 ppm, \
+Quaternary ammonium (quats) 200 ppm, Iodine 12.5–25 ppm. These are \
+NOT interchangeable — each has different material compatibility and \
+temperature sensitivity. Type is a hard constraint when specified.
+- **Sanitizer test strips are product-specific**: Chlorine test strips, \
+quat test strips, and iodine test strips each measure only their \
+respective sanitizer type — they are NOT interchangeable. Returning \
+chlorine strips for a "quat test strip" query is a hard failure.
+- **Dilution control system lock-in**: Ecolab (Oasis, Apex), Diversey \
+(J-Fill, RTD), and Spartan (Clean on the Go) are proprietary closed-loop \
+dispensing systems with incompatible cartridge formats. A Diversey J-Fill \
+cartridge does NOT fit an Ecolab dispenser — this is a hard failure like \
+pod incompatibility. System brand is a hard constraint when specified.
+- **Concentrate vs RTU (ready-to-use)**: Concentrates require dilution \
+equipment or dilution control systems; RTU is pre-diluted and spray-ready. \
+Returning a concentrate for an RTU query is a format mismatch.
+- **HACCP color-coded cleaning tools**: Red = raw meat areas, \
+Yellow = raw poultry, Blue = raw fish/seafood, Green = produce/salad, \
+White = dairy/bakery, Brown = cooked meat. Color is a food safety zone \
+assignment, NOT aesthetic preference — it is a hard constraint when \
+color is specified.
+- **Chemical compatibility hazards**: Chlorine bleach + ammonia = toxic \
+chloramine gas. Chlorine + acids = chlorine gas release. These are \
+safety-critical incompatibilities, not preferences — do not return \
+ammonia-based products alongside chlorine products or suggest them as \
+alternatives.
+- **Paper towel/TP dispenser compatibility**: C-fold, multifold, roll \
+(coreless vs standard core), and center-pull are dispenser-specific \
+formats. Wrong fold type or roll format does not fit the dispenser — \
+this is a hard failure when dispenser type is specified.
+- **Floor equipment types**: Auto scrubbers (walk-behind vs ride-on), \
+burnishers (high-speed floor polishers for maintaining floor finish), \
+carpet extractors (hot water extraction vs bonnet cleaning), and vacuum \
+cleaners (upright vs backpack vs wet/dry) are distinct equipment \
+categories — confusing them is a category error.
+- **Mop types and sizing**: Flat mops (microfiber pads, disposable pads) \
+vs string mops (cotton or synthetic, cut-end vs loop-end). Loop-end \
+lasts longer and does not fray — it is the commercial standard. Mop \
+head weight (16 oz, 20 oz, 24 oz, 32 oz) is a hard spec that determines \
+coverage area and bucket compatibility.
+- **Can liner sizing**: Must match trash can capacity (measured in gallons \
+AND dimensions). Low-density (LLDPE) for sharp or heavy items vs \
+high-density (HDPE) for lighter waste at lower cost. Micron or mil \
+thickness is a hard spec — thicker liners resist puncture but cost more.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- quat = quaternary ammonium compound = QAC
+- RTU = ready-to-use (pre-diluted, spray-ready)
+- SDS = Safety Data Sheet (formerly MSDS)
+- JanSan = janitorial and sanitation (industry shorthand)
+- J-Fill = Diversey closed-loop cartridge system
+- Oasis = Ecolab dilution control system
+- Clean on the Go = Spartan dilution control system
+- burnisher = high-speed floor polisher
+- auto scrubber = floor scrubber (walk-behind or ride-on)
+- loop-end mop = commercial mop head (more durable than cut-end)
+- can liner = trash bag (commercial term)
+- coreless roll = paper roll without cardboard core
+- C-fold = multifold = paper towel fold types (but dispenser-specific)
+- touchless dispenser = automatic dispenser = no-touch""",
+        ),
         "frozen_dessert_equipment": VerticalOverlay(
             description=(
                 "Soft serve machines, batch freezers, gelato cases, "
@@ -780,6 +865,97 @@ operational requirements.
 **Terminology equivalences** (do not penalize lexical mismatches when \
 intent aligns):
 - bain-marie = hot food well = steam table = food warmer""",
+        ),
+        "storage_transport": VerticalOverlay(
+            description=(
+                "Shelving, racks, carts, dollies, insulated carriers, "
+                "and mobile storage/transport equipment"
+            ),
+            content="""\
+### Storage & Transport — Scoring Guidance
+
+This query involves shelving, pan racks, dunnage racks, carts, dollies, \
+insulated food carriers, or other storage and transport equipment for \
+commercial foodservice.
+
+**Critical distinctions to enforce:**
+
+- **Shelving material vs environment — hard constraint**: Chrome wire \
+corrodes in walk-in coolers and freezers (common spec error). \
+Epoxy-coated (Metroseal 3) resists moisture but wears from metal pan \
+scraping. Polymer shelving (MetroMax, Camshelving) is freezer-safe \
+(-36 to 190 °F for Camshelving) but has lower weight capacity than \
+wire. Material-environment mismatch is a hard failure — do not return \
+chrome shelving for a walk-in or freezer query.
+- **NSF/ANSI Standard 2 compliance**: Virtually mandatory for new \
+commercial kitchen construction. Non-NSF shelving for a commercial \
+kitchen query is a compliance failure. When a query specifies or \
+implies commercial use, NSF-listed shelving is strongly preferred.
+- **Brand system incompatibility — hard constraint**: Camshelving posts \
+do not fit Metro shelves and vice versa. Posts, connectors, and shelf \
+plates are brand-specific and non-interchangeable. Cambro Camshelving \
+(polypropylene, Camguard antimicrobial finish), Metro (Super Erecta \
+wire, MetroMax polymer, Metroseal 3 epoxy finish), Eagle Group, and \
+New Age (aluminum) are the major systems. Returning a Camshelving \
+shelf for a Metro post query (or vice versa) is a compatibility error.
+- **Post gauge and load ratings**: 14 gauge > 16 gauge > 18 gauge \
+(lower number = thicker wall, counterintuitive). Standard-duty shelving \
+rates 300–600 lbs/shelf; heavy-duty rates 800+ lbs/shelf. Shelving \
+depth (14", 18", 21", 24") and length (24"–72") are hard dimensional \
+specs — do not cross-match sizes.
+- **Pan rack spacing — hard spec**: 2" centers = max density (low-profile \
+pans only), 3" centers = standard spacing (~20 full-size sheet pans), \
+5" centers = tall items (~11 slots, decorated cakes, proofing). \
+End-load (narrow side entry) vs side-load (wide side entry) determines \
+aisle clearance. Nesting/Z-type racks collapse for storage. Spacing \
+and load orientation are hard constraints when specified.
+- **Insulated food carrier types**: Top-loading (hand-portable, 1–4 \
+pans) vs front-loading (on casters, 8–20 pans, 270° door swing) are \
+different product categories. Heated carriers (electric element) vs \
+non-heated (passive insulation holds 148 °F+ for 4+ hours). \
+Dual-cavity carriers hold hot AND cold simultaneously. ThermoBarrier \
+inserts divide a single carrier into temperature zones. Confusing \
+top-load with front-load or heated with non-heated is a category error.
+- **Dunnage rack height — regulatory**: FDA Food Code requires food \
+storage minimum 6" off floor. Most dunnage racks are 8–12". Material \
+selection: aluminum (walk-in coolers, lightweight), polymer (wet areas, \
+dishwash), wire (standard dry storage). Height and material are hard \
+specs when specified.
+- **Cart types — functionally distinct**: Bus cart (enclosed sides for \
+guest-facing table clearing), utility cart (open shelves, back-of-house \
+general transport), service cart (decorative, front-of-house), \
+Queen Mary cart (heavy-duty oversized, bulk pan transport between \
+kitchen areas). Returning a utility cart for a "bus cart" query is a \
+category error.
+- **Dolly types — application-specific**: Glass rack dolly (indented \
+platform matching rack footprint), dish dolly / plate caddy \
+(multi-compartment for stacked plates), Camdolly (Cambro-specific \
+carrier dolly), pan dolly, platform truck (flat deck, large loads), \
+hand truck (upright two-wheel). These serve different transport needs \
+and are not interchangeable.
+- **GN vs US hotel pan transport compatibility**: Carriers, racks, and \
+shelving sized for US hotel pans (12.75" × 20.875") will not accept \
+GN 1/1 pans (12.8" × 20.9" with different corner radii). This \
+dimensional incompatibility extends from smallwares into transport \
+infrastructure — a carrier built for US pans is not compatible with \
+GN pans.
+- **Caster types**: Rigid (fixed direction) vs swivel (360° rotation), \
+stem mount (post insert) vs plate mount (bolted base), rubber wheels \
+(quiet, floors) vs polyurethane (heavy loads, durability). Caster \
+type affects maneuverability and load capacity for mobile shelving \
+and carts — hard spec when specified.
+
+**Terminology equivalences** (do not penalize lexical mismatches when \
+intent aligns):
+- speed rack = bun pan rack = sheet pan rack = pan rack
+- dunnage rack = floor rack (raised platform for cases/kegs)
+- Queen Mary cart = queen mary = large transport cart
+- Camdolly = Cambro carrier dolly (brand-specific)
+- bus cart = bus box cart = dish cart (table-clearing)
+- Camcarrier = insulated food pan carrier (Cambro brand, genericized)
+- platform truck = flat truck = flatbed cart
+- MetroMax = Metro polymer shelving line
+- Camshelving = Cambro polymer shelving line""",
         ),
         "smallwares": VerticalOverlay(
             description=(
