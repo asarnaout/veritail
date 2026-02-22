@@ -48,7 +48,9 @@ class TestBuiltinVerticals:
         result = load_vertical(name)
         assert isinstance(result, VerticalContext)
         assert "## Vertical:" in result.core
-        assert "Scoring considerations" in result.core
+        assert (
+            "Scoring considerations" in result.core or "Scoring approach" in result.core
+        )
 
     @pytest.mark.parametrize(
         "name,constant",
@@ -157,7 +159,14 @@ class TestFoodserviceOverlays:
             n
             for n in ALL_BUILTINS
             if n
-            not in {"foodservice", "automotive", "beauty", "electronics", "fashion"}
+            not in {
+                "foodservice",
+                "automotive",
+                "beauty",
+                "electronics",
+                "fashion",
+                "furniture",
+            }
         ],
     )
     def test_other_verticals_have_no_overlays(self, name):
@@ -989,6 +998,221 @@ class TestFashionOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in FASHION.overlays[key].content.lower()
+
+
+FURNITURE_OVERLAY_KEYS = [
+    "bathroom_vanities",
+    "beds_frames_headboards",
+    "casegoods_storage",
+    "chairs_stools_benches",
+    "commercial_contract",
+    "dining_tables_sets",
+    "home_office",
+    "makeup_vanities_dressing_tables",
+    "mattresses_toppers_bases",
+    "media_consoles_tv_stands",
+    "motion_seating",
+    "nursery_kids",
+    "outdoor_patio",
+    "rugs",
+    "sleepers_daybeds_futons",
+    "sofas_sectionals",
+]
+
+
+class TestFurnitureOverlays:
+    def test_furniture_has_overlays(self):
+        assert len(FURNITURE.overlays) == 16
+
+    def test_overlay_keys(self):
+        assert set(FURNITURE.overlays.keys()) == set(FURNITURE_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", FURNITURE_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = FURNITURE.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_sofas_mentions_sectional(self):
+        content = FURNITURE.overlays["sofas_sectionals"].content.lower()
+        assert "sectional" in content
+
+    def test_motion_mentions_lift_chair(self):
+        content = FURNITURE.overlays["motion_seating"].content.lower()
+        assert "lift chair" in content
+
+    def test_sleepers_mentions_futon(self):
+        content = FURNITURE.overlays["sleepers_daybeds_futons"].content.lower()
+        assert "futon" in content
+
+    def test_beds_mentions_platform(self):
+        content = FURNITURE.overlays["beds_frames_headboards"].content.lower()
+        assert "platform" in content
+
+    def test_mattresses_mentions_hybrid(self):
+        content = FURNITURE.overlays["mattresses_toppers_bases"].content.lower()
+        assert "hybrid" in content
+
+    def test_casegoods_mentions_dresser(self):
+        content = FURNITURE.overlays["casegoods_storage"].content.lower()
+        assert "dresser" in content
+
+    def test_dining_mentions_counter_height(self):
+        content = FURNITURE.overlays["dining_tables_sets"].content.lower()
+        assert "counter-height" in content
+
+    def test_chairs_mentions_bar_stool(self):
+        content = FURNITURE.overlays["chairs_stools_benches"].content.lower()
+        assert "bar stool" in content
+
+    def test_home_office_mentions_bifma(self):
+        content = FURNITURE.overlays["home_office"].content.lower()
+        assert "bifma" in content
+
+    def test_outdoor_mentions_teak(self):
+        content = FURNITURE.overlays["outdoor_patio"].content.lower()
+        assert "teak" in content
+
+    def test_bathroom_vanities_mentions_centerset(self):
+        content = FURNITURE.overlays["bathroom_vanities"].content.lower()
+        assert "centerset" in content
+
+    def test_makeup_vanities_mentions_hollywood(self):
+        content = FURNITURE.overlays["makeup_vanities_dressing_tables"].content.lower()
+        assert "hollywood" in content
+
+    def test_media_consoles_mentions_fireplace(self):
+        content = FURNITURE.overlays["media_consoles_tv_stands"].content.lower()
+        assert "fireplace" in content
+
+    def test_rugs_mentions_pile(self):
+        content = FURNITURE.overlays["rugs"].content.lower()
+        assert "pile" in content
+
+    def test_nursery_mentions_crib(self):
+        content = FURNITURE.overlays["nursery_kids"].content.lower()
+        assert "crib" in content
+
+    def test_commercial_mentions_stacking(self):
+        content = FURNITURE.overlays["commercial_contract"].content.lower()
+        assert "stacking" in content
+
+    def test_core_has_hard_constraints(self):
+        core = FURNITURE.core.lower()
+        assert "hard constraint" in core
+        assert "indoor" in core
+        assert "outdoor" in core
+
+    def test_core_has_fitment(self):
+        core = FURNITURE.core.lower()
+        assert "dimension" in core
+        assert "assembly" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("sofas_sectionals", "laf/raf"),
+            ("sofas_sectionals", "sectional"),
+            ("sofas_sectionals", "modular"),
+            ("sofas_sectionals", "top-grain"),
+            ("sofas_sectionals", "bonded leather"),
+            ("sofas_sectionals", "double rubs"),
+            ("sofas_sectionals", "slipcovered"),
+            ("sofas_sectionals", "chaise"),
+            ("sofas_sectionals", "martindale"),
+            ("motion_seating", "power recliner"),
+            ("motion_seating", "lift chair"),
+            ("motion_seating", "wall-hugger"),
+            ("motion_seating", "swivel"),
+            ("motion_seating", "glider"),
+            ("motion_seating", "theater seating"),
+            ("motion_seating", "power headrest"),
+            ("sleepers_daybeds_futons", "sleeper sofa"),
+            ("sleepers_daybeds_futons", "futon"),
+            ("sleepers_daybeds_futons", "daybed"),
+            ("sleepers_daybeds_futons", "trundle"),
+            ("sleepers_daybeds_futons", "murphy bed"),
+            ("sleepers_daybeds_futons", "sofa-bed"),
+            ("sleepers_daybeds_futons", "pull-out"),
+            ("beds_frames_headboards", "platform"),
+            ("beds_frames_headboards", "headboard"),
+            ("beds_frames_headboards", "box spring"),
+            ("beds_frames_headboards", "california king"),
+            ("beds_frames_headboards", "storage bed"),
+            ("beds_frames_headboards", "adjustable base"),
+            ("beds_frames_headboards", "slat"),
+            ("mattresses_toppers_bases", "memory foam"),
+            ("mattresses_toppers_bases", "innerspring"),
+            ("mattresses_toppers_bases", "hybrid"),
+            ("mattresses_toppers_bases", "certipur"),
+            ("mattresses_toppers_bases", "1633"),
+            ("mattresses_toppers_bases", "topper"),
+            ("mattresses_toppers_bases", "firmness"),
+            ("casegoods_storage", "dresser"),
+            ("casegoods_storage", "armoire"),
+            ("casegoods_storage", "nightstand"),
+            ("casegoods_storage", "anti-tip"),
+            ("casegoods_storage", "sturdy"),
+            ("casegoods_storage", "carb phase 2"),
+            ("casegoods_storage", "tip-over"),
+            ("dining_tables_sets", "counter-height"),
+            ("dining_tables_sets", "bar-height"),
+            ("dining_tables_sets", "butterfly"),
+            ("dining_tables_sets", "drop-leaf"),
+            ("dining_tables_sets", "seats 8"),
+            ("chairs_stools_benches", "counter stool"),
+            ("chairs_stools_benches", "bar stool"),
+            ("chairs_stools_benches", "accent chair"),
+            ("chairs_stools_benches", "dining chair"),
+            ("chairs_stools_benches", "seat height"),
+            ("chairs_stools_benches", "clearance"),
+            ("home_office", "bifma"),
+            ("home_office", "standing desk"),
+            ("home_office", "caster"),
+            ("home_office", "lumbar"),
+            ("home_office", "x5.1"),
+            ("outdoor_patio", "teak"),
+            ("outdoor_patio", "powder-coated"),
+            ("outdoor_patio", "hdpe"),
+            ("outdoor_patio", "solution-dyed acrylic"),
+            ("outdoor_patio", "reticulated"),
+            ("outdoor_patio", "quick-dry"),
+            ("bathroom_vanities", "centerset"),
+            ("bathroom_vanities", "widespread"),
+            ("bathroom_vanities", "single-hole"),
+            ("bathroom_vanities", "floating"),
+            ("bathroom_vanities", "vessel"),
+            ("bathroom_vanities", "undermount"),
+            ("makeup_vanities_dressing_tables", "makeup"),
+            ("makeup_vanities_dressing_tables", "mirror"),
+            ("makeup_vanities_dressing_tables", "hollywood"),
+            ("makeup_vanities_dressing_tables", "dressing table"),
+            ("makeup_vanities_dressing_tables", "stool"),
+            ("media_consoles_tv_stands", "diagonal"),
+            ("media_consoles_tv_stands", "fireplace"),
+            ("media_consoles_tv_stands", "floating"),
+            ("media_consoles_tv_stands", "soundbar"),
+            ("rugs", "pile"),
+            ("rugs", "runner"),
+            ("rugs", "rug pad"),
+            ("rugs", "polypropylene"),
+            ("rugs", "indoor/outdoor"),
+            ("nursery_kids", "crib"),
+            ("nursery_kids", "16 cfr"),
+            ("nursery_kids", "drop-side"),
+            ("nursery_kids", "bunk bed"),
+            ("nursery_kids", "slat"),
+            ("nursery_kids", "convertible crib"),
+            ("commercial_contract", "bifma"),
+            ("commercial_contract", "stacking"),
+            ("commercial_contract", "tb117"),
+            ("commercial_contract", "greenguard"),
+            ("commercial_contract", "cal 133"),
+            ("commercial_contract", "ganging"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in FURNITURE.overlays[key].content.lower()
 
 
 class TestCustomVertical:
