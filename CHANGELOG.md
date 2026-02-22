@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Foodservice vertical split into core + 26 category overlays: beverage_equipment, beverages, cooking, dairy_eggs, disposables, dry_goods, food_prep, furniture, ice_machines, janitorial, frozen_dessert_equipment, plumbing, prepared_foods, produce, proteins, refrigeration, replacement_parts, serving_holding, smallwares, storage_transport, tabletop, underbar, ventilation, warewash, waste_reduction, water_filtration
 - Foodservice terminology equivalences split between core (cross-cutting terms) and overlays (category-specific terms) to reduce context dilution
 - 6 new foodservice category overlays: ice_machines (ice makers, bins, dispensers — split from refrigeration), underbar (bar workstations, ice bins, speed rails, blender stations), water_filtration (commercial water filters for equipment protection), replacement_parts (OEM parts, repair kits, maintenance items), plumbing (sinks, faucets, pre-rinse units, grease traps), waste_reduction (garbage disposers, pulpers, compactors, oil disposal)
+- Automotive vertical split into core + 13 category overlays: general, oil_change, fluids_and_chemicals, brakes_and_friction, wheels_tires_tpms, batteries_starting_charging, lighting_and_visibility, engine_ignition_and_sensors, suspension_steering_and_hubs, exhaust_and_emissions, hvac_air_conditioning, body_collision_paint_glass, accessories_and_tools
 
 ### Changed
 
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smallwares overlay: disposables moved to new disposables overlay; smallwares now focuses on durable kitchen tools, pans, and food storage
 - All foodservice overlay content rewritten to be more concise and focused on hard constraints; verbose terminology glossaries replaced with short key-term lists
 - Ice machines split out of the `refrigeration` overlay into a dedicated `ice_machines` overlay
+- Automotive vertical core rewritten with tiered scoring structure (hard gates, significant penalties, soft signals, calibration examples); regulatory and fluid constraints tightened to "when requested" phrasing
 
 - `load_vertical()` returns `VerticalContext` instead of `str`; custom file verticals are wrapped automatically
 - Classification pre-pass runs for all queries when overlays are available (to assign overlay keys), preserving pre-existing query types

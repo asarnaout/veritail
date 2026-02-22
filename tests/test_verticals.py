@@ -153,7 +153,7 @@ class TestFoodserviceOverlays:
 
     @pytest.mark.parametrize(
         "name",
-        [n for n in ALL_BUILTINS if n != "foodservice"],
+        [n for n in ALL_BUILTINS if n not in {"foodservice", "automotive"}],
     )
     def test_other_verticals_have_no_overlays(self, name):
         vertical = load_vertical(name)
@@ -294,6 +294,158 @@ class TestFoodserviceOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in FOODSERVICE.overlays[key].content.lower()
+
+
+AUTOMOTIVE_OVERLAY_KEYS = [
+    "accessories_and_tools",
+    "batteries_starting_charging",
+    "body_collision_paint_glass",
+    "brakes_and_friction",
+    "engine_ignition_and_sensors",
+    "exhaust_and_emissions",
+    "fluids_and_chemicals",
+    "general",
+    "hvac_air_conditioning",
+    "lighting_and_visibility",
+    "oil_change",
+    "suspension_steering_and_hubs",
+    "wheels_tires_tpms",
+]
+
+
+class TestAutomotiveOverlays:
+    def test_automotive_has_overlays(self):
+        assert len(AUTOMOTIVE.overlays) == 13
+
+    def test_overlay_keys(self):
+        assert set(AUTOMOTIVE.overlays.keys()) == set(AUTOMOTIVE_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", AUTOMOTIVE_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = AUTOMOTIVE.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_oil_change_mentions_viscosity(self):
+        assert "viscosity" in AUTOMOTIVE.overlays["oil_change"].content.lower()
+
+    def test_brakes_mentions_rotor(self):
+        assert "rotor" in AUTOMOTIVE.overlays["brakes_and_friction"].content.lower()
+
+    def test_wheels_mentions_bolt_pattern(self):
+        content = AUTOMOTIVE.overlays["wheels_tires_tpms"].content.lower()
+        assert "bolt pattern" in content
+
+    def test_batteries_mentions_cca(self):
+        content = AUTOMOTIVE.overlays["batteries_starting_charging"].content
+        assert "cca" in content.lower()
+
+    def test_lighting_mentions_bulb(self):
+        content = AUTOMOTIVE.overlays["lighting_and_visibility"].content
+        assert "bulb" in content.lower()
+
+    def test_exhaust_mentions_catalytic(self):
+        content = AUTOMOTIVE.overlays["exhaust_and_emissions"].content
+        assert "catalytic" in content.lower()
+
+    def test_hvac_mentions_refrigerant(self):
+        content = AUTOMOTIVE.overlays["hvac_air_conditioning"].content
+        assert "r-134a" in content.lower()
+
+    def test_body_mentions_paint_code(self):
+        content = AUTOMOTIVE.overlays["body_collision_paint_glass"].content
+        assert "paint code" in content.lower()
+
+    def test_suspension_mentions_strut(self):
+        content = AUTOMOTIVE.overlays["suspension_steering_and_hubs"].content
+        assert "strut" in content.lower()
+
+    def test_engine_sensors_mentions_spark_plug(self):
+        content = AUTOMOTIVE.overlays["engine_ignition_and_sensors"].content
+        assert "spark plug" in content.lower()
+
+    def test_accessories_mentions_hitch(self):
+        assert "hitch" in AUTOMOTIVE.overlays["accessories_and_tools"].content.lower()
+
+    def test_fluids_mentions_coolant(self):
+        assert "coolant" in AUTOMOTIVE.overlays["fluids_and_chemicals"].content.lower()
+
+    def test_general_mentions_fitment(self):
+        assert "fitment" in AUTOMOTIVE.overlays["general"].content.lower()
+
+    def test_core_has_ymm_fitment(self):
+        core = AUTOMOTIVE.core.lower()
+        assert "ymm" in core
+        assert "fitment" in core
+
+    def test_core_has_calibration_examples(self):
+        core = AUTOMOTIVE.core.lower()
+        assert "honda civic" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("oil_change", "viscosity"),
+            ("oil_change", "motor oil"),
+            ("oil_change", "spin-on"),
+            ("oil_change", "cartridge"),
+            ("oil_change", "anti-drainback"),
+            ("fluids_and_chemicals", "atf"),
+            ("fluids_and_chemicals", "coolant"),
+            ("fluids_and_chemicals", "brake fluid"),
+            ("fluids_and_chemicals", "gear oil"),
+            ("fluids_and_chemicals", "cvt"),
+            ("brakes_and_friction", "pad"),
+            ("brakes_and_friction", "rotor"),
+            ("brakes_and_friction", "caliper"),
+            ("brakes_and_friction", "drum"),
+            ("brakes_and_friction", "ceramic"),
+            ("wheels_tires_tpms", "bolt pattern"),
+            ("wheels_tires_tpms", "tpms"),
+            ("wheels_tires_tpms", "pcd"),
+            ("wheels_tires_tpms", "offset"),
+            ("wheels_tires_tpms", "run-flat"),
+            ("batteries_starting_charging", "cca"),
+            ("batteries_starting_charging", "agm"),
+            ("batteries_starting_charging", "efb"),
+            ("batteries_starting_charging", "group size"),
+            ("batteries_starting_charging", "alternator"),
+            ("lighting_and_visibility", "h11"),
+            ("lighting_and_visibility", "halogen"),
+            ("lighting_and_visibility", "wiper"),
+            ("lighting_and_visibility", "drl"),
+            ("engine_ignition_and_sensors", "spark plug"),
+            ("engine_ignition_and_sensors", "oxygen sensor"),
+            ("engine_ignition_and_sensors", "coil-on-plug"),
+            ("engine_ignition_and_sensors", "cop"),
+            ("suspension_steering_and_hubs", "strut"),
+            ("suspension_steering_and_hubs", "shock"),
+            ("suspension_steering_and_hubs", "control arm"),
+            ("suspension_steering_and_hubs", "ball joint"),
+            ("suspension_steering_and_hubs", "hub assembly"),
+            ("exhaust_and_emissions", "catalytic converter"),
+            ("exhaust_and_emissions", "carb"),
+            ("exhaust_and_emissions", "muffler"),
+            ("exhaust_and_emissions", "eo"),
+            ("hvac_air_conditioning", "r-134a"),
+            ("hvac_air_conditioning", "r-1234yf"),
+            ("hvac_air_conditioning", "compressor"),
+            ("hvac_air_conditioning", "condenser"),
+            ("hvac_air_conditioning", "pag"),
+            ("body_collision_paint_glass", "paint code"),
+            ("body_collision_paint_glass", "capa"),
+            ("body_collision_paint_glass", "bumper"),
+            ("body_collision_paint_glass", "grille"),
+            ("body_collision_paint_glass", "glazing"),
+            ("accessories_and_tools", "floor mat"),
+            ("accessories_and_tools", "hitch"),
+            ("accessories_and_tools", "obd-ii"),
+            ("accessories_and_tools", "gtw"),
+            ("general", "fitment"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in AUTOMOTIVE.overlays[key].content.lower()
 
 
 class TestCustomVertical:
