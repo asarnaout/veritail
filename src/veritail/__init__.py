@@ -1,6 +1,6 @@
 """veritail: Ecommerce search relevance evaluation tool."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from veritail.types import (
     AutocompleteConfig,
