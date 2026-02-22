@@ -16,6 +16,7 @@ from veritail.checkpoint import (
 )
 from veritail.llm.client import BatchRequest, BatchResult, LLMClient, LLMResponse
 from veritail.pipeline import run_batch_evaluation, run_dual_evaluation, run_evaluation
+from veritail.rubrics import format_user_prompt
 from veritail.types import (
     CheckResult,
     ExperimentConfig,
@@ -84,19 +85,16 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}\nProduct: {r.title}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -131,19 +129,16 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -163,12 +158,10 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("You are an expert judge.", lambda q, r: f"Query: {q}")
 
         vertical_ctx = VerticalContext(
             core="## Vertical: Foodservice\nFood-safety certs matter."
@@ -179,7 +172,6 @@ class TestRunEvaluation:
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             vertical=vertical_ctx,
         )
@@ -190,7 +182,6 @@ class TestRunEvaluation:
             or llm_client.complete.call_args_list[0][0][0]
         )
         assert "Foodservice" in system_prompt_used
-        assert "You are an expert judge." in system_prompt_used
 
     def test_context_and_vertical_compose(self, tmp_path):
         """Context comes before vertical, which comes before the rubric."""
@@ -200,19 +191,16 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("RUBRIC_START", lambda q, r: f"Query: {q}")
 
         run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             context="BBQ restaurant supplier",
             vertical=VerticalContext(
@@ -227,7 +215,10 @@ class TestRunEvaluation:
 
         ctx_pos = system_prompt_used.index("## Business Context")
         vert_pos = system_prompt_used.index("## Vertical: Foodservice")
-        rubric_pos = system_prompt_used.index("RUBRIC_START")
+        # The rubric system prompt follows after context and vertical
+        from veritail.rubrics import SYSTEM_PROMPT as RUBRIC_PROMPT
+
+        rubric_pos = system_prompt_used.index(RUBRIC_PROMPT[:30])
 
         assert ctx_pos < vert_pos < rubric_pos
 
@@ -239,19 +230,16 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("RUBRIC", lambda q, r: f"Query: {q}")
 
         run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             vertical=VerticalContext(core="## Vertical: Foodservice\nGuidance."),
         )
@@ -274,18 +262,15 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test",
-            rubric="default",
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system", lambda q, r: q)
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             failing_adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -318,7 +303,6 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         # LLM always returns score 3 for the successful query
@@ -330,14 +314,12 @@ class TestRunEvaluation:
             output_tokens=10,
         )
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             mixed_adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -377,7 +359,6 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
         llm_client = Mock(spec=LLMClient)
@@ -396,14 +377,12 @@ class TestRunEvaluation:
             ),
         ]
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -423,12 +402,10 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         def custom_check(query, results):
             return [
@@ -446,7 +423,6 @@ class TestRunEvaluation:
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             custom_checks=[custom_check],
         )
@@ -482,7 +458,6 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = Mock(spec=LLMClient)
@@ -502,14 +477,12 @@ class TestRunEvaluation:
             ),
         ]
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -538,19 +511,16 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -586,19 +556,16 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -612,11 +579,9 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         backend = Mock(spec=EvalBackend)
         backend.log_judgment.side_effect = RuntimeError("Langfuse down")
@@ -626,7 +591,6 @@ class TestRunEvaluation:
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -642,11 +606,9 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         backend = Mock(spec=EvalBackend)
         backend.log_experiment.side_effect = ConnectionError("Network down")
@@ -656,7 +618,6 @@ class TestRunEvaluation:
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -685,7 +646,6 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = Mock(spec=LLMClient)
@@ -703,7 +663,6 @@ class TestRunEvaluation:
                 output_tokens=30,
             ),
         ]
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         backend = Mock(spec=EvalBackend)
         backend.log_correction_judgment.side_effect = RuntimeError("Backend down")
@@ -713,7 +672,6 @@ class TestRunEvaluation:
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -729,19 +687,16 @@ class TestRunEvaluation:
             name="config-a",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         config_b = ExperimentConfig(
             name="config-b",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         from unittest.mock import patch
 
@@ -756,7 +711,6 @@ class TestRunEvaluation:
                 adapter,
                 config_b,
                 llm_client,
-                rubric,
                 backend,
             )
 
@@ -795,7 +749,6 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -817,14 +770,12 @@ class TestRunEvaluation:
             RuntimeError("LLM timeout"),
         ]
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -843,7 +794,6 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = Mock(spec=LLMClient)
@@ -875,14 +825,12 @@ class TestRunEvaluation:
             ),
         ]
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
         )
 
@@ -909,7 +857,6 @@ class TestRunEvaluation:
             name="test-exp",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         llm_client = _make_mock_llm_client()
@@ -918,9 +865,11 @@ class TestRunEvaluation:
         # Track what the format_user_prompt receives
         overlay_calls: list[str | None] = []
 
-        def fmt(query, result, *, corrected_query=None, overlay=None):
+        original_fmt = format_user_prompt
+
+        def tracking_fmt(query, result, *, corrected_query=None, overlay=None):
             overlay_calls.append(overlay)
-            return f"Query: {query}\nProduct: {result.title}"
+            return original_fmt(query, result, corrected_query=corrected_query)
 
         vertical = VerticalContext(
             core="## Vertical: Foodservice\nCore guidance.",
@@ -932,15 +881,21 @@ class TestRunEvaluation:
             },
         )
 
-        run_evaluation(
-            queries,
-            adapter,
-            config,
-            llm_client,
-            ("system prompt", fmt),
-            backend,
-            vertical=vertical,
-        )
+        import veritail.pipeline as _pipeline_mod
+
+        original_ref = _pipeline_mod.format_user_prompt
+        _pipeline_mod.format_user_prompt = tracking_fmt
+        try:
+            run_evaluation(
+                queries,
+                adapter,
+                config,
+                llm_client,
+                backend,
+                vertical=vertical,
+            )
+        finally:
+            _pipeline_mod.format_user_prompt = original_ref
 
         # All 3 results should have received the overlay text
         assert len(overlay_calls) == 3
@@ -1001,7 +956,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         responses = [
@@ -1011,14 +965,12 @@ class TestRunBatchEvaluation:
         ]
         llm_client = _make_mock_batch_llm_client(responses)
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}\nProduct: {r.title}")
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             poll_interval=0,
         )
@@ -1048,18 +1000,15 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test",
-            rubric="default",
         )
         llm_client = _make_mock_batch_llm_client([])
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system", lambda q, r: q)
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             failing_adapter,
             config,
             llm_client,
-            rubric,
             backend,
             poll_interval=0,
         )
@@ -1075,7 +1024,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
 
@@ -1108,14 +1056,12 @@ class TestRunBatchEvaluation:
         ]
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             adapter,
             config,
             client,
-            rubric,
             backend,
             poll_interval=0,
         )
@@ -1149,7 +1095,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         responses = [
@@ -1160,14 +1105,12 @@ class TestRunBatchEvaluation:
         ]
         llm_client = _make_mock_batch_llm_client(responses)
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             poll_interval=0,
         )
@@ -1187,7 +1130,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
 
@@ -1197,7 +1139,6 @@ class TestRunBatchEvaluation:
         client.poll_batch.return_value = ("failed", 0, 3)
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         with pytest.raises(RuntimeError, match="batch-1 failed"):
             run_batch_evaluation(
@@ -1205,7 +1146,6 @@ class TestRunBatchEvaluation:
                 adapter,
                 config,
                 client,
-                rubric,
                 backend,
                 poll_interval=0,
             )
@@ -1230,21 +1170,18 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
         # Response that can't be parsed (no SCORE)
         responses = ["This is a bad response with no score."]
         llm_client = _make_mock_batch_llm_client(responses)
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             poll_interval=0,
         )
@@ -1269,7 +1206,6 @@ class TestRunBatchEvaluation:
                 )
             ]
 
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
         response_text = "SCORE: 3\nATTRIBUTES: match\nREASONING: Perfect"
 
         # Non-batch path
@@ -1277,7 +1213,6 @@ class TestRunBatchEvaluation:
             name="test-sync",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
         sync_client = Mock(spec=LLMClient)
@@ -1289,7 +1224,7 @@ class TestRunBatchEvaluation:
         )
         backend_sync = FileBackend(output_dir=str(tmp_path / "sync"))
         j_sync, _, m_sync, _ = run_evaluation(
-            queries, adapter, config_sync, sync_client, rubric, backend_sync
+            queries, adapter, config_sync, sync_client, backend_sync
         )
 
         # Batch path
@@ -1297,7 +1232,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
         batch_client = _make_mock_batch_llm_client([response_text])
@@ -1307,7 +1241,6 @@ class TestRunBatchEvaluation:
             adapter,
             config_batch,
             batch_client,
-            rubric,
             backend_batch,
             poll_interval=0,
         )
@@ -1330,7 +1263,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         # Classification batch + relevance batch = 2 submit_batch calls
@@ -1344,14 +1276,12 @@ class TestRunBatchEvaluation:
         ]
         llm_client = _make_mock_batch_llm_client(responses)
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             poll_interval=0,
         )
@@ -1387,7 +1317,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         responses = [
@@ -1396,14 +1325,12 @@ class TestRunBatchEvaluation:
         ]
         llm_client = _make_mock_batch_llm_client(responses)
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             poll_interval=0,
             output_dir=str(tmp_path),
@@ -1434,7 +1361,6 @@ class TestRunBatchEvaluation:
                 adapter,
                 config,
                 llm_client2,
-                rubric,
                 backend,
                 poll_interval=0,
                 output_dir=str(tmp_path),
@@ -1456,7 +1382,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=3,
         )
         responses = [
@@ -1466,14 +1391,12 @@ class TestRunBatchEvaluation:
         ]
         llm_client = _make_mock_batch_llm_client(responses)
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
             queries,
             adapter,
             config,
             llm_client,
-            rubric,
             backend,
             poll_interval=0,
         )
@@ -1488,7 +1411,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -1553,7 +1475,6 @@ class TestRunBatchEvaluation:
         ]
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
         queries = [QueryEntry(query="runnign shoes", type="broad")]
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
@@ -1561,7 +1482,6 @@ class TestRunBatchEvaluation:
             _make_mock_adapter(),
             config,
             client,
-            rubric,
             backend,
             poll_interval=0,
             resume=True,
@@ -1581,7 +1501,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -1623,7 +1542,6 @@ class TestRunBatchEvaluation:
         ]
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
         queries = [QueryEntry(query="shoes", type="broad")]
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
@@ -1631,7 +1549,6 @@ class TestRunBatchEvaluation:
             _make_mock_adapter(),
             config,
             client,
-            rubric,
             backend,
             poll_interval=0,
             resume=True,
@@ -1664,7 +1581,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -1687,7 +1603,6 @@ class TestRunBatchEvaluation:
         client.batch_error_message.return_value = None
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         with pytest.raises(RuntimeError, match="batch-2 failed"):
             run_batch_evaluation(
@@ -1695,7 +1610,6 @@ class TestRunBatchEvaluation:
                 adapter,
                 config,
                 client,
-                rubric,
                 backend,
                 poll_interval=0,
                 output_dir=str(tmp_path),
@@ -1731,7 +1645,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -1749,7 +1662,6 @@ class TestRunBatchEvaluation:
         client.submit_batch.side_effect = submit_batch
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         with pytest.raises(RuntimeError, match="quota exceeded"):
             run_batch_evaluation(
@@ -1757,7 +1669,6 @@ class TestRunBatchEvaluation:
                 adapter,
                 config,
                 client,
-                rubric,
                 backend,
                 poll_interval=0,
                 output_dir=str(tmp_path),
@@ -1776,7 +1687,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -1837,7 +1747,6 @@ class TestRunBatchEvaluation:
         ]
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
         queries = [QueryEntry(query="runnign shoes", type="broad")]
 
         judgments, checks, metrics, corrections = run_batch_evaluation(
@@ -1845,7 +1754,6 @@ class TestRunBatchEvaluation:
             _make_mock_adapter(),
             config,
             client,
-            rubric,
             backend,
             poll_interval=0,
             resume=True,
@@ -1865,7 +1773,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -1898,7 +1805,6 @@ class TestRunBatchEvaluation:
         client.submit_batch.side_effect = RuntimeError("quota exceeded again")
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
         queries = [QueryEntry(query="runnign shoes", type="broad")]
 
         with pytest.raises(RuntimeError, match="quota exceeded again"):
@@ -1907,7 +1813,6 @@ class TestRunBatchEvaluation:
                 _make_mock_adapter(),
                 config,
                 client,
-                rubric,
                 backend,
                 poll_interval=0,
                 resume=True,
@@ -1944,7 +1849,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -1964,7 +1868,6 @@ class TestRunBatchEvaluation:
         client.batch_error_message.return_value = None
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         with pytest.raises(RuntimeError, match="batch-1 failed"):
             run_batch_evaluation(
@@ -1972,7 +1875,6 @@ class TestRunBatchEvaluation:
                 adapter,
                 config,
                 client,
-                rubric,
                 backend,
                 poll_interval=0,
                 output_dir=str(tmp_path),
@@ -2004,7 +1906,6 @@ class TestRunBatchEvaluation:
             name="test-batch",
             adapter_path="test.py",
             llm_model="test-model",
-            rubric="ecommerce-default",
             top_k=1,
         )
 
@@ -2028,7 +1929,6 @@ class TestRunBatchEvaluation:
         client1.batch_error_message.return_value = None
 
         backend = FileBackend(output_dir=str(tmp_path))
-        rubric = ("system prompt", lambda q, r: f"Query: {q}")
 
         with pytest.raises(RuntimeError, match="batch-2 failed"):
             run_batch_evaluation(
@@ -2036,7 +1936,6 @@ class TestRunBatchEvaluation:
                 adapter,
                 config,
                 client1,
-                rubric,
                 backend,
                 poll_interval=0,
                 output_dir=str(tmp_path),
@@ -2088,7 +1987,6 @@ class TestRunBatchEvaluation:
             adapter,
             config,
             client2,
-            rubric,
             backend,
             poll_interval=0,
             resume=True,

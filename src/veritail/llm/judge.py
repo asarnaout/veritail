@@ -169,7 +169,7 @@ class RelevanceJudge:
                 f"Score must be 0, 1, 2, or 3. Got: {score}. Response:\n{response_text}"
             )
 
-        # Extract attribute verdict (default to "n/a" for custom rubrics)
+        # Extract attribute verdict (default to "n/a" if not present)
         attr_match = re.search(
             r"(?i)ATTRIBUTES\s*[:=]\s*(\w[\w/ ]*?)(?:\n|$)",
             response_text,

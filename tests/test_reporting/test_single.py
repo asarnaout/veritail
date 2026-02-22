@@ -105,7 +105,6 @@ class TestGenerateSingleReport:
             run_metadata={
                 "generated_at_utc": "2026-02-13T12:00:00Z",
                 "llm_model": "claude-sonnet-4-5",
-                "rubric": "ecommerce-default",
                 "vertical": "foodservice",
                 "top_k": 10,
                 "adapter_path": "adapter.py",
@@ -114,7 +113,6 @@ class TestGenerateSingleReport:
         assert "Timestamp (UTC)" in report
         assert "2026-02-13T12:00:00Z" in report
         assert "claude-sonnet-4-5" in report
-        assert "ecommerce-default" in report
         assert "foodservice" in report
         assert "adapter.py" in report
 

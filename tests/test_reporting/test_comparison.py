@@ -113,7 +113,6 @@ class TestGenerateComparisonReport:
             run_metadata={
                 "generated_at_utc": "2026-02-13T12:00:00Z",
                 "llm_model": "claude-sonnet-4-5",
-                "rubric": "ecommerce-default",
                 "vertical": "industrial",
                 "top_k": 10,
                 "adapter_path_a": "adapter_a.py",
@@ -123,7 +122,6 @@ class TestGenerateComparisonReport:
         assert "Timestamp (UTC)" in report
         assert "2026-02-13T12:00:00Z" in report
         assert "claude-sonnet-4-5" in report
-        assert "ecommerce-default" in report
         assert "industrial" in report
         assert "adapter_a.py" in report
         assert "adapter_b.py" in report

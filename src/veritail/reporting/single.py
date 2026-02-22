@@ -426,7 +426,6 @@ def _generate_html(
         key_to_label = [
             ("generated_at_utc", "Timestamp (UTC)"),
             ("llm_model", "Model"),
-            ("rubric", "Rubric"),
             ("vertical", "Vertical"),
             ("top_k", "Top-K"),
             ("adapter_path", "Adapter Path"),

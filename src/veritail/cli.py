@@ -27,7 +27,6 @@ from veritail.pipeline import (
 from veritail.queries import load_queries
 from veritail.reporting.comparison import generate_comparison_report
 from veritail.reporting.single import generate_single_report
-from veritail.rubrics import load_rubric
 from veritail.scaffold import (
     DEFAULT_ADAPTER_FILENAME,
     DEFAULT_QUERIES_FILENAME,
@@ -70,7 +69,6 @@ def _generate_config_names(adapters: tuple[str, ...]) -> tuple[str, ...]:
 def _build_run_metadata(
     *,
     llm_model: str | None = None,
-    rubric: str | None = None,
     vertical: str | None = None,
     top_k: int,
     sample: int | None = None,
@@ -86,8 +84,6 @@ def _build_run_metadata(
     }
     if llm_model is not None:
         metadata["llm_model"] = llm_model
-    if rubric is not None:
-        metadata["rubric"] = rubric
     if vertical:
         metadata["vertical"] = vertical
     if sample is not None and total_queries is not None:
@@ -112,7 +108,6 @@ def _run_search_pipeline(  # noqa: PLR0913
     llm_model: str,
     llm_base_url: str | None,
     llm_api_key: str | None,
-    rubric_name: str,
     backend_type: str,
     output_dir: str,
     backend_url: str | None,
@@ -141,8 +136,6 @@ def _run_search_pipeline(  # noqa: PLR0913
         )
     else:
         console.print(f"Loaded {len(query_entries)} queries from {queries_path}")
-
-    rubric_data = load_rubric(rubric_name)
 
     custom_check_fns: list[CustomCheckFn] | None = None
     if check_modules:
@@ -193,7 +186,6 @@ def _run_search_pipeline(  # noqa: PLR0913
             name=config_names[0],
             adapter_path=adapters[0],
             llm_model=llm_model,
-            rubric=rubric_name,
             top_k=top_k,
         )
         adapter_fn = load_adapter(adapters[0])
@@ -207,7 +199,6 @@ def _run_search_pipeline(  # noqa: PLR0913
             adapter_fn,
             config,
             llm_client,
-            rubric_data,
             backend,
             context=context,
             vertical=vertical_context,
@@ -218,7 +209,6 @@ def _run_search_pipeline(  # noqa: PLR0913
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,
-            rubric=rubric_name,
             vertical=vertical_raw,
             top_k=top_k,
             sample=sample,
@@ -277,14 +267,12 @@ def _run_search_pipeline(  # noqa: PLR0913
             name=config_names[0],
             adapter_path=adapters[0],
             llm_model=llm_model,
-            rubric=rubric_name,
             top_k=top_k,
         )
         config_b = ExperimentConfig(
             name=config_names[1],
             adapter_path=adapters[1],
             llm_model=llm_model,
-            rubric=rubric_name,
             top_k=top_k,
         )
         adapter_a = load_adapter(adapters[0])
@@ -311,7 +299,6 @@ def _run_search_pipeline(  # noqa: PLR0913
             adapter_b,
             config_b,
             llm_client,
-            rubric_data,
             backend,
             context=context,
             vertical=vertical_context,
@@ -322,7 +309,6 @@ def _run_search_pipeline(  # noqa: PLR0913
         )
         run_metadata = _build_run_metadata(
             llm_model=llm_model,
-            rubric=rubric_name,
             vertical=vertical_raw,
             top_k=top_k,
             sample=sample,
@@ -998,11 +984,6 @@ def generate_queries_cmd(
     help="API key override (useful for non-OpenAI endpoints that ignore keys).",
 )
 @click.option(
-    "--rubric",
-    default="ecommerce-default",
-    help="Rubric name or path to custom rubric module",
-)
-@click.option(
     "--backend",
     "backend_type",
     default="file",
@@ -1102,7 +1083,6 @@ def run(
     llm_model: str | None,
     llm_base_url: str | None,
     llm_api_key: str | None,
-    rubric: str,
     backend_type: str,
     output_dir: str,
     backend_url: str | None,
@@ -1210,10 +1190,6 @@ def run(
                         f"  llm_model: saved={saved.get('llm_model')!r}, "
                         f"current={llm_model!r}"
                     )
-                if saved.get("rubric") != rubric:
-                    mismatches.append(
-                        f"  rubric: saved={saved.get('rubric')!r}, current={rubric!r}"
-                    )
                 if saved.get("top_k") != top_k:
                     mismatches.append(
                         f"  top_k: saved={saved.get('top_k')!r}, current={top_k!r}"
@@ -1269,7 +1245,6 @@ def run(
             llm_model=llm_model,
             llm_base_url=llm_base_url,
             llm_api_key=llm_api_key,
-            rubric_name=rubric,
             backend_type=backend_type,
             output_dir=output_dir,
             backend_url=backend_url,

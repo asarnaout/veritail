@@ -172,7 +172,7 @@ class TestRelevanceJudge:
         assert judgment.attribute_verdict == "match"
 
     def test_judge_attributes_missing(self):
-        """Custom rubrics without ATTRIBUTES line should default to n/a."""
+        """Responses without ATTRIBUTES line should default to n/a."""
         client = _make_mock_client("SCORE: 2\nREASONING: Decent match.")
         judge = RelevanceJudge(client, "system", _format_user_prompt, "exp-1")
 
@@ -193,7 +193,7 @@ class TestRelevanceJudge:
         judge.judge("fryer", _make_result(), overlay="Hot-side equipment guidance.")
         assert calls[0]["overlay"] == "Hot-side equipment guidance."
 
-    def test_judge_overlay_fallback_for_custom_rubric(self):
+    def test_judge_overlay_fallback_for_incompatible_format_func(self):
         """When format_user_prompt doesn't accept overlay, falls back gracefully."""
         client = _make_mock_client("SCORE: 2\nATTRIBUTES: n/a\nREASONING: Fallback.")
         # _format_user_prompt doesn't accept overlay kwarg

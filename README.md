@@ -16,7 +16,7 @@ Five evaluation layers:
 - **Autocorrect evaluation** — catches intent-altering or unnecessary query corrections
 - **Autocomplete evaluation** — deterministic checks and LLM-based semantic evaluation for type-ahead suggestions
 
-Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context and rubrics. Optional [Langfuse](docs/backends.md#langfuse-backend) integration for full observability — every judgment, score, and LLM call traced and grouped by evaluation run.
+Includes 14 built-in ecommerce verticals for domain-aware judging, with support for custom vertical context. Optional [Langfuse](docs/backends.md#langfuse-backend) integration for full observability — every judgment, score, and LLM call traced and grouped by evaluation run.
 
 ## Why veritail
 
@@ -195,7 +195,7 @@ Choose the vertical that best matches the ecommerce site you are evaluating.
 
 You can also provide a custom vertical as a plain text file with `--vertical ./my_vertical.txt`. Use the built-in verticals in `src/veritail/verticals/` as templates.
 
-Use `--context` to layer enterprise-specific rules on top of a vertical — things like brand priorities, certification requirements, or domain jargon unique to your store. See [Custom Rubrics & Enterprise Context](docs/custom-rubrics.md) for details.
+Use `--context` to layer enterprise-specific rules on top of a vertical — things like brand priorities, certification requirements, or domain jargon unique to your store. See [Enterprise Context](docs/enterprise-context.md) for details.
 
 Examples:
 
@@ -276,7 +276,7 @@ veritail run \
 | [Batch Mode & Resume](docs/batch-mode-and-resume.md) | 50% cost reduction via batch APIs and resuming interrupted runs |
 | [Autocorrect Evaluation](docs/autocorrect-evaluation.md) | Evaluating query correction quality |
 | [Autocomplete Evaluation](docs/autocomplete-evaluation.md) | Type-ahead suggestion evaluation with checks and LLM scoring |
-| [Custom Rubrics & Enterprise Context](docs/custom-rubrics.md) | Custom scoring rubrics and business-specific evaluation rules |
+| [Enterprise Context](docs/enterprise-context.md) | Business-specific evaluation rules |
 | [Custom Checks](docs/custom-checks.md) | Adding domain-specific deterministic checks |
 | [CLI Reference](docs/cli-reference.md) | Complete flag reference for all commands |
 | [Backends](docs/backends.md) | File and Langfuse storage backends |
@@ -285,7 +285,7 @@ veritail run \
 
 ## Disclaimer
 
-veritail uses large language models to generate relevance judgments. LLM outputs can be inaccurate, inconsistent, or misleading. All scores, reasoning, and reports produced by this tool should be reviewed by a qualified human before informing production decisions. veritail is an evaluation aid, not a substitute for human judgment. The authors are not liable for any decisions made based on its output or for any API costs incurred by running evaluations. Users are responsible for complying with the terms of service of any LLM provider they use with this tool. Evaluation data is sent to the configured LLM provider for scoring — use a local model if data must stay on-premise. Adapter modules, custom check modules, and custom rubric files are loaded and executed as Python code at runtime — only run files you trust. Evaluation results, including product catalog data, are written to disk in plaintext under the output directory (`eval-results/` by default) — ensure this directory is excluded from version control and not stored in shared or publicly accessible locations.
+veritail uses large language models to generate relevance judgments. LLM outputs can be inaccurate, inconsistent, or misleading. All scores, reasoning, and reports produced by this tool should be reviewed by a qualified human before informing production decisions. veritail is an evaluation aid, not a substitute for human judgment. The authors are not liable for any decisions made based on its output or for any API costs incurred by running evaluations. Users are responsible for complying with the terms of service of any LLM provider they use with this tool. Evaluation data is sent to the configured LLM provider for scoring — use a local model if data must stay on-premise. Adapter modules and custom check modules are loaded and executed as Python code at runtime — only run files you trust. Evaluation results, including product catalog data, are written to disk in plaintext under the output directory (`eval-results/` by default) — ensure this directory is excluded from version control and not stored in shared or publicly accessible locations.
 
 ## License
 

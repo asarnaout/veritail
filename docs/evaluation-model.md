@@ -18,9 +18,9 @@ Each query-result pair is evaluated by an LLM judge that returns three fields:
   - `n/a` -- the query does not specify any filterable attributes
 - **REASONING**: concise justification grounded in the evaluation criteria (1-3 sentences)
 
-### Default rubric criteria
+### Rubric criteria
 
-The built-in `ecommerce-default` rubric evaluates each pair against these criteria, in order of importance:
+The rubric evaluates each pair against these criteria, in order of importance:
 
 1. **Explicit intent match** -- Does the product match what the query literally asks for? ("red running shoes" should return red running shoes.)
 2. **Implicit intent match** -- Does the product match what the shopper probably means, given the business context? Enterprise-specific guidance (brand priorities, certification requirements, domain jargon) is applied here.
@@ -29,8 +29,6 @@ The built-in `ecommerce-default` rubric evaluates each pair against these criter
 5. **Commercial viability** -- Is this something a shopper would actually buy? Out-of-stock items, discontinued products, or accessories without the main product score lower.
 
 When an adapter returns `corrected_query`, the LLM prompt includes both the original and corrected queries so the judge can reason about correction impact.
-
-You can customize the rubric with `--rubric my_rubric.py`. See [Custom Rubrics](custom-rubrics.md) for details.
 
 ## Deterministic checks
 
@@ -95,6 +93,6 @@ IR (Information Retrieval) metrics are computed from the LLM relevance scores to
 
 ## Related docs
 
-- [Custom Rubrics](custom-rubrics.md) -- override the default scoring rubric
+- [Enterprise Context](enterprise-context.md) -- business-specific evaluation rules
 - [Custom Checks](custom-checks.md) -- add domain-specific deterministic checks
 - [LLM Usage & Cost](llm-usage-and-cost.md) -- understanding API call volume

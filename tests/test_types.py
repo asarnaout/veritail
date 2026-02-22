@@ -116,7 +116,6 @@ def test_experiment_config_defaults():
         name="test",
         adapter_path="adapter.py",
         llm_model="claude-sonnet-4-5",
-        rubric="ecommerce-default",
     )
     assert config.top_k == 10
 

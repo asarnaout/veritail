@@ -43,6 +43,7 @@ from veritail.llm.classifier import (
 from veritail.llm.client import BatchRequest, LLMClient
 from veritail.llm.judge import CORRECTION_SYSTEM_PROMPT, CorrectionJudge, RelevanceJudge
 from veritail.metrics.ir import compute_all_metrics
+from veritail.rubrics import SYSTEM_PROMPT, format_user_prompt
 from veritail.types import (
     CheckResult,
     CorrectionJudgment,
@@ -185,7 +186,6 @@ def run_evaluation(
     adapter: Callable[[str], SearchResponse | list[SearchResult]],
     config: ExperimentConfig,
     llm_client: LLMClient,
-    rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
     vertical: VerticalContext | None = None,
@@ -211,7 +211,7 @@ def run_evaluation(
     Returns:
         Tuple of (judgments, check_results, metrics, correction_judgments)
     """
-    system_prompt, format_user_prompt = rubric
+    system_prompt = SYSTEM_PROMPT
     prefix_parts: list[str] = []
     if context:
         prefix_parts.append(f"## Business Context\n{context}")
@@ -243,7 +243,6 @@ def run_evaluation(
             {
                 "adapter_path": config.adapter_path,
                 "llm_model": config.llm_model,
-                "rubric": config.rubric,
                 "top_k": config.top_k,
                 "context": context,
                 "vertical": vertical,
@@ -486,7 +485,6 @@ def run_dual_evaluation(
     adapter_b: Callable[[str], SearchResponse | list[SearchResult]],
     config_b: ExperimentConfig,
     llm_client: LLMClient,
-    rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
     vertical: VerticalContext | None = None,
@@ -524,7 +522,6 @@ def run_dual_evaluation(
         adapter_a,
         config_a,
         llm_client,
-        rubric,
         backend,
         context=context,
         vertical=vertical,
@@ -539,7 +536,6 @@ def run_dual_evaluation(
         adapter_b,
         config_b,
         llm_client,
-        rubric,
         backend,
         context=context,
         vertical=vertical,
@@ -591,7 +587,6 @@ def run_batch_evaluation(
     adapter: Callable[[str], SearchResponse | list[SearchResult]],
     config: ExperimentConfig,
     llm_client: LLMClient,
-    rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
     vertical: VerticalContext | None = None,
@@ -614,7 +609,7 @@ def run_batch_evaluation(
     single batch, polls for completion, then processes results.
     """
     # Phase 0: Build judges (identical to run_evaluation)
-    system_prompt, format_user_prompt = rubric
+    system_prompt = SYSTEM_PROMPT
     prefix_parts: list[str] = []
     if context:
         prefix_parts.append(f"## Business Context\n{context}")
@@ -645,7 +640,6 @@ def run_batch_evaluation(
             {
                 "adapter_path": config.adapter_path,
                 "llm_model": config.llm_model,
-                "rubric": config.rubric,
                 "top_k": config.top_k,
                 "context": context,
                 "vertical": vertical,
@@ -1138,7 +1132,6 @@ def run_dual_batch_evaluation(
     adapter_b: Callable[[str], SearchResponse | list[SearchResult]],
     config_b: ExperimentConfig,
     llm_client: LLMClient,
-    rubric: tuple[str, Callable[..., str]],
     backend: EvalBackend,
     context: str | None = None,
     vertical: VerticalContext | None = None,
@@ -1171,7 +1164,6 @@ def run_dual_batch_evaluation(
         adapter_a,
         config_a,
         llm_client,
-        rubric,
         backend,
         context=context,
         vertical=vertical,
@@ -1187,7 +1179,6 @@ def run_dual_batch_evaluation(
         adapter_b,
         config_b,
         llm_client,
-        rubric,
         backend,
         context=context,
         vertical=vertical,

@@ -102,7 +102,6 @@ class ExperimentConfig:
     name: str
     adapter_path: str
     llm_model: str
-    rubric: str
     top_k: int = 10
 
 

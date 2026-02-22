@@ -2,7 +2,7 @@
 
 veritail provides four commands: `run` for evaluation, `init` for project scaffolding, `generate-queries` for LLM-based query generation, and `vertical` for inspecting built-in verticals. This page documents every flag, its default value, and the requirements for each mode.
 
-> **Security note:** `--adapter`, `--checks`, `--autocomplete-checks`, and `--rubric` all load local Python files and execute them directly. This is intentional — veritail is a developer tool designed to run your code. Only point these flags at files you trust, the same as you would with any Python script.
+> **Security note:** `--adapter`, `--checks`, and `--autocomplete-checks` all load local Python files and execute them directly. This is intentional — veritail is a developer tool designed to run your code. Only point these flags at files you trust, the same as you would with any Python script.
 
 ## `veritail run`
 
@@ -17,18 +17,17 @@ Run a single or dual-configuration evaluation.
 | `--llm-model` | *(conditional)* | LLM model for judgments (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`). Required when `--queries` or `--autocomplete` is provided with a single adapter |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:11434/v1` for Ollama) |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
-| `--rubric` | `ecommerce-default` | Rubric name or custom rubric file path (see [Custom Rubrics](custom-rubrics.md)) |
 | `--backend` | `file` | Storage backend (`file` or `langfuse`) |
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
 | `--top-k` | `10` | Maximum number of results to evaluate per query (must be `>= 1`) |
 | `--open` | off | Open HTML report in browser |
-| `--context` | *(none)* | Business context for LLM judge -- business identity, customer base, query interpretation guidance, and enterprise-specific evaluation rules (brand priorities, certification requirements, domain jargon). Accepts a string or a path to a text file (see [Custom Rubrics](custom-rubrics.md#enterprise-context)) |
+| `--context` | *(none)* | Business context for LLM judge -- business identity, customer base, query interpretation guidance, and enterprise-specific evaluation rules (brand priorities, certification requirements, domain jargon). Accepts a string or a path to a text file (see [Enterprise Context](enterprise-context.md)) |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable; see [Custom Checks](custom-checks.md)) |
 | `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
 | `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
 | `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Works with both search and autocomplete evaluation. Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
-| `--resume` | off | Resume a previously interrupted run. Requires `--config-name` to identify the previous run. In non-batch mode, skips queries already judged in `judgments.jsonl`. In batch mode, resumes polling for an in-flight batch from a saved checkpoint. `--llm-model`, `--rubric`, and `--top-k` must match the original run |
+| `--resume` | off | Resume a previously interrupted run. Requires `--config-name` to identify the previous run. In non-batch mode, skips queries already judged in `judgments.jsonl`. In batch mode, resumes polling for an in-flight batch from a saved checkpoint. `--llm-model` and `--top-k` must match the original run |
 
 If `--config-name` is provided, pass one name per adapter.
 
@@ -59,7 +58,7 @@ veritail run --queries queries.csv \
 
 **Batch mode** (`--batch`) additionally requires a cloud provider model (OpenAI, Anthropic, or Gemini). Not compatible with `--llm-base-url`.
 
-**Resume** (`--resume`) additionally requires `--config-name`. The experiment directory from the previous run must exist, and `--llm-model`, `--rubric`, and `--top-k` must match the original run. Not compatible with `--backend langfuse` (the Langfuse backend is write-only).
+**Resume** (`--resume`) additionally requires `--config-name`. The experiment directory from the previous run must exist, and `--llm-model` and `--top-k` must match the original run. Not compatible with `--backend langfuse` (the Langfuse backend is write-only).
 
 ## `veritail init`
 

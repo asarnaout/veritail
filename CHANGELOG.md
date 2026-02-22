@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Removed `--rubric` CLI flag and custom rubric support. The built-in ecommerce relevance rubric is now always used. The `rubric` field has been removed from `ExperimentConfig` and run metadata. Resume config mismatch checks no longer include rubric.
+
+### Removed
+
+- `--rubric` CLI option
+- `load_rubric()` dynamic rubric loader from `veritail.rubrics`
+- `rubric` field from `ExperimentConfig`
+- `docs/custom-rubrics.md` replaced by `docs/enterprise-context.md` (enterprise context documentation preserved)
+
 ### Added
 
 - Tiered vertical overlays: verticals support a core system prompt plus category-specific overlays injected per-query into the user prompt, reducing context rot and cost for deep domain knowledge

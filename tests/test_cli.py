@@ -1591,9 +1591,7 @@ class TestCLI:
         exp_dir.mkdir(parents=True)
         config_file = exp_dir / "config.json"
         config_file.write_text(
-            json.dumps(
-                {"llm_model": "gpt-4o", "rubric": "ecommerce-default", "top_k": 10}
-            ),
+            json.dumps({"llm_model": "gpt-4o", "top_k": 10}),
             encoding="utf-8",
         )
 
@@ -1619,48 +1617,6 @@ class TestCLI:
         assert "config mismatch" in result.output
         assert "llm_model" in result.output
 
-    def test_run_resume_config_mismatch_rubric(self, tmp_path):
-        queries_file = tmp_path / "queries.csv"
-        queries_file.write_text("query\nshoes\n")
-
-        adapter_file = tmp_path / "adapter.py"
-        adapter_file.write_text("def search(q): return []\n")
-
-        output_dir = tmp_path / "results"
-        exp_dir = output_dir / "my-config"
-        exp_dir.mkdir(parents=True)
-        config_file = exp_dir / "config.json"
-        config_file.write_text(
-            json.dumps(
-                {"llm_model": "gpt-4o", "rubric": "ecommerce-default", "top_k": 10}
-            ),
-            encoding="utf-8",
-        )
-
-        runner = CliRunner()
-        result = runner.invoke(
-            main,
-            [
-                "run",
-                "--queries",
-                str(queries_file),
-                "--adapter",
-                str(adapter_file),
-                "--llm-model",
-                "gpt-4o",
-                "--rubric",
-                "custom-rubric",
-                "--config-name",
-                "my-config",
-                "--output-dir",
-                str(output_dir),
-                "--resume",
-            ],
-        )
-        assert result.exit_code != 0
-        assert "config mismatch" in result.output
-        assert "rubric" in result.output
-
     def test_run_resume_config_mismatch_top_k(self, tmp_path):
         queries_file = tmp_path / "queries.csv"
         queries_file.write_text("query\nshoes\n")
@@ -1673,9 +1629,7 @@ class TestCLI:
         exp_dir.mkdir(parents=True)
         config_file = exp_dir / "config.json"
         config_file.write_text(
-            json.dumps(
-                {"llm_model": "gpt-4o", "rubric": "ecommerce-default", "top_k": 10}
-            ),
+            json.dumps({"llm_model": "gpt-4o", "top_k": 10}),
             encoding="utf-8",
         )
 

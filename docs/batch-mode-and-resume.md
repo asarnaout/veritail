@@ -36,7 +36,7 @@ veritail run --queries queries.csv --adapter adapter.py \
 
 ### Config mismatch detection
 
-On resume, veritail checks the saved `config.json` and rejects the run if `--llm-model`, `--rubric`, or `--top-k` differ from the original. This prevents silently mixing results from different configurations.
+On resume, veritail checks the saved `config.json` and rejects the run if `--llm-model` or `--top-k` differ from the original. This prevents silently mixing results from different configurations.
 
 ### How it works -- non-batch mode
 
