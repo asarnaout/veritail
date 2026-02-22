@@ -168,6 +168,7 @@ class TestFoodserviceOverlays:
                 "furniture",
                 "groceries",
                 "home-improvement",
+                "industrial",
             }
         ],
     )
@@ -1569,6 +1570,214 @@ class TestHomeImprovementOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in HOME_IMPROVEMENT.overlays[key].content.lower()
+
+
+INDUSTRIAL_OVERLAY_KEYS = [
+    "abrasives",
+    "adhesives_sealants",
+    "bearings",
+    "cutting_tools",
+    "electrical",
+    "fasteners",
+    "hydraulic_fittings_hose",
+    "lubrication",
+    "material_handling",
+    "motors_drives",
+    "pipe_valves_fittings",
+    "pneumatic",
+    "ppe_arc_flash_fr",
+    "ppe_hand",
+    "ppe_head_eye_face",
+    "ppe_respiratory_foot",
+    "pumps",
+    "raw_materials",
+    "seals_gaskets_orings",
+    "test_measurement",
+    "welding",
+    "power_transmission",
+]
+
+
+class TestIndustrialOverlays:
+    def test_industrial_has_overlays(self):
+        assert len(INDUSTRIAL.overlays) == 22
+
+    def test_overlay_keys(self):
+        assert set(INDUSTRIAL.overlays.keys()) == set(INDUSTRIAL_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", INDUSTRIAL_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = INDUSTRIAL.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_fasteners_mentions_unc(self):
+        assert "unc" in INDUSTRIAL.overlays["fasteners"].content.lower()
+
+    def test_bearings_mentions_pillow_block(self):
+        assert "pillow block" in INDUSTRIAL.overlays["bearings"].content.lower()
+
+    def test_power_transmission_mentions_v_belt(self):
+        content = INDUSTRIAL.overlays["power_transmission"].content.lower()
+        assert "v-belt" in content
+
+    def test_hydraulic_mentions_jic(self):
+        assert "jic" in INDUSTRIAL.overlays["hydraulic_fittings_hose"].content.lower()
+
+    def test_pneumatic_mentions_push_to_connect(self):
+        assert "push-to-connect" in INDUSTRIAL.overlays["pneumatic"].content.lower()
+
+    def test_electrical_mentions_conduit(self):
+        assert "conduit" in INDUSTRIAL.overlays["electrical"].content.lower()
+
+    def test_motors_drives_mentions_vfd(self):
+        assert "vfd" in INDUSTRIAL.overlays["motors_drives"].content.lower()
+
+    def test_pipe_valves_mentions_schedule(self):
+        assert "schedule" in INDUSTRIAL.overlays["pipe_valves_fittings"].content.lower()
+
+    def test_pumps_mentions_centrifugal(self):
+        assert "centrifugal" in INDUSTRIAL.overlays["pumps"].content.lower()
+
+    def test_ppe_head_eye_face_mentions_z87(self):
+        assert "z87" in INDUSTRIAL.overlays["ppe_head_eye_face"].content.lower()
+
+    def test_ppe_hand_mentions_cut(self):
+        assert "cut" in INDUSTRIAL.overlays["ppe_hand"].content.lower()
+
+    def test_ppe_arc_flash_mentions_nfpa(self):
+        assert "nfpa" in INDUSTRIAL.overlays["ppe_arc_flash_fr"].content.lower()
+
+    def test_ppe_respiratory_foot_mentions_n95(self):
+        assert "n95" in INDUSTRIAL.overlays["ppe_respiratory_foot"].content.lower()
+
+    def test_welding_mentions_e7018(self):
+        assert "e7018" in INDUSTRIAL.overlays["welding"].content.lower()
+
+    def test_cutting_tools_mentions_insert(self):
+        assert "insert" in INDUSTRIAL.overlays["cutting_tools"].content.lower()
+
+    def test_abrasives_mentions_grinding(self):
+        assert "grinding" in INDUSTRIAL.overlays["abrasives"].content.lower()
+
+    def test_adhesives_mentions_threadlocker(self):
+        content = INDUSTRIAL.overlays["adhesives_sealants"].content.lower()
+        assert "threadlocker" in content
+
+    def test_lubrication_mentions_nlgi(self):
+        assert "nlgi" in INDUSTRIAL.overlays["lubrication"].content.lower()
+
+    def test_seals_mentions_o_ring(self):
+        assert "o-ring" in INDUSTRIAL.overlays["seals_gaskets_orings"].content.lower()
+
+    def test_material_handling_mentions_sling(self):
+        assert "sling" in INDUSTRIAL.overlays["material_handling"].content.lower()
+
+    def test_test_measurement_mentions_multimeter(self):
+        assert "multimeter" in INDUSTRIAL.overlays["test_measurement"].content.lower()
+
+    def test_raw_materials_mentions_stainless(self):
+        assert "stainless" in INDUSTRIAL.overlays["raw_materials"].content.lower()
+
+    def test_core_has_part_number_precision(self):
+        core = INDUSTRIAL.core.lower()
+        assert "part number" in core
+
+    def test_core_has_system_compatibility(self):
+        core = INDUSTRIAL.core.lower()
+        assert "npt" in core
+        assert "bsp" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("fasteners", "unc"),
+            ("fasteners", "unf"),
+            ("fasteners", "grade 5"),
+            ("fasteners", "grade 8"),
+            ("fasteners", "18-8"),
+            ("fasteners", "hex cap screw"),
+            ("bearings", "6205"),
+            ("bearings", "pillow block"),
+            ("bearings", "2rs"),
+            ("bearings", "abec"),
+            ("power_transmission", "v-belt"),
+            ("power_transmission", "timing belt"),
+            ("power_transmission", "roller chain"),
+            ("power_transmission", "sheave"),
+            ("hydraulic_fittings_hose", "jic"),
+            ("hydraulic_fittings_hose", "orfs"),
+            ("hydraulic_fittings_hose", "npt"),
+            ("hydraulic_fittings_hose", "dash size"),
+            ("pneumatic", "push-to-connect"),
+            ("pneumatic", "frl"),
+            ("pneumatic", "5/2"),
+            ("electrical", "thhn"),
+            ("electrical", "emt"),
+            ("electrical", "nema"),
+            ("electrical", "awg"),
+            ("motors_drives", "vfd"),
+            ("motors_drives", "tefc"),
+            ("motors_drives", "frame"),
+            ("motors_drives", "nema"),
+            ("pipe_valves_fittings", "schedule 40"),
+            ("pipe_valves_fittings", "gate valve"),
+            ("pipe_valves_fittings", "ball valve"),
+            ("pipe_valves_fittings", "flange"),
+            ("pumps", "centrifugal"),
+            ("pumps", "npsh"),
+            ("pumps", "mechanical seal"),
+            ("ppe_head_eye_face", "z87"),
+            ("ppe_head_eye_face", "nrr"),
+            ("ppe_head_eye_face", "hard hat"),
+            ("ppe_hand", "cut level"),
+            ("ppe_hand", "nitrile"),
+            ("ppe_hand", "en 388"),
+            ("ppe_arc_flash_fr", "nfpa 70e"),
+            ("ppe_arc_flash_fr", "cal/cm"),
+            ("ppe_arc_flash_fr", "hi-vis"),
+            ("ppe_respiratory_foot", "n95"),
+            ("ppe_respiratory_foot", "papr"),
+            ("ppe_respiratory_foot", "steel toe"),
+            ("welding", "e7018"),
+            ("welding", "er70s-6"),
+            ("welding", "flux-core"),
+            ("welding", "shielding gas"),
+            ("cutting_tools", "insert"),
+            ("cutting_tools", "cat40"),
+            ("cutting_tools", "end mill"),
+            ("cutting_tools", "tap"),
+            ("abrasives", "grinding wheel"),
+            ("abrasives", "flap disc"),
+            ("abrasives", "aluminum oxide"),
+            ("adhesives_sealants", "threadlocker"),
+            ("adhesives_sealants", "loctite"),
+            ("adhesives_sealants", "ptfe"),
+            ("adhesives_sealants", "epoxy"),
+            ("lubrication", "nlgi"),
+            ("lubrication", "iso vg"),
+            ("lubrication", "hydraulic oil"),
+            ("lubrication", "grease"),
+            ("seals_gaskets_orings", "o-ring"),
+            ("seals_gaskets_orings", "viton"),
+            ("seals_gaskets_orings", "buna-n"),
+            ("seals_gaskets_orings", "durometer"),
+            ("material_handling", "sling"),
+            ("material_handling", "shackle"),
+            ("material_handling", "caster"),
+            ("material_handling", "grade 80"),
+            ("test_measurement", "multimeter"),
+            ("test_measurement", "cat iii"),
+            ("test_measurement", "torque wrench"),
+            ("test_measurement", "caliper"),
+            ("raw_materials", "1018"),
+            ("raw_materials", "304"),
+            ("raw_materials", "6061"),
+            ("raw_materials", "uhmw"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in INDUSTRIAL.overlays[key].content.lower()
 
 
 class TestCustomVertical:
