@@ -153,7 +153,11 @@ class TestFoodserviceOverlays:
 
     @pytest.mark.parametrize(
         "name",
-        [n for n in ALL_BUILTINS if n not in {"foodservice", "automotive", "beauty"}],
+        [
+            n
+            for n in ALL_BUILTINS
+            if n not in {"foodservice", "automotive", "beauty", "electronics"}
+        ],
     )
     def test_other_verticals_have_no_overlays(self, name):
         vertical = load_vertical(name)
@@ -614,6 +618,198 @@ class TestBeautyOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in BEAUTY.overlays[key].content.lower()
+
+
+ELECTRONICS_OVERLAY_KEYS = [
+    "camera_lenses",
+    "cameras_and_kits",
+    "charging_cables_and_adapters",
+    "device_specific_protection",
+    "external_storage",
+    "gaming_consoles",
+    "gaming_desktop_pcs",
+    "gaming_laptops",
+    "headphones_and_earbuds",
+    "home_audio",
+    "macbooks",
+    "memory_cards_and_flash",
+    "memory_ram",
+    "monitors",
+    "motherboards",
+    "networking",
+    "office_desktops_workstations_aio_mini",
+    "pc_cases_and_cooling",
+    "pc_cpus",
+    "pc_gpus",
+    "power_supplies",
+    "printer_ink_and_toner",
+    "printers_and_scanners",
+    "productivity_laptops_ultrabooks",
+    "smart_home",
+    "smartphones",
+    "storage_internal",
+    "tablets_and_ereaders",
+    "tvs_and_projectors",
+    "vr_headsets",
+    "wearables",
+]
+
+
+class TestElectronicsOverlays:
+    def test_electronics_has_overlays(self):
+        assert len(ELECTRONICS.overlays) == 31
+
+    def test_overlay_keys(self):
+        assert set(ELECTRONICS.overlays.keys()) == set(ELECTRONICS_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", ELECTRONICS_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = ELECTRONICS.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_gaming_desktops_mentions_prebuilt(self):
+        content = ELECTRONICS.overlays["gaming_desktop_pcs"].content.lower()
+        assert "prebuilt" in content
+
+    def test_gaming_laptops_mentions_gpu(self):
+        content = ELECTRONICS.overlays["gaming_laptops"].content.lower()
+        assert "gpu" in content
+
+    def test_pc_cpus_mentions_socket(self):
+        content = ELECTRONICS.overlays["pc_cpus"].content.lower()
+        assert "socket" in content
+
+    def test_pc_gpus_mentions_vram(self):
+        content = ELECTRONICS.overlays["pc_gpus"].content.lower()
+        assert "vram" in content
+
+    def test_motherboards_mentions_chipset(self):
+        content = ELECTRONICS.overlays["motherboards"].content.lower()
+        assert "chipset" in content
+
+    def test_memory_ram_mentions_ddr(self):
+        content = ELECTRONICS.overlays["memory_ram"].content.lower()
+        assert "ddr4" in content
+        assert "ddr5" in content
+
+    def test_storage_internal_mentions_nvme(self):
+        content = ELECTRONICS.overlays["storage_internal"].content.lower()
+        assert "nvme" in content
+
+    def test_monitors_mentions_refresh_rate(self):
+        content = ELECTRONICS.overlays["monitors"].content.lower()
+        assert "refresh rate" in content
+
+    def test_networking_mentions_wifi(self):
+        content = ELECTRONICS.overlays["networking"].content.lower()
+        assert "wi-fi" in content
+
+    def test_smartphones_mentions_unlocked(self):
+        content = ELECTRONICS.overlays["smartphones"].content.lower()
+        assert "unlocked" in content
+
+    def test_headphones_mentions_anc(self):
+        content = ELECTRONICS.overlays["headphones_and_earbuds"].content
+        assert "ANC" in content
+
+    def test_core_has_compatibility_gate(self):
+        core = ELECTRONICS.core.lower()
+        assert "compatibility" in core
+        assert "connector" in core
+
+    def test_core_has_form_factor(self):
+        core = ELECTRONICS.core.lower()
+        assert "form factor" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("gaming_desktop_pcs", "prebuilt"),
+            ("gaming_desktop_pcs", "gpu"),
+            ("gaming_desktop_pcs", "barebones"),
+            ("office_desktops_workstations_aio_mini", "all-in-one"),
+            ("office_desktops_workstations_aio_mini", "mini pc"),
+            ("office_desktops_workstations_aio_mini", "workstation"),
+            ("gaming_laptops", "tgp"),
+            ("gaming_laptops", "refresh rate"),
+            ("gaming_laptops", "thunderbolt"),
+            ("productivity_laptops_ultrabooks", "chromebook"),
+            ("productivity_laptops_ultrabooks", "2-in-1"),
+            ("productivity_laptops_ultrabooks", "ultrabook"),
+            ("macbooks", "apple silicon"),
+            ("macbooks", "magsafe"),
+            ("macbooks", "unified memory"),
+            ("tablets_and_ereaders", "cellular"),
+            ("tablets_and_ereaders", "e-reader"),
+            ("tablets_and_ereaders", "stylus"),
+            ("wearables", "gps"),
+            ("wearables", "ecg"),
+            ("pc_cpus", "socket"),
+            ("pc_cpus", "boxed"),
+            ("pc_cpus", "suffix"),
+            ("pc_gpus", "vram"),
+            ("pc_gpus", "12vhpwr"),
+            ("pc_gpus", "workstation"),
+            ("motherboards", "ddr4"),
+            ("motherboards", "wi-fi"),
+            ("motherboards", "m.2"),
+            ("memory_ram", "ddr4"),
+            ("memory_ram", "so-dimm"),
+            ("memory_ram", "ecc"),
+            ("storage_internal", "nvme"),
+            ("storage_internal", "sata"),
+            ("storage_internal", "2280"),
+            ("external_storage", "thunderbolt"),
+            ("external_storage", "portable"),
+            ("memory_cards_and_flash", "microsd"),
+            ("memory_cards_and_flash", "v30"),
+            ("memory_cards_and_flash", "uhs"),
+            ("power_supplies", "atx"),
+            ("power_supplies", "sfx"),
+            ("power_supplies", "modular"),
+            ("pc_cases_and_cooling", "radiator"),
+            ("pc_cases_and_cooling", "thermal paste"),
+            ("monitors", "refresh rate"),
+            ("monitors", "ultrawide"),
+            ("monitors", "hdr"),
+            ("tvs_and_projectors", "oled"),
+            ("tvs_and_projectors", "hdmi"),
+            ("tvs_and_projectors", "projector"),
+            ("headphones_and_earbuds", "noise cancellation"),
+            ("headphones_and_earbuds", "bluetooth"),
+            ("home_audio", "soundbar"),
+            ("home_audio", "subwoofer"),
+            ("home_audio", "earc"),
+            ("networking", "mesh"),
+            ("networking", "docsis"),
+            ("networking", "router"),
+            ("smart_home", "matter"),
+            ("smart_home", "zigbee"),
+            ("smart_home", "z-wave"),
+            ("smartphones", "unlocked"),
+            ("smartphones", "carrier"),
+            ("device_specific_protection", "magsafe"),
+            ("device_specific_protection", "screen protector"),
+            ("charging_cables_and_adapters", "thunderbolt"),
+            ("charging_cables_and_adapters", "usb-c"),
+            ("charging_cables_and_adapters", "power delivery"),
+            ("cameras_and_kits", "mirrorless"),
+            ("cameras_and_kits", "body only"),
+            ("camera_lenses", "mount"),
+            ("camera_lenses", "focal length"),
+            ("printers_and_scanners", "laser"),
+            ("printers_and_scanners", "inkjet"),
+            ("printer_ink_and_toner", "cartridge"),
+            ("printer_ink_and_toner", "drum"),
+            ("gaming_consoles", "ps5"),
+            ("gaming_consoles", "microsd"),
+            ("vr_headsets", "steamvr"),
+            ("vr_headsets", "standalone"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in ELECTRONICS.overlays[key].content.lower()
 
 
 class TestCustomVertical:
