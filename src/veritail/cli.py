@@ -519,6 +519,7 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
                 "top_k": top_k,
                 "type": "autocomplete",
             },
+            resume=use_resume,
         )
 
         ac_checks, ac_responses = run_autocomplete_evaluation(
