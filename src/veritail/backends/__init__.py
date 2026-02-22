@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
 from veritail.types import CorrectionJudgment, JudgmentRecord, SuggestionJudgment
+
+logger = logging.getLogger(__name__)
 
 
 class EvalBackend(ABC):
@@ -54,6 +57,7 @@ def create_backend(backend_type: str, **kwargs: Any) -> EvalBackend:
     if backend_type == "file":
         from veritail.backends.file import FileBackend
 
+        logger.debug("created backend: file")
         return FileBackend(**kwargs)
     elif backend_type == "langfuse":
         try:
@@ -70,6 +74,7 @@ def create_backend(backend_type: str, **kwargs: Any) -> EvalBackend:
                 "with your Python version. Try Python 3.13 or earlier, "
                 "or check for a newer langfuse release."
             ) from exc
+        logger.debug("created backend: langfuse")
         return LangfuseBackend(**kwargs)
     else:
         raise ValueError(

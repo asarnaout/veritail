@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from veritail.types import VerticalContext
@@ -19,6 +20,8 @@ from veritail.verticals.medical import MEDICAL
 from veritail.verticals.office_supplies import OFFICE_SUPPLIES
 from veritail.verticals.pet_supplies import PET_SUPPLIES
 from veritail.verticals.sporting_goods import SPORTING_GOODS
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "AUTOMOTIVE",
@@ -81,11 +84,25 @@ def load_vertical(name: str) -> VerticalContext:
     """
     key = name.lower()
     if key in _BUILTIN_VERTICALS:
-        return _BUILTIN_VERTICALS[key]
+        vc = _BUILTIN_VERTICALS[key]
+        overlay_count = len(vc.overlays) if vc.overlays else 0
+        logger.debug(
+            "loaded built-in vertical: %s, core=%d chars, overlays=%d",
+            key,
+            len(vc.core),
+            overlay_count,
+        )
+        return vc
 
     path = Path(name)
     if path.is_file():
-        return VerticalContext(core=path.read_text(encoding="utf-8").rstrip())
+        vc = VerticalContext(core=path.read_text(encoding="utf-8").rstrip())
+        logger.debug(
+            "loaded vertical from file: %s, core=%d chars",
+            name,
+            len(vc.core),
+        )
+        return vc
 
     available = ", ".join(sorted(_BUILTIN_VERTICALS))
     raise FileNotFoundError(

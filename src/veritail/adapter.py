@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
 from veritail.types import SearchResponse
+
+logger = logging.getLogger(__name__)
 
 
 def load_adapter(path: str) -> Callable[[str], SearchResponse]:
@@ -39,6 +42,7 @@ def load_adapter(path: str) -> Callable[[str], SearchResponse]:
     search_fn = module.search
     if not callable(search_fn):
         raise TypeError(f"'search' in '{path}' is not callable")
+    logger.debug("loaded adapter: %s", path)
 
     def _wrap(query: str) -> SearchResponse:
         raw = search_fn(query)

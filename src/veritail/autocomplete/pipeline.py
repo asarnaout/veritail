@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -32,6 +33,7 @@ from veritail.types import (
     SuggestionJudgment,
 )
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 
@@ -69,6 +71,12 @@ def run_autocomplete_evaluation(
                     metadata=response.metadata,
                 )
                 responses_by_prefix[i] = response
+                logger.debug(
+                    "prefix %r: %d suggestions, %.0f ms",
+                    entry.prefix,
+                    len(response.suggestions),
+                    latency_ms or 0,
+                )
             except Exception as exc:
                 console.print(
                     f"[yellow]Adapter error for prefix '{entry.prefix}': {exc}[/yellow]"
@@ -157,6 +165,12 @@ def run_autocomplete_llm_evaluation(
 
             try:
                 sj = judge.judge(entry.prefix, resp.suggestions)
+                logger.debug(
+                    "llm judgment: prefix=%r, relevance=%d, diversity=%d",
+                    entry.prefix,
+                    sj.relevance_score,
+                    sj.diversity_score,
+                )
                 judgments.append(sj)
             except Exception as exc:
                 console.print(
@@ -248,6 +262,11 @@ def run_autocomplete_batch_llm_evaluation(
         )
         batch_id = llm_client.submit_batch(batch_requests)
         console.print(f"[dim]Batch ID: {batch_id}[/dim]")
+        logger.debug(
+            "autocomplete batch submitted: id=%s, count=%d",
+            batch_id,
+            len(batch_requests),
+        )
 
         gemini_order = getattr(llm_client, "_batch_custom_ids", {}).get(batch_id, [])
         save_checkpoint(

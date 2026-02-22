@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping
 
 from veritail.types import JudgmentRecord, MetricResult, QueryEntry
+
+logger = logging.getLogger(__name__)
 
 
 def ndcg_at_k(judgments: list[JudgmentRecord], k: int = 10) -> float:
@@ -230,5 +233,10 @@ def compute_all_metrics(
                 total_queries=total_queries,
             )
         )
+
+    for m in results:
+        logger.debug("metric %s=%.4f", m.metric_name, m.value)
+        for qt, val in m.by_query_type.items():
+            logger.debug("  %s[%s]=%.4f", m.metric_name, qt, val)
 
     return results

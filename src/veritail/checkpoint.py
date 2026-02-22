@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from veritail.types import SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -48,6 +51,11 @@ def save_checkpoint(
         json.dump(asdict(checkpoint), f, indent=2, default=str)
     # os.replace is atomic on the same filesystem
     os.replace(tmp_path, path)
+    logger.debug(
+        "checkpoint saved: experiment=%s, batch=%s",
+        experiment,
+        checkpoint.batch_id,
+    )
 
 
 def load_checkpoint(
@@ -59,6 +67,7 @@ def load_checkpoint(
         return None
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
+    logger.debug("checkpoint loaded: experiment=%s", experiment)
     return BatchCheckpoint(**data)
 
 
@@ -69,6 +78,7 @@ def clear_checkpoint(
     path = _checkpoint_path(output_dir, experiment, filename=filename)
     if path.exists():
         path.unlink()
+        logger.debug("checkpoint cleared: experiment=%s", experiment)
 
 
 def serialize_request_context(

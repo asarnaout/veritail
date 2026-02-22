@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 from typing import Any
 
@@ -9,6 +10,8 @@ from langfuse import Langfuse
 
 from veritail.backends import EvalBackend
 from veritail.types import CorrectionJudgment, JudgmentRecord, SuggestionJudgment
+
+logger = logging.getLogger(__name__)
 
 
 class LangfuseBackend(EvalBackend):
@@ -42,6 +45,7 @@ class LangfuseBackend(EvalBackend):
 
         self._client: Any = Langfuse(**kwargs)
         self._session_id: str | None = None
+        logger.debug("langfuse backend: url=%s", url or "default")
 
     def log_judgment(self, judgment: JudgmentRecord) -> None:
         """Store a judgment as a Langfuse generation with a relevance score."""
@@ -110,6 +114,7 @@ class LangfuseBackend(EvalBackend):
         self, name: str, config: dict[str, Any], *, resume: bool = False
     ) -> None:
         """Register an experiment as a Langfuse span."""
+        logger.debug("langfuse experiment registered: %s", name)
         self._session_id = name
 
         trace_id = Langfuse.create_trace_id(seed=f"experiment:{name}")

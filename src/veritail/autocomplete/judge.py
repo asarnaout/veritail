@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 
 from veritail.llm.client import BatchRequest, LLMClient, LLMResponse
 from veritail.prompts import load_prompt
 from veritail.types import SuggestionJudgment
+
+logger = logging.getLogger(__name__)
 
 SUGGESTION_SYSTEM_PROMPT = load_prompt("autocomplete/suggestion.md")
 
@@ -35,6 +38,13 @@ class SuggestionJudge:
 
         relevance, diversity, flagged, reasoning = self._parse_response(
             response.content
+        )
+        logger.debug(
+            "suggestion judge: prefix=%r, relevance=%d, diversity=%d, flagged=%d",
+            prefix,
+            relevance,
+            diversity,
+            len(flagged),
         )
 
         return SuggestionJudgment(

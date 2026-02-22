@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 from pathlib import Path
 
 from veritail.types import QueryEntry
+
+logger = logging.getLogger(__name__)
 
 
 def load_queries(path: str) -> list[QueryEntry]:
@@ -23,11 +26,13 @@ def load_queries(path: str) -> list[QueryEntry]:
 
     suffix = file_path.suffix.lower()
     if suffix == ".csv":
-        return _load_csv(file_path)
+        entries = _load_csv(file_path)
     elif suffix == ".json":
-        return _load_json(file_path)
+        entries = _load_json(file_path)
     else:
         raise ValueError(f"Unsupported query file format: {suffix}. Use .csv or .json")
+    logger.debug("loaded %d queries from %s (format=%s)", len(entries), path, suffix)
+    return entries
 
 
 def _load_csv(path: Path) -> list[QueryEntry]:

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import re
 import warnings
 from pathlib import Path
 
 from veritail.llm.client import LLMClient
 from veritail.prompts import load_prompt
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_QUERY_COUNT = 25
 MAX_QUERY_COUNT = 50
@@ -215,6 +218,7 @@ def generate_queries(
         context = Path(context).read_text(encoding="utf-8").rstrip()
 
     distribution = _compute_distribution(count)
+    logger.debug("query distribution: %s", distribution)
 
     user_prompt = _build_user_prompt(
         distribution=distribution,
@@ -228,6 +232,7 @@ def generate_queries(
     )
 
     queries = _parse_response(response.content)
+    logger.debug("llm returned %d queries", len(queries))
 
     if len(queries) != count:
         warnings.warn(

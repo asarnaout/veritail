@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import warnings
 from dataclasses import asdict
 from pathlib import Path
@@ -10,6 +11,8 @@ from typing import Any
 
 from veritail.backends import EvalBackend
 from veritail.types import JudgmentRecord, SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 class FileBackend(EvalBackend):
@@ -25,6 +28,7 @@ class FileBackend(EvalBackend):
 
     def __init__(self, output_dir: str = "./eval-results") -> None:
         self._output_dir = Path(output_dir)
+        logger.debug("file backend: output_dir=%s", output_dir)
 
     def _experiment_dir(self, experiment: str) -> Path:
         d = self._output_dir / experiment
@@ -55,6 +59,7 @@ class FileBackend(EvalBackend):
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump({"name": name, **config}, f, indent=2, default=str)
 
+        logger.debug("experiment registered: %s, resume=%s", name, resume)
         if not resume:
             # One experiment run should produce one deterministic judgments file.
             judgments_file.write_text("", encoding="utf-8")
@@ -80,6 +85,11 @@ class FileBackend(EvalBackend):
                         indices.add(int(qi))
                 except (json.JSONDecodeError, ValueError, TypeError):
                     continue
+        logger.debug(
+            "resume: %d completed query indices for %s",
+            len(indices),
+            experiment,
+        )
         return indices
 
     def get_judgments(self, experiment: str) -> list[JudgmentRecord]:

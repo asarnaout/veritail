@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from veritail.checks.query_level import check_result_count, check_zero_results
@@ -13,6 +14,8 @@ from veritail.checks.result_level import (
     check_title_length,
 )
 from veritail.types import CheckResult, QueryEntry, SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 def run_all_checks(
@@ -41,6 +44,16 @@ def run_all_checks(
     if custom_checks:
         for check_fn in custom_checks:
             checks.extend(check_fn(query, results))
+
+    failed = [c for c in checks if not c.passed]
+    if failed:
+        names = [c.check_name for c in failed]
+        logger.debug(
+            "checks for %r: %d failed (%s)",
+            query.query,
+            len(failed),
+            ", ".join(names),
+        )
 
     return checks
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Sequence
@@ -11,6 +12,7 @@ from rich.progress import Progress, TaskID
 
 from veritail.llm.client import LLMClient
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 
@@ -58,6 +60,13 @@ def poll_until_done(
                 raise BatchCancelledError()
 
             status, completed, total = llm_client.poll_batch(batch_id)
+            logger.debug(
+                "poll: batch=%s, status=%s, %d/%d",
+                batch_id,
+                status,
+                completed,
+                total,
+            )
             progress.update(
                 poll_task, completed=completed, total=total or expected_total
             )
@@ -71,6 +80,7 @@ def poll_until_done(
                     msg += f" Error: {detail}"
                 else:
                     msg += " Check your provider's dashboard for details."
+                logger.debug("batch terminal: id=%s, status=%s", batch_id, status)
                 raise BatchFailedError(msg, batch_id=batch_id, status=status)
 
             if cancel_event is not None:
