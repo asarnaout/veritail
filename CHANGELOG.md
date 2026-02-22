@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--verbose` / `-v` CLI flag enables debug logging to stderr for pipeline tracing, LLM provider selection, token usage, classification results, judgment scores, check summaries, batch operations, and metric values
 - Tiered vertical overlays: verticals support a core system prompt plus category-specific overlays injected per-query into the user prompt, reducing context rot and cost for deep domain knowledge
 - New types: `VerticalOverlay` and `VerticalContext` for structured vertical definitions
 - `QueryEntry.overlay` field for classified overlay keys in query CSV/JSON files

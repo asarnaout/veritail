@@ -10,6 +10,7 @@ Run a single or dual-configuration evaluation.
 
 | Option | Default | Description |
 |---|---|---|
+| `-v` / `--verbose` | off | Enable debug logging to stderr. Shows provider selection, token usage, classification results, judgment scores, check summaries, batch operations, and metric values. Does not interfere with Rich console output on stdout |
 | `--queries` | *(optional)* | Path to query set (`.csv` or `.json`). Optional, but at least one of `--queries` or `--autocomplete` is required |
 | `--autocomplete` | *(optional)* | Path to autocomplete prefix set (`.csv` or `.json`). Optional, but at least one of `--queries` or `--autocomplete` is required. The adapter must export a `suggest()` function when this flag is used |
 | `--adapter` | *(required)* | Path to adapter module. Always required; pass up to 2 for dual-config comparison mode |
@@ -84,6 +85,7 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 | `--llm-model` | *(required)* | LLM model for generation (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`) |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
+| `-v` / `--verbose` | off | Enable debug logging to stderr |
 
 > **Note:** Query counts are approximate. LLMs may return slightly fewer or more queries than requested. The CLI will report the actual count generated. For larger query sets, run the command multiple times or curate queries manually.
 

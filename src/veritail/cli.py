@@ -713,16 +713,8 @@ def _warn_custom_model(model: str, base_url: str | None) -> None:
 
 @click.group()
 @click.version_option(package_name="veritail")
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    default=False,
-    help="Enable debug logging to stderr.",
-)
-def main(verbose: bool) -> None:
+def main() -> None:
     """veritail: Ecommerce search relevance evaluation tool."""
-    configure_logging(verbose=verbose)
 
 
 @main.command()
@@ -886,6 +878,13 @@ def vertical_show(name: str) -> None:
     default=None,
     help="API key override (useful for non-OpenAI endpoints that ignore keys).",
 )
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Enable debug logging to stderr.",
+)
 def generate_queries_cmd(
     output: str,
     count: int,
@@ -894,8 +893,10 @@ def generate_queries_cmd(
     llm_model: str,
     llm_base_url: str | None,
     llm_api_key: str | None,
+    verbose: bool,
 ) -> None:
     """Generate evaluation queries with an LLM and save to CSV."""
+    configure_logging(verbose=verbose)
     if count < 1:
         raise click.UsageError("--count must be >= 1.")
 
@@ -1100,6 +1101,13 @@ def generate_queries_cmd(
         "to identify the previous run."
     ),
 )
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Enable debug logging to stderr.",
+)
 def run(
     queries: str | None,
     autocomplete_prefixes: str | None,
@@ -1120,8 +1128,10 @@ def run(
     sample: int | None,
     use_batch: bool,
     use_resume: bool,
+    verbose: bool,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
+    configure_logging(verbose=verbose)
     if not queries and not autocomplete_prefixes:
         raise click.UsageError(
             "Provide --queries, --autocomplete, or both.\n\n"
