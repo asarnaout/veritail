@@ -153,29 +153,10 @@ class TestFoodserviceOverlays:
         assert len(overlay.content) > 50
         assert len(overlay.description) > 10
 
-    @pytest.mark.parametrize(
-        "name",
-        [
-            n
-            for n in ALL_BUILTINS
-            if n
-            not in {
-                "foodservice",
-                "automotive",
-                "beauty",
-                "electronics",
-                "fashion",
-                "furniture",
-                "groceries",
-                "home-improvement",
-                "industrial",
-                "medical",
-            }
-        ],
-    )
-    def test_other_verticals_have_no_overlays(self, name):
+    @pytest.mark.parametrize("name", ALL_BUILTINS)
+    def test_all_verticals_have_overlays(self, name):
         vertical = load_vertical(name)
-        assert vertical.overlays == {}
+        assert len(vertical.overlays) > 0
 
     def test_cooking_mentions_cooking(self):
         assert "cooking" in FOODSERVICE.overlays["cooking"].content.lower()
@@ -1877,6 +1858,621 @@ class TestMedicalOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in MEDICAL.overlays[key].content.lower()
+
+
+MARKETPLACE_OVERLAY_KEYS = [
+    "apparel_and_footwear",
+    "automotive_parts",
+    "baby_and_juvenile",
+    "fine_jewelry",
+    "graded_collectibles",
+    "health_and_supplements",
+    "heavy_goods_and_logistics",
+    "luxury_goods",
+    "physical_media",
+    "power_tools",
+    "refurbished_electronics",
+    "sports_safety_equipment",
+    "video_games",
+]
+
+
+class TestMarketplaceOverlays:
+    def test_marketplace_has_overlays(self):
+        assert len(MARKETPLACE.overlays) == 13
+
+    def test_overlay_keys(self):
+        assert set(MARKETPLACE.overlays.keys()) == set(MARKETPLACE_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", MARKETPLACE_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = MARKETPLACE.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_automotive_parts_mentions_fitment(self):
+        content = MARKETPLACE.overlays["automotive_parts"].content.lower()
+        assert "fitment" in content
+
+    def test_refurbished_mentions_grade(self):
+        content = MARKETPLACE.overlays["refurbished_electronics"].content.lower()
+        assert "grade a" in content
+
+    def test_graded_collectibles_mentions_psa(self):
+        content = MARKETPLACE.overlays["graded_collectibles"].content.lower()
+        assert "psa" in content
+
+    def test_luxury_goods_mentions_gray_market(self):
+        content = MARKETPLACE.overlays["luxury_goods"].content.lower()
+        assert "gray market" in content
+
+    def test_fine_jewelry_mentions_lab_grown(self):
+        content = MARKETPLACE.overlays["fine_jewelry"].content.lower()
+        assert "lab-grown" in content
+
+    def test_power_tools_mentions_brushless(self):
+        content = MARKETPLACE.overlays["power_tools"].content.lower()
+        assert "brushless" in content
+
+    def test_apparel_mentions_vanity_sizing(self):
+        content = MARKETPLACE.overlays["apparel_and_footwear"].content.lower()
+        assert "vanity sizing" in content
+
+    def test_physical_media_mentions_goldmine(self):
+        content = MARKETPLACE.overlays["physical_media"].content.lower()
+        assert "goldmine" in content
+
+    def test_baby_mentions_cpsc(self):
+        content = MARKETPLACE.overlays["baby_and_juvenile"].content.lower()
+        assert "cpsc" in content
+
+    def test_health_mentions_nsf(self):
+        content = MARKETPLACE.overlays["health_and_supplements"].content.lower()
+        assert "nsf" in content
+
+    def test_video_games_mentions_region_locked(self):
+        content = MARKETPLACE.overlays["video_games"].content.lower()
+        assert "region-locked" in content
+
+    def test_heavy_goods_mentions_ltl(self):
+        content = MARKETPLACE.overlays["heavy_goods_and_logistics"].content.lower()
+        assert "ltl" in content
+
+    def test_sports_safety_mentions_nocsae(self):
+        content = MARKETPLACE.overlays["sports_safety_equipment"].content.lower()
+        assert "nocsae" in content
+
+    def test_core_has_offer_level_relevance(self):
+        core = MARKETPLACE.core.lower()
+        assert "offer" in core
+        assert "seller" in core
+
+    def test_core_has_condition_alignment(self):
+        core = MARKETPLACE.core.lower()
+        assert "condition" in core
+        assert "refurbished" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("automotive_parts", "fitment"),
+            ("automotive_parts", "aces"),
+            ("automotive_parts", "core charge"),
+            ("automotive_parts", "oem"),
+            ("automotive_parts", "universal"),
+            ("refurbished_electronics", "grade a"),
+            ("refurbished_electronics", "open-box"),
+            ("refurbished_electronics", "renewed"),
+            ("refurbished_electronics", "warranty"),
+            ("graded_collectibles", "psa"),
+            ("graded_collectibles", "bgs"),
+            ("graded_collectibles", "cgc"),
+            ("graded_collectibles", "universal"),
+            ("graded_collectibles", "restored"),
+            ("graded_collectibles", "coverless"),
+            ("luxury_goods", "gray market"),
+            ("luxury_goods", "date code"),
+            ("luxury_goods", "nwt"),
+            ("luxury_goods", "euc"),
+            ("luxury_goods", "guc"),
+            ("fine_jewelry", "lab-grown"),
+            ("fine_jewelry", "gia"),
+            ("fine_jewelry", "igi"),
+            ("fine_jewelry", "grading report"),
+            ("fine_jewelry", "4cs"),
+            ("power_tools", "20v max"),
+            ("power_tools", "brushless"),
+            ("power_tools", "bare tool"),
+            ("apparel_and_footwear", "vanity sizing"),
+            ("apparel_and_footwear", "nwt"),
+            ("apparel_and_footwear", "euc"),
+            ("physical_media", "goldmine"),
+            ("physical_media", "dead wax"),
+            ("physical_media", "matrix number"),
+            ("physical_media", "first edition"),
+            ("baby_and_juvenile", "cpsc"),
+            ("baby_and_juvenile", "astm"),
+            ("baby_and_juvenile", "jpma"),
+            ("health_and_supplements", "nsf"),
+            ("health_and_supplements", "usp"),
+            ("health_and_supplements", "fefo"),
+            ("video_games", "ntsc"),
+            ("video_games", "pal"),
+            ("video_games", "region-locked"),
+            ("heavy_goods_and_logistics", "flat-pack"),
+            ("heavy_goods_and_logistics", "ltl"),
+            ("heavy_goods_and_logistics", "liftgate"),
+            ("heavy_goods_and_logistics", "white-glove"),
+            ("sports_safety_equipment", "nocsae"),
+            ("sports_safety_equipment", "sei"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in MARKETPLACE.overlays[key].content.lower()
+
+
+OFFICE_SUPPLIES_OVERLAY_KEYS = [
+    "binding_and_presentation",
+    "filing_and_organization",
+    "ink_and_toner",
+    "janitorial_and_breakroom",
+    "mailing_and_packaging",
+    "office_furniture",
+    "paper_and_media",
+    "shredders_and_data_destruction",
+    "thermal_printers_and_labels",
+    "writing_instruments",
+]
+
+
+class TestOfficeSuppliesOverlays:
+    def test_office_supplies_has_overlays(self):
+        assert len(OFFICE_SUPPLIES.overlays) == 10
+
+    def test_overlay_keys(self):
+        assert set(OFFICE_SUPPLIES.overlays.keys()) == set(OFFICE_SUPPLIES_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", OFFICE_SUPPLIES_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = OFFICE_SUPPLIES.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_ink_and_toner_mentions_oem(self):
+        content = OFFICE_SUPPLIES.overlays["ink_and_toner"].content.lower()
+        assert "oem" in content
+
+    def test_paper_mentions_gsm(self):
+        content = OFFICE_SUPPLIES.overlays["paper_and_media"].content.lower()
+        assert "gsm" in content
+
+    def test_writing_instruments_mentions_refill(self):
+        content = OFFICE_SUPPLIES.overlays["writing_instruments"].content.lower()
+        assert "refill" in content
+
+    def test_office_furniture_mentions_bifma(self):
+        content = OFFICE_SUPPLIES.overlays["office_furniture"].content.lower()
+        assert "bifma" in content
+
+    def test_shredders_mentions_din(self):
+        overlay = OFFICE_SUPPLIES.overlays["shredders_and_data_destruction"]
+        assert "din 66399" in overlay.content.lower()
+
+    def test_mailing_mentions_corrugated(self):
+        content = OFFICE_SUPPLIES.overlays["mailing_and_packaging"].content.lower()
+        assert "corrugated" in content
+
+    def test_binding_mentions_wire_o(self):
+        content = OFFICE_SUPPLIES.overlays["binding_and_presentation"].content.lower()
+        assert "wire-o" in content
+
+    def test_filing_mentions_lateral(self):
+        content = OFFICE_SUPPLIES.overlays["filing_and_organization"].content.lower()
+        assert "lateral" in content
+
+    def test_thermal_printers_mentions_dymo(self):
+        overlay = OFFICE_SUPPLIES.overlays["thermal_printers_and_labels"]
+        assert "dymo" in overlay.content.lower()
+
+    def test_janitorial_mentions_z_fold(self):
+        content = OFFICE_SUPPLIES.overlays["janitorial_and_breakroom"].content.lower()
+        assert "z-fold" in content
+
+    def test_core_has_device_compatibility(self):
+        core = OFFICE_SUPPLIES.core.lower()
+        assert "compatibility" in core
+        assert "device" in core
+
+    def test_core_has_packaging_tiers(self):
+        core = OFFICE_SUPPLIES.core.lower()
+        assert "case" in core
+        assert "box" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("ink_and_toner", "oem"),
+            ("ink_and_toner", "compatible"),
+            ("ink_and_toner", "remanufactured"),
+            ("ink_and_toner", "high yield"),
+            ("ink_and_toner", "iso"),
+            ("paper_and_media", "gsm"),
+            ("paper_and_media", "brightness"),
+            ("paper_and_media", "laser"),
+            ("paper_and_media", "inkjet"),
+            ("paper_and_media", "legal"),
+            ("paper_and_media", "tabloid"),
+            ("writing_instruments", "refill"),
+            ("writing_instruments", "archival"),
+            ("writing_instruments", "mechanical pencil"),
+            ("writing_instruments", "hb"),
+            ("writing_instruments", "ap seal"),
+            ("office_furniture", "bifma"),
+            ("office_furniture", "x5.1"),
+            ("office_furniture", "x5.11"),
+            ("office_furniture", "cal 117"),
+            ("office_furniture", "cal 133"),
+            ("shredders_and_data_destruction", "din 66399"),
+            ("shredders_and_data_destruction", "p-4"),
+            ("shredders_and_data_destruction", "micro-cut"),
+            ("shredders_and_data_destruction", "nsa"),
+            ("shredders_and_data_destruction", "hipaa"),
+            ("mailing_and_packaging", "#10"),
+            ("mailing_and_packaging", "corrugated"),
+            ("mailing_and_packaging", "c-flute"),
+            ("mailing_and_packaging", "e-flute"),
+            ("mailing_and_packaging", "acrylic"),
+            ("binding_and_presentation", "comb binding"),
+            ("binding_and_presentation", "wire-o"),
+            ("binding_and_presentation", "velobind"),
+            ("binding_and_presentation", "laminating"),
+            ("filing_and_organization", "lateral"),
+            ("filing_and_organization", "vertical"),
+            ("filing_and_organization", "hanging folder"),
+            ("filing_and_organization", "1/3-cut"),
+            ("thermal_printers_and_labels", "dymo"),
+            ("thermal_printers_and_labels", "direct thermal"),
+            ("thermal_printers_and_labels", "thermal transfer"),
+            ("thermal_printers_and_labels", "avery"),
+            ("janitorial_and_breakroom", "z-fold"),
+            ("janitorial_and_breakroom", "c-fold"),
+            ("janitorial_and_breakroom", "centerpull"),
+            ("janitorial_and_breakroom", "hdpe"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in OFFICE_SUPPLIES.overlays[key].content.lower()
+
+
+PET_SUPPLIES_OVERLAY_KEYS = [
+    "aquarium_hardware_and_filtration",
+    "aquatic_livestock_and_medications",
+    "avian_habitat_and_safety",
+    "dog_training_and_walking_gear",
+    "equine_tack_and_feed",
+    "feline_habitat_and_litter",
+    "grooming_equipment",
+    "otc_pet_nutrition",
+    "pharmacy_and_parasiticides",
+    "reptile_husbandry_and_habitat",
+    "small_mammal_husbandry",
+    "veterinary_prescription_diets",
+]
+
+
+class TestPetSuppliesOverlays:
+    def test_pet_supplies_has_overlays(self):
+        assert len(PET_SUPPLIES.overlays) == 12
+
+    def test_overlay_keys(self):
+        assert set(PET_SUPPLIES.overlays.keys()) == set(PET_SUPPLIES_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", PET_SUPPLIES_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = PET_SUPPLIES.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_otc_nutrition_mentions_aafco(self):
+        content = PET_SUPPLIES.overlays["otc_pet_nutrition"].content.lower()
+        assert "aafco" in content
+
+    def test_veterinary_diets_mentions_prescription(self):
+        overlay = PET_SUPPLIES.overlays["veterinary_prescription_diets"]
+        assert "prescription" in overlay.content.lower()
+
+    def test_pharmacy_mentions_permethrin(self):
+        overlay = PET_SUPPLIES.overlays["pharmacy_and_parasiticides"]
+        assert "permethrin" in overlay.content.lower()
+
+    def test_dog_training_mentions_martingale(self):
+        overlay = PET_SUPPLIES.overlays["dog_training_and_walking_gear"]
+        assert "martingale" in overlay.content.lower()
+
+    def test_grooming_mentions_clipper(self):
+        content = PET_SUPPLIES.overlays["grooming_equipment"].content.lower()
+        assert "clipper" in content
+
+    def test_feline_mentions_bentonite(self):
+        content = PET_SUPPLIES.overlays["feline_habitat_and_litter"].content.lower()
+        assert "bentonite" in content
+
+    def test_aquarium_mentions_par(self):
+        overlay = PET_SUPPLIES.overlays["aquarium_hardware_and_filtration"]
+        assert "par" in overlay.content.lower()
+
+    def test_aquatic_mentions_copper(self):
+        overlay = PET_SUPPLIES.overlays["aquatic_livestock_and_medications"]
+        assert "copper" in overlay.content.lower()
+
+    def test_reptile_mentions_uvb(self):
+        overlay = PET_SUPPLIES.overlays["reptile_husbandry_and_habitat"]
+        assert "uvb" in overlay.content.lower()
+
+    def test_avian_mentions_ptfe(self):
+        content = PET_SUPPLIES.overlays["avian_habitat_and_safety"].content.lower()
+        assert "ptfe" in content
+
+    def test_small_mammal_mentions_vitamin_c(self):
+        content = PET_SUPPLIES.overlays["small_mammal_husbandry"].content.lower()
+        assert "vitamin c" in content
+
+    def test_equine_mentions_western(self):
+        content = PET_SUPPLIES.overlays["equine_tack_and_feed"].content.lower()
+        assert "western" in content
+
+    def test_core_has_species_gate(self):
+        core = PET_SUPPLIES.core.lower()
+        assert "species" in core
+
+    def test_core_has_breed_size(self):
+        core = PET_SUPPLIES.core.lower()
+        assert "breed size" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("otc_pet_nutrition", "aafco"),
+            ("otc_pet_nutrition", "large breed puppy"),
+            ("otc_pet_nutrition", "human-grade"),
+            ("otc_pet_nutrition", "grain-free"),
+            ("otc_pet_nutrition", "topper"),
+            ("veterinary_prescription_diets", "k/d"),
+            ("veterinary_prescription_diets", "renal"),
+            ("veterinary_prescription_diets", "royal canin"),
+            ("veterinary_prescription_diets", "hydrolyzed"),
+            ("pharmacy_and_parasiticides", "permethrin"),
+            ("pharmacy_and_parasiticides", "isoxazoline"),
+            ("pharmacy_and_parasiticides", "bravecto"),
+            ("pharmacy_and_parasiticides", "mcg"),
+            ("dog_training_and_walking_gear", "girth"),
+            ("dog_training_and_walking_gear", "martingale"),
+            ("dog_training_and_walking_gear", "head halter"),
+            ("dog_training_and_walking_gear", "front-clip"),
+            ("grooming_equipment", "#40"),
+            ("grooming_equipment", "#10"),
+            ("grooming_equipment", "a-5"),
+            ("grooming_equipment", "spm"),
+            ("feline_habitat_and_litter", "bentonite"),
+            ("feline_habitat_and_litter", "silica"),
+            ("feline_habitat_and_litter", "enzymatic"),
+            ("feline_habitat_and_litter", "sisal"),
+            ("aquarium_hardware_and_filtration", "mechanical"),
+            ("aquarium_hardware_and_filtration", "biological"),
+            ("aquarium_hardware_and_filtration", "par"),
+            ("aquarium_hardware_and_filtration", "protein skimmer"),
+            ("aquatic_livestock_and_medications", "copper"),
+            ("aquatic_livestock_and_medications", "ammonia"),
+            ("aquatic_livestock_and_medications", "nitrogen cycle"),
+            ("aquatic_livestock_and_medications", "reef safe"),
+            ("reptile_husbandry_and_habitat", "uvb"),
+            ("reptile_husbandry_and_habitat", "metabolic bone disease"),
+            ("reptile_husbandry_and_habitat", "impaction"),
+            ("reptile_husbandry_and_habitat", "gut-loading"),
+            ("avian_habitat_and_safety", "ptfe"),
+            ("avian_habitat_and_safety", "zinc"),
+            ("avian_habitat_and_safety", "bar spacing"),
+            ("avian_habitat_and_safety", "macaw"),
+            ("small_mammal_husbandry", "vitamin c"),
+            ("small_mammal_husbandry", "guinea pig"),
+            ("small_mammal_husbandry", "cedar"),
+            ("small_mammal_husbandry", "timothy"),
+            ("small_mammal_husbandry", "alfalfa"),
+            ("equine_tack_and_feed", "western"),
+            ("equine_tack_and_feed", "english"),
+            ("equine_tack_and_feed", "snaffle"),
+            ("equine_tack_and_feed", "curb"),
+            ("equine_tack_and_feed", "senior"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in PET_SUPPLIES.overlays[key].content.lower()
+
+
+SPORTING_GOODS_OVERLAY_KEYS = [
+    "archery_bows_and_arrows",
+    "baseball_and_softball_gloves",
+    "camping_shelter_and_sleep",
+    "climbing_and_mountaineering",
+    "competitive_swimwear",
+    "cycling_drivetrains_and_components",
+    "field_sports_footwear",
+    "fishing_rods_and_reels",
+    "fitness_and_strength_training",
+    "golf_clubs_and_wedges",
+    "hockey_skates_and_sticks",
+    "lacrosse_heads",
+    "racket_and_paddle_sports",
+    "team_licensed_jerseys",
+    "volleyball_equipment",
+    "watersports_flotation",
+    "winter_sports_hardgoods",
+]
+
+
+class TestSportingGoodsOverlays:
+    def test_sporting_goods_has_overlays(self):
+        assert len(SPORTING_GOODS.overlays) == 17
+
+    def test_overlay_keys(self):
+        assert set(SPORTING_GOODS.overlays.keys()) == set(SPORTING_GOODS_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", SPORTING_GOODS_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = SPORTING_GOODS.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_golf_mentions_bounce(self):
+        content = SPORTING_GOODS.overlays["golf_clubs_and_wedges"].content.lower()
+        assert "bounce" in content
+
+    def test_cycling_mentions_shimano(self):
+        key = "cycling_drivetrains_and_components"
+        assert "shimano" in SPORTING_GOODS.overlays[key].content.lower()
+
+    def test_winter_sports_mentions_din(self):
+        content = SPORTING_GOODS.overlays["winter_sports_hardgoods"].content.lower()
+        assert "din" in content
+
+    def test_fishing_mentions_baitcasting(self):
+        content = SPORTING_GOODS.overlays["fishing_rods_and_reels"].content.lower()
+        assert "baitcasting" in content
+
+    def test_archery_mentions_spine(self):
+        content = SPORTING_GOODS.overlays["archery_bows_and_arrows"].content.lower()
+        assert "spine" in content
+
+    def test_racket_mentions_swingweight(self):
+        content = SPORTING_GOODS.overlays["racket_and_paddle_sports"].content.lower()
+        assert "swingweight" in content
+
+    def test_field_sports_mentions_fg(self):
+        content = SPORTING_GOODS.overlays["field_sports_footwear"].content.lower()
+        assert "fg" in content
+
+    def test_jerseys_mentions_elite(self):
+        content = SPORTING_GOODS.overlays["team_licensed_jerseys"].content.lower()
+        assert "elite" in content
+
+    def test_hockey_mentions_flex(self):
+        content = SPORTING_GOODS.overlays["hockey_skates_and_sticks"].content.lower()
+        assert "flex" in content
+
+    def test_watersports_mentions_uscg(self):
+        content = SPORTING_GOODS.overlays["watersports_flotation"].content.lower()
+        assert "uscg" in content
+
+    def test_camping_mentions_r_value(self):
+        content = SPORTING_GOODS.overlays["camping_shelter_and_sleep"].content.lower()
+        assert "r-value" in content
+
+    def test_lacrosse_mentions_offensive(self):
+        content = SPORTING_GOODS.overlays["lacrosse_heads"].content.lower()
+        assert "offensive" in content
+
+    def test_volleyball_mentions_indoor(self):
+        content = SPORTING_GOODS.overlays["volleyball_equipment"].content.lower()
+        assert "indoor" in content
+
+    def test_swimwear_mentions_fina(self):
+        content = SPORTING_GOODS.overlays["competitive_swimwear"].content.lower()
+        assert "fina" in content
+
+    def test_climbing_mentions_uiaa(self):
+        overlay = SPORTING_GOODS.overlays["climbing_and_mountaineering"]
+        assert "uiaa" in overlay.content.lower()
+
+    def test_baseball_mentions_kip(self):
+        overlay = SPORTING_GOODS.overlays["baseball_and_softball_gloves"]
+        assert "kip" in overlay.content.lower()
+
+    def test_fitness_mentions_flywheel(self):
+        overlay = SPORTING_GOODS.overlays["fitness_and_strength_training"]
+        assert "flywheel" in overlay.content.lower()
+
+    def test_core_has_sport_gate(self):
+        core = SPORTING_GOODS.core.lower()
+        assert "sport" in core
+
+    def test_core_has_certification(self):
+        core = SPORTING_GOODS.core.lower()
+        assert "certification" in core
+        assert "nocsae" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("golf_clubs_and_wedges", "bounce"),
+            ("golf_clubs_and_wedges", "grind"),
+            ("golf_clubs_and_wedges", "shaft flex"),
+            ("golf_clubs_and_wedges", "pitching wedge"),
+            ("golf_clubs_and_wedges", "lob wedge"),
+            ("cycling_drivetrains_and_components", "shimano"),
+            ("cycling_drivetrains_and_components", "sram"),
+            ("cycling_drivetrains_and_components", "campagnolo"),
+            ("cycling_drivetrains_and_components", "dura-ace"),
+            ("cycling_drivetrains_and_components", "di2"),
+            ("winter_sports_hardgoods", "gripwalk"),
+            ("winter_sports_hardgoods", "din"),
+            ("winter_sports_hardgoods", "mondopoint"),
+            ("winter_sports_hardgoods", "iso 5355"),
+            ("fishing_rods_and_reels", "baitcasting"),
+            ("fishing_rods_and_reels", "spinning"),
+            ("fishing_rods_and_reels", "saltwater"),
+            ("fishing_rods_and_reels", "ultra-light"),
+            ("archery_bows_and_arrows", "spine"),
+            ("archery_bows_and_arrows", "ilf"),
+            ("archery_bows_and_arrows", "amo"),
+            ("archery_bows_and_arrows", "crossbow"),
+            ("racket_and_paddle_sports", "swingweight"),
+            ("racket_and_paddle_sports", "grip size"),
+            ("racket_and_paddle_sports", "nomex"),
+            ("racket_and_paddle_sports", "pickleball"),
+            ("field_sports_footwear", "fg"),
+            ("field_sports_footwear", "ag"),
+            ("field_sports_footwear", "sg"),
+            ("field_sports_footwear", "toe stud"),
+            ("team_licensed_jerseys", "elite"),
+            ("team_licensed_jerseys", "swingman"),
+            ("team_licensed_jerseys", "replica"),
+            ("team_licensed_jerseys", "screen-printed"),
+            ("hockey_skates_and_sticks", "fit 1"),
+            ("hockey_skates_and_sticks", "flex"),
+            ("hockey_skates_and_sticks", "kickpoint"),
+            ("hockey_skates_and_sticks", "low-kick"),
+            ("watersports_flotation", "uscg"),
+            ("watersports_flotation", "type iii"),
+            ("watersports_flotation", "type iv"),
+            ("watersports_flotation", "inflatable"),
+            ("camping_shelter_and_sleep", "comfort rating"),
+            ("camping_shelter_and_sleep", "r-value"),
+            ("camping_shelter_and_sleep", "hypothermia"),
+            ("lacrosse_heads", "offensive"),
+            ("lacrosse_heads", "defensive"),
+            ("lacrosse_heads", "face shape"),
+            ("lacrosse_heads", "throat"),
+            ("volleyball_equipment", "indoor"),
+            ("volleyball_equipment", "outdoor"),
+            ("volleyball_equipment", "leather"),
+            ("volleyball_equipment", "pressure"),
+            ("competitive_swimwear", "fina"),
+            ("competitive_swimwear", "technical suit"),
+            ("competitive_swimwear", "bonded"),
+            ("climbing_and_mountaineering", "uiaa"),
+            ("climbing_and_mountaineering", "iso 9001"),
+            ("baseball_and_softball_gloves", "kip"),
+            ("baseball_and_softball_gloves", "steerhide"),
+            ("baseball_and_softball_gloves", "cowhide"),
+            ("baseball_and_softball_gloves", "break-in"),
+            ("fitness_and_strength_training", "flywheel"),
+            ("fitness_and_strength_training", "power cage"),
+            ("fitness_and_strength_training", "squat stand"),
+            ("fitness_and_strength_training", "spin bike"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in SPORTING_GOODS.overlays[key].content.lower()
 
 
 class TestCustomVertical:

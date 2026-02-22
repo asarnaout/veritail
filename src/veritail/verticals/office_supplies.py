@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from veritail.types import VerticalContext
+from veritail.types import VerticalContext, VerticalOverlay
 
 OFFICE_SUPPLIES = VerticalContext(
     core="""\
@@ -10,196 +10,251 @@ OFFICE_SUPPLIES = VerticalContext(
 
 You are evaluating search results for an office supplies ecommerce site. \
 Think like a composite buyer spanning the corporate procurement specialist \
-matching items against a contracted supplier catalog for a 500-person office, \
-the small-business owner restocking a ten-person workspace on a tight budget, \
-the home-office worker searching by brand name for an exact ink cartridge \
-replacement, and the school or church administrator sourcing supplies for an \
-event on short notice. In office supplies, compatibility is the silent \
-deal-breaker — an ink cartridge that does not fit the buyer's printer model, \
-a toner that jams a specific fuser assembly, a binder that cannot hold legal-\
-size paper, or a pen refill that does not seat in the barrel are not "close \
-matches," they are returns, work stoppages, and lost productivity. Device and \
+matching items against a contracted supplier catalog, the small-business \
+owner restocking a workspace on a budget, and the home-office worker \
+searching for an exact replacement item.
+
+In office supplies, compatibility is the silent deal-breaker. Device and \
 system compatibility outweighs brand preference, price, or cosmetic similarity.
 
 ### Scoring considerations
 
 - **Device and machine compatibility as the primary hard gate**: When a query \
-specifies or strongly implies a target device — by printer model ("HP LaserJet \
-Pro M404n"), copier series ("Xerox VersaLink C405"), label maker ("Brother \
-P-touch PT-D610BT"), or laminator brand and model — every consumable result \
-must be confirmed compatible with that exact device or receive a major \
-relevance penalty. Printer families share model prefixes but diverge on \
-cartridge fitment: an HP 58A (CF258A) fits the M404 but not the M402 despite \
-both being LaserJet Pros. Inkjet cartridge numbering is equally treacherous — \
-HP 63 and HP 63XL fit different printer generations than HP 67 and HP 67XL, \
-and Canon PG-245/CL-246 are not interchangeable with PG-275/CL-276 even \
-within the PIXMA line. Returning a cartridge for the wrong model is \
-functionally useless. Treat device mismatch with the same severity that \
-automotive treats YMM fitment failure — an immediate disqualifier.
-- **Ink and toner cartridge precision — OEM, compatible, and remanufactured \
-tiers**: The ink and toner category has a three-tier market that maps directly \
-to buyer intent. OEM cartridges (HP, Canon, Epson, Brother, Lexmark genuine) \
-carry manufacturer warranty assurance, consistent yield, and exact-fit \
-guarantee. Compatible (third-party new-build) cartridges offer significant \
-cost savings — often 50-70% — but vary in quality and may void printer \
-warranties. Remanufactured cartridges are recycled OEM shells refilled and \
-tested. When a query specifies "genuine," "OEM," or a manufacturer name \
-alongside a cartridge number, compatible and remanufactured results are \
-relevance penalties. When a query includes "compatible," "generic," or signals \
-budget intent, OEM cartridges at 3-4x the price are poor matches. Yield \
-ratings matter — standard-yield and high-yield (XL) cartridges for the same \
-printer are different products serving different volume needs. A buyer \
-searching for "HP 206X" (high-yield) should not receive HP 206A \
-(standard-yield) as an equivalent match.
-- **Paper specifications are multi-dimensional hard constraints**: Office \
-paper is specified along size, weight (basis weight in lb or grammage in \
-GSM), brightness, opacity, finish, and certification dimensions — and each \
-matters. Size is the first gate: Letter (8.5x11"), Legal (8.5x14"), Tabloid \
-(11x17"), A4 (210x297mm), and specialty sizes (4x6" photo, index cards) are \
-not interchangeable. Weight determines feel, jam resistance, and print \
-quality — 20 lb bond (75 GSM) is standard copy paper, 24 lb (90 GSM) is \
-premium letterhead stock, 32 lb (120 GSM) is resume/presentation weight, and \
-cardstock begins around 65 lb cover (176 GSM). Brightness (measured 0-100, \
-with standard at 92 and premium at 96-100) affects color reproduction and \
-contrast. Finish (matte, satin, glossy, linen) determines printer \
-compatibility — laser printers require laser-compatible coatings while inkjet \
-photo paper uses different absorption layers. Acid-free designation matters \
-for archival use. When any specification is stated in the query, treat \
-mismatches as major penalties.
-- **Writing instrument specificity — refill compatibility, tip size, and ink \
-type**: Writing instruments have compatibility chains that function like \
-consumable ecosystems. Pen refills follow manufacturer-specific form factors: \
-Parker-style G2 (ISO 12757-2) ballpoint refills are not interchangeable with \
-Cross-style refills or Pilot G2 gel refills despite sharing category \
-keywords. Tip sizes (0.5mm fine, 0.7mm medium, 1.0mm bold) affect line \
-quality and are hard preferences when specified. Ink types — ballpoint \
-(oil-based), rollerball (water-based), gel, felt-tip, and permanent marker — \
-serve different writing and marking purposes and are not substitutable. \
-Dry-erase markers are fundamentally different products from permanent markers \
-despite keyword overlap. When a query specifies "Pilot G2 0.7mm blue gel," \
-each attribute — brand, model, tip size, color, and ink type — is a hard \
-constraint.
-- **Brand as specification vs. preference — proprietary systems and \
-consumable lock-in**: In office supplies, brand frequently encodes a \
-proprietary compatibility ecosystem rather than casual preference. A query \
-for "Dymo LabelWriter 4XL labels" specifies a thermal label format that only \
-works with Dymo's direct-thermal system — Zebra or Brother labels are \
-incompatible regardless of size. "Swingline 747" staples are standard but \
-"Swingline Optima 40" uses a proprietary staple format. "Post-it Super \
-Sticky 3x3" specifies 3M's adhesive formulation, which performs differently \
-than generic sticky notes. "Avery 5160" specifies a label template with \
-exact dimensions and feed orientation for specific printer types. Treat \
-brand-plus-model-number queries as hard constraints. Treat brand-only queries \
-(e.g., "3M tape") as strong signals where alternatives should be noted as \
-non-exact matches.
+specifies or strongly implies a target device (e.g., a specific printer, \
+label maker, laminator, shredder, or dispenser), every consumable result must be \
+confirmed compatible with that exact device or receive a major relevance \
+penalty. Treat device mismatch with the same severity that automotive \
+treats Year/Make/Model fitment failure — an immediate disqualifier.
 - **Corporate procurement vs. individual buyer signals**: Office supply \
 buyers span a wide spectrum from individual consumers to enterprise \
-procurement departments, and query patterns differ materially. Corporate \
-signals include bulk quantity references ("case of," "10 reams," "144-count"), \
-specific catalog or SKU numbers, contract-pricing language, and terse \
-category-plus-spec queries typical of punch-out catalog searches. Individual \
-buyer signals include brand-name searches, plain-language descriptions, and \
-single-unit or small-quantity intent. A procurement specialist searching \
-"copy paper 8.5x11 20lb 92 bright case" expects case-quantity results from \
-major contract brands (Hammermill, HP, Boise). A home-office buyer searching \
-"good printer paper" expects well-reviewed individual-ream options. Matching \
-the quantity tier and purchasing context to the buyer signal improves \
-relevance significantly.
-- **Quantity and packaging tiers — each, box, case, and pallet**: Office \
-supplies are sold across sharply different packaging tiers, and the gap \
-between them creates real relevance friction. Pens are sold individually, \
-in boxes of 12, in cases of 144. Paper is sold by the ream (500 sheets), \
-carton (5 or 10 reams), and pallet. Toner cartridges are sold individually \
-or in multi-packs (2-pack, 4-color sets). Sticky notes come in single pads, \
-packs of 12, and bulk cabinets of 24. When the query signals quantity intent \
-— "box of," "case of," "single," "bulk," or a specific count — results at \
-the wrong packaging tier reduce relevance. A teacher buying one glue stick \
-does not want a case of 120; a facilities manager ordering for 20 breakrooms \
-does not want a single box of coffee pods.
-- **Furniture and ergonomic workspace requirements**: Office furniture \
-carries technical specifications that function as hard constraints for \
-workspace compliance and employee health. Desk dimensions (width, depth, \
-height range for sit-stand models), weight capacity, and ANSI/BIFMA X5.5 \
-certification matter for commercial buyers. Ergonomic chairs are specified \
-by weight capacity, seat height range, lumbar support adjustability, armrest \
-type, and ANSI/BIFMA X5.1 compliance. Standing desk converters must match \
-the existing desk footprint and monitor weight. When a query specifies a \
-dimension, weight capacity, or certification standard, treat mismatches as \
-significant penalties. ADA compliance for accessible workstations and OSHA \
-ergonomic guidelines add regulatory weight to furniture queries in \
-commercial contexts.
-- **Technology peripherals and office equipment compatibility**: Keyboards, \
-mice, monitor arms, USB hubs, surge protectors, and other peripherals must \
-match the buyer's equipment ecosystem. A "USB-C docking station" query \
-requires USB-C results — USB-A docks are incompatible. Monitor arm VESA \
-mount patterns (75x75mm vs 100x100mm) and weight ratings must match the \
-target display. Surge protector joule ratings, outlet count, and cord length \
-are functional specifications. Laminator pouch thickness (3 mil, 5 mil, \
-10 mil) must match the machine's capacity. Shredder cut types (strip-cut, \
-cross-cut, micro-cut) serve different security levels (P-2 through P-7 per \
-DIN 66399), and sheet capacity determines throughput. When the query \
-specifies a technical parameter, treat it as a hard constraint.
-- **Environmental certifications and sustainability specifications**: Office \
-supply buyers — particularly institutional and government purchasers — \
-increasingly require verified environmental credentials. FSC (Forest \
-Stewardship Council) and SFI (Sustainable Forestry Initiative) certify \
-paper sourcing. Recycled content percentage (30%, 50%, 100% post-consumer \
-waste) is a procurement specification, not a marketing claim. EPEAT Bronze, \
-Silver, or Gold certifies electronics lifecycle impact. ENERGY STAR certifies \
-energy-efficient equipment (printers, monitors, copiers). Green Seal and \
-UL ECOLOGO certify cleaning and breakroom products. When a query specifies \
-"FSC certified," "100% recycled," "EPEAT Gold," or "Energy Star," treat it \
-as a hard constraint — uncertified alternatives are relevance penalties even \
-when functionally identical. Federal and state government procurement often \
-mandates specific environmental certifications per FAR 23.704 and equivalent \
-state requirements.
-- **Filing and organization system compatibility — letter vs. legal, tab \
-position, and format**: Filing supplies follow dimensional and system-\
-compatibility standards that are non-negotiable. Letter-size folders (8.5x11") \
-do not fit legal-size (8.5x14") documents and vice versa. Hanging folders \
-require compatible file drawer rails or frames — lateral vs. vertical file \
-cabinets use different rail spacings. Tab positions (1/3-cut, 1/5-cut, \
-straight-cut) and tab placement (left, center, right, assorted) are \
-functional specifications that affect filing workflow. Binder ring sizes \
-(1", 1.5", 2", 3") determine sheet capacity — a 1" binder holds roughly \
-175 sheets while a 3" holds 575. Ring mechanism types (round-ring, D-ring, \
-slant-ring) affect page-turning and capacity. Sheet protectors, dividers, \
-and tab inserts must match binder size and ring count. When any of these \
-specifications appear in a query, mismatched results are poor matches.
-- **Breakroom, janitorial, and facility supply disambiguation**: Modern \
-office supply retailers sell across traditional office products, breakroom \
-consumables (coffee, snacks, cups, utensils), and janitorial/facility \
-supplies (cleaning chemicals, paper towels, trash liners, restroom products). \
-These categories share keywords but serve different needs — "paper towels" \
-could mean C-fold towels for a commercial dispenser (specifying fold type \
-and dispenser compatibility) or household-style rolls for a small breakroom. \
-"Cups" could mean hot cups for a coffee station, cold cups, or the lids \
-and sleeves that go with them. "Soap" could mean hand soap, dish soap, or \
-industrial cleaner. When the query includes dispenser model numbers, fold \
-types, or commercial-grade indicators, results should align with facility \
-management needs. When the query is casual and unspecified, default to the \
-most common office-breakroom interpretation.
-- **Seasonal and event-driven relevance signals**: Office supply demand has \
-pronounced seasonal patterns that affect what buyers mean by generic queries. \
-Back-to-school season (July-September) drives searches for notebooks, \
-backpacks, calculators, and bulk classroom supplies where value packs and \
-teacher-quantity bundles are most relevant. Tax season (January-April) \
-drives demand for filing supplies, tax forms, envelopes, and organizational \
-products. Calendar year-end spurs planner, calendar, and budget-year supply \
-purchases. When query context or timing suggests seasonal intent, results \
-aligned with that seasonal need pattern are stronger matches — but do not \
-assume seasonal intent when the query is specific and technical.
-- **Safety, compliance, and workplace regulatory requirements**: Office \
-environments are subject to regulatory standards that affect product \
-relevance for commercial buyers. Ergonomic equipment must meet OSHA \
-guidelines for workstation setup. First-aid kits must comply with ANSI \
-Z308.1 specifications for workplace first-aid requirements. Fire safety \
-products (extinguishers, smoke detectors, exit signs) must meet NFPA codes \
-and local fire marshal requirements. ADA-compliant signage (Braille, tactile \
-lettering, specific mounting heights) is legally mandated for commercial \
-buildings. SDS (Safety Data Sheet) availability is required for cleaning \
-chemicals and toner cartridges under OSHA's Hazard Communication Standard. \
-When a query references a safety standard or compliance requirement, treat \
-it as a hard constraint — non-compliant alternatives are relevance penalties \
-regardless of price or functional similarity."""
+procurement departments. Corporate signals include bulk quantity references \
+("case of," "10 reams," "144-count"), specific catalog/SKU numbers, and \
+terse category-plus-spec queries. Individual signals include plain-language \
+descriptions and single-unit intent. Matching the quantity tier and \
+purchasing context to the buyer signal is a primary relevance driver.
+- **Quantity and packaging tiers**: Office supplies are sold across sharply \
+different packaging tiers (each, box, case, pallet). When the query signals \
+quantity intent — "box of," "case of," "single," "bulk," or a specific count \
+— results at the wrong packaging tier drastically reduce relevance.
+- **Environmental certifications**: Office supply buyers increasingly require \
+verified environmental credentials. FSC (Forest Stewardship Council) and SFI \
+certify paper. Recycled content percentage (e.g., 30% or 100% PCW) is a \
+hard specification. EPEAT certifies electronics lifecycle impact, and \
+ENERGY STAR certifies energy efficiency. When a query specifies an eco-label, \
+uncertified alternatives are strict relevance penalties.
+- **Safety and compliance**: Ergonomic equipment (OSHA), First-aid kits \
+(ANSI Z308.1), and chemical cleaners (SDS sheets) carry regulatory weight. \
+When a query references a safety standard, non-compliant alternatives are \
+relevance penalties regardless of functional similarity.
+- **Brand as a System**: In office supplies, a brand name often implies a \
+proprietary system rather than a casual preference. Treat brand-plus-model \
+queries as hard constraints.""",
+    overlays={
+        "ink_and_toner": VerticalOverlay(
+            description=(
+                "Printer consumables: OEM and compatible ink cartridges, laser toner, "
+                "drum units, fusers, and maintenance kits."
+            ),
+            content="""\
+### Ink and Toner — Scoring Guidance
+
+This query involves printer consumables, focusing heavily on brand tiers and page yields.
+
+**Critical distinctions to enforce:**
+
+- **The Three-Tier Market (OEM vs. Compatible vs. Remanufactured)**:
+  * *OEM (Original Equipment Manufacturer)* cartridges carry manufacturer warranty and exact fitment.
+  * *Compatible* cartridges are newly built by third parties at a lower cost.
+  * *Remanufactured* cartridges are recycled OEM shells refilled and tested.
+  If a query specifies "genuine," "OEM," or pairs the manufacturer name with the cartridge number (e.g., "HP 58A"), compatible and remanufactured items are strict relevance penalties. If the query asks for "compatible" or "generic," expensive OEM cartridges are poor matches.
+- **Standard vs. High Yield**: Cartridges ending in "X" or "XL" designate high yield. A buyer searching for a high-yield cartridge should not receive a standard-yield equivalent as a perfect match.
+- **ISO Page Yields (Do not penalize based on assumed real-world yield)**: Page yields are standardized by ISO/IEC 19752 (monochrome laser), ISO/IEC 19798 (color laser), and ISO/IEC 24711 (inkjet). These tests are strictly based on a 5% page coverage standard (equivalent to a sparse business letter header). Do not penalize a product's relevance if user reviews complain about "low page yields," as real-world use frequently exceeds 5% coverage causing faster depletion. Rely solely on the stated ISO standard yield for specification matching.
+""",
+        ),
+        "paper_and_media": VerticalOverlay(
+            description=(
+                "Printable media: Copy paper, cardstock, photo paper, "
+                "resume paper, and large format rolls."
+            ),
+            content="""\
+### Paper and Printable Media — Scoring Guidance
+
+This query involves office paper and specialized printable media.
+
+**Critical distinctions to enforce:**
+
+- **Paper Weight (LBS vs. GSM Trap)**: U.S. basis weights (lbs) differ completely by category (Bond, Text, Cover, Index). A 65 lb. Cover stock is substantially thicker and heavier than an 80 lb. Text stock.
+  * Do **not** assume a higher poundage means a thicker paper unless the categories are identical.
+  * Use GSM (Grams per Square Meter) as the universal metric. For reference: 20 lb Bond ≈ 75 GSM; 65 lb Cover ≈ 175 GSM. When weight is specified, treat mismatches as major penalties.
+- **Brightness vs. Whiteness**:
+  * *Brightness* measures the reflection of blue light (often on a 0-100 scale, with standard at 92 and premium at 96+), often enhanced by Optical Brightening Agents (OBAs).
+  * *Whiteness* (CIE Whiteness) measures the reflection of all colors of light. Do not treat these specifications interchangeably if the query explicitly distinguishes them.
+- **Laser vs. Inkjet Formulations**: Paper finishes dictate printer compatibility. Photo paper for inkjet uses absorption layers, whereas laser media uses heat-resistant coatings to survive the fuser. Returning inkjet-only media for a "laser printer paper" query is a functional failure.
+- **Dimensions**: Letter (8.5x11"), Legal (8.5x14"), Tabloid (11x17"), and A4 (210x297mm) are hard constraints.
+""",
+        ),
+        "writing_instruments": VerticalOverlay(
+            description=(
+                "Writing and art tools: Pens, mechanical pencils, replacement leads, "
+                "markers, highlighters, and school art supplies."
+            ),
+            content="""\
+### Writing Instruments and Art Supplies — Scoring Guidance
+
+This query involves pens, mechanical pencils, replacement leads, refills, and art supplies.
+
+**Critical distinctions to enforce:**
+
+- **Documentary vs. General Use Inks**: If a query specifies "archival," "documentary," "fraud-resistant," or "legal" ink, it implies ISO 12757-2 (ballpoint) or ISO 14145-2 (rollerball) compliance. These inks resist erasure, ethanol, and bleach. Standard general-use inks (ISO 12757-1) are penalties for these specific queries.
+- **Refill Ecosystems**: Pen refills follow strict form factors. A Parker-style G2 (ISO 12757-2) refill is not interchangeable with a Pilot G2 gel refill. Enforce strict compatibility with the target pen barrel.
+- **Mechanical Pencil Leads**:
+  * *Diameter*: 0.5mm, 0.7mm, and 0.9mm are fixed hardware constraints.
+  * *Hardness*: The U.S. #2 pencil is equivalent to HB. 2B is softer/darker; 2H is harder/lighter. Hardness is a firm functional requirement when specified, as 2B and 2H serve opposite purposes (shading vs. technical drafting).
+- **Toxicological Safety (Art Supplies)**: The ASTM D-4236 (LHAMA) label merely indicates the product has been evaluated for chronic hazards and labeled appropriately; it does **not** mean the product is non-toxic. If a query explicitly requires "non-toxic" (especially for children), look for the ACMI "AP Seal" or explicit non-toxic claims.
+""",
+        ),
+        "office_furniture": VerticalOverlay(
+            description=(
+                "Office seating, desks, tables, standing desk converters, "
+                "and ergonomic commercial workspace furniture."
+            ),
+            content="""\
+### Office Furniture and Ergonomics — Scoring Guidance
+
+This query involves commercial office furniture, defined by strict safety, weight, and dimensional standards.
+
+**Critical distinctions to enforce:**
+
+- **BIFMA / Commercial Grade Certification**: Commercial furniture relies on ANSI/BIFMA testing for safety and durability.
+  * *ANSI/BIFMA X5.1*: Covers general-purpose office chairs for users up to 253 lbs.
+  * *ANSI/BIFMA X5.11*: Covers large occupant (heavy duty/bariatric) office chairs for users up to 400 lbs. If a query asks for "heavy duty" or "400 lb capacity," X5.1 chairs are a critical safety penalty.
+  * *ANSI/BIFMA X5.4*: Covers lounge and public seating.
+  * *ANSI/BIFMA X5.5*: Covers desks, tables, and monitor arms.
+- **Fire Safety Standards**:
+  * *CAL 117*: The standard smolder/flammability test for upholstery foam and fabric.
+  * *CAL 133*: A much stricter open-flame test for entire furniture pieces in public spaces. Though largely repealed, if a procurement query explicitly demands CAL 133, a CAL 117-only product is a hard failure.
+- **Ergonomic Adjustability**: If a query specifies a feature (e.g., 4D armrests, seat slider, lumbar depth adjustment, sit-stand height ranges), treat it as a hard constraint.
+""",
+        ),
+        "shredders_and_data_destruction": VerticalOverlay(
+            description=(
+                "Paper shredders, media destroyers, and data security devices."
+            ),
+            content="""\
+### Shredders and Data Destruction — Scoring Guidance
+
+This query involves document destruction equipment, which is heavily regulated by international data security standards.
+
+**Critical distinctions to enforce:**
+
+- **DIN 66399 P-Levels (Hard Constraints)**: Shredders are classified by particle size maximums.
+  * *P-1 / P-2*: Basic strip-cut (low security).
+  * *P-3 / P-4*: Cross-cut (moderate security). P-4 is the minimum standard for general confidential business documents.
+  * *P-5*: Micro-cut (high security). Required for highly confidential, personal, or medical (HIPAA) data. Do not return P-3 or P-4 cross-cut shredders for "micro-cut" queries.
+  * *P-6 / P-7*: Extremely high security. P-7 is the NSA/CSS standard for Top Secret classified government documents (particles ≤ 5 mm²). If a query requests "NSA approved" or "Top Secret," P-5 and P-6 are critical compliance failures.
+- **Sheet Capacity vs. Duty Cycle**: "10-sheet capacity" refers to a single pass, whereas "duty cycle" or "continuous run time" dictates how long the motor can run before cool-down. Match the capacity needs requested by the buyer.
+""",
+        ),
+        "mailing_and_packaging": VerticalOverlay(
+            description=(
+                "Envelopes, corrugated boxes, bubble mailers, packing tape, "
+                "and shipping supplies."
+            ),
+            content="""\
+### Mailing, Packaging, and Shipping — Scoring Guidance
+
+This query involves supplies for mailing, postage, and package transit.
+
+**Critical distinctions to enforce:**
+
+- **Envelope Dimensions**:
+  * *#10*: Standard business envelope (4 1/8 x 9 1/2 inches).
+  * *A2*: RSVP/small note cards (4 3/8 x 5 3/4 inches).
+  * *A7*: Standard greeting cards/invitations (5 1/4 x 7 1/4 inches).
+  * Treat envelope sizing and window placement (e.g., USPS standard 5/8 inch from bottom, single vs. double window) as hard physical constraints.
+- **Corrugated Box Fluting**: Flutes determine box strength and printing suitability.
+  * *A-Flute*: Thickest, maximum cushioning.
+  * *C-Flute*: Standard shipping box (most common, 80% of market).
+  * *B-Flute*: Medium thickness, good for inner packaging.
+  * *E-Flute / F-Flute*: Micro-thin, designed for high-quality retail printing and die-cutting, not for heavy shipping. Returning an E-flute box for a heavy-duty shipping query is a transit failure.
+- **Tape Formulations**: Acrylic packing tape (long-term storage, UV resistant) vs. Hot Melt tape (high initial tack, good for shipping cartons). Treat specified tape types as functional requirements.
+""",
+        ),
+        "binding_and_presentation": VerticalOverlay(
+            description=(
+                "Document binding machines, presentation covers, combs, "
+                "coils, wire-O, and laminating pouches."
+            ),
+            content="""\
+### Binding and Presentation Systems — Scoring Guidance
+
+This query involves equipment and supplies for assembling professional documents.
+
+**Critical distinctions to enforce:**
+
+- **Binding Method Incompatibilities**: Binding machines use specific hole-punch geometries. Supplies are entirely non-interchangeable.
+  * *Comb Binding*: Rectangular holes. Allows for document editing (opening/closing), lays flat, but cannot turn 360 degrees.
+  * *Coil / Spiral Binding*: Round holes. Allows 360-degree page turning.
+  * *Wire-O (Twin Loop)*: Professional metal finish. Sold in specific pitch ratios (e.g., 3:1 or 2:1). Pitch is a hard constraint.
+  * *VeloBind (Strip Binding)*: Punches small holes and melts/welds a plastic strip. It is tamper-proof and highly secure, predominantly used in legal and accounting fields. Returning a comb binder for a VeloBind query is a critical security failure.
+- **Laminating Thickness**: Pouch thickness is measured in mils (e.g., 3 mil, 5 mil, 10 mil). The pouch thickness must not exceed the specified laminator machine's maximum capacity.
+""",
+        ),
+        "filing_and_organization": VerticalOverlay(
+            description=(
+                "Filing cabinets, hanging folders, manila folders, "
+                "binders, and indexing systems."
+            ),
+            content="""\
+### Filing and Organization — Scoring Guidance
+
+This query involves spatial organization and document storage hardware.
+
+**Critical distinctions to enforce:**
+
+- **Lateral vs. Vertical Cabinets**: These represent fundamentally different physical footprints and access styles.
+  * *Lateral File Cabinets*: Wider than they are tall. Files are stored side-to-side. Often used in high-traffic shared spaces and can accommodate both letter and legal sizes simultaneously.
+  * *Vertical File Cabinets*: Taller than they are wide. Files are stored front-to-back. Highly space-efficient for narrow areas but require more physical strain to access. Do not substitute lateral for vertical when explicitly queried, as this is a physical space constraint.
+- **Folder Dimensions and Hardware**: Letter-size (8.5x11") folders cannot fit in legal-size (8.5x14") cabinet drawers and vice-versa. Hanging folders require compatible lateral or vertical rails.
+- **Tab Cuts**: 1/3-cut, 1/5-cut, and straight-cut refer to the size and visibility of the folder tab. Treat tab specifications as hard workflow constraints.
+""",
+        ),
+        "thermal_printers_and_labels": VerticalOverlay(
+            description=(
+                "Thermal label printers, direct thermal labels, thermal transfer, "
+                "and Avery-style laser/inkjet sheets."
+            ),
+            content="""\
+### Thermal Printers and Specialized Labeling — Scoring Guidance
+
+This query involves barcode printing, shipping labels, and address labels.
+
+**Critical distinctions to enforce:**
+
+- **The Dymo 550 DRM Constraint (Crucial Rule)**: Dymo LabelWriter 550, 550 Turbo, and 5XL models feature firmware and an RFID/ALR chip reader that completely blocks third-party and custom labels. If the query specifies the Dymo 550 series, **only** OEM Dymo branded labels with the recognition chip are relevant. Generic "compatible" thermal labels are a strict failure for the 550 series.
+- **Laser vs. Thermal Destruction Hazard**: Avery 5160 labels are engineered for Laser printers, while Avery 8160 labels are for Inkjet printers. Furthermore, feeding direct thermal label paper into a laser printer will melt the leuco dye coating and adhesive onto the fuser, destroying the printer hardware. Thermal labels and laser labels are completely incompatible.
+- **Direct Thermal vs. Thermal Transfer**: Direct thermal requires no ribbon (fades over time, good for shipping). Thermal transfer requires a wax/resin ribbon (durable, archivable). Do not mix these up.
+""",
+        ),
+        "janitorial_and_breakroom": VerticalOverlay(
+            description=(
+                "Facility paper products, commercial dispensers, trash liners, "
+                "and breakroom supplies."
+            ),
+            content="""\
+### Janitorial Paper and Breakroom Dispensers — Scoring Guidance
+
+This query involves facility management supplies and commercial paper products.
+
+**Critical distinctions to enforce:**
+
+- **Paper Towel Folds (Dispenser Compatibility)**: Commercial folded towels must match the wall dispenser type and hygiene intent.
+  * *Z-Fold (Interfold / Multifold)*: Towels are interlocked. Pulling one dispenses the edge of the next. Used for touchless, high-hygiene single-sheet dispensing.
+  * *C-Fold*: Towels are stacked but not interlocked. Requires users to pinch and pull, often leading to multiple towels dispensing at once.
+  * Returning a C-Fold towel for a strict Z-Fold/Interfold query violates hygiene and waste-reduction intent.
+- **Roll Towels**: Hardwound roll towels vs. Centerpull towels. Centerpull dispenses from the bottom core (highly sanitary). Ensure roll core diameter matches the target dispenser.
+- **Trash Can Liners**: Specified by dimensions, gauge (thickness in mils or microns), and density (High Density/HDPE for wet heavy trash vs. Low Density/LLDPE for sharp objects). Treat thickness and density as hard specifications.
+""",
+        ),
+    },
 )
