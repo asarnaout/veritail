@@ -166,6 +166,8 @@ class TestFoodserviceOverlays:
                 "electronics",
                 "fashion",
                 "furniture",
+                "groceries",
+                "home-improvement",
             }
         ],
     )
@@ -1213,6 +1215,360 @@ class TestFurnitureOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in FURNITURE.overlays[key].content.lower()
+
+
+GROCERIES_OVERLAY_KEYS = [
+    "adult_beverages_alcohol",
+    "baby_care",
+    "bakery_bread",
+    "beverages_soft_drinks",
+    "cleaning_disinfectants",
+    "coffee_tea",
+    "dairy_eggs",
+    "deli_prepared",
+    "frozen_foods",
+    "health_otc_vitamins",
+    "laundry",
+    "meat_poultry",
+    "nutrition_free_from",
+    "pantry_cooking",
+    "paper_disposables_trash",
+    "personal_care_beauty",
+    "pet_supplies",
+    "produce_fresh",
+    "seafood_shellfish",
+    "snacks_candy",
+]
+
+
+class TestGroceriesOverlays:
+    def test_groceries_has_overlays(self):
+        assert len(GROCERIES.overlays) == 20
+
+    def test_overlay_keys(self):
+        assert set(GROCERIES.overlays.keys()) == set(GROCERIES_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", GROCERIES_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = GROCERIES.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_nutrition_mentions_gluten(self):
+        content = GROCERIES.overlays["nutrition_free_from"].content.lower()
+        assert "gluten-free" in content
+
+    def test_produce_mentions_organic(self):
+        content = GROCERIES.overlays["produce_fresh"].content.lower()
+        assert "organic" in content
+
+    def test_meat_mentions_ribeye(self):
+        content = GROCERIES.overlays["meat_poultry"].content.lower()
+        assert "ribeye" in content
+
+    def test_seafood_mentions_iqf(self):
+        content = GROCERIES.overlays["seafood_shellfish"].content.lower()
+        assert "iqf" in content
+
+    def test_deli_mentions_rotisserie(self):
+        content = GROCERIES.overlays["deli_prepared"].content.lower()
+        assert "rotisserie" in content
+
+    def test_dairy_mentions_lactose(self):
+        content = GROCERIES.overlays["dairy_eggs"].content.lower()
+        assert "lactose-free" in content
+
+    def test_bakery_mentions_bagels(self):
+        content = GROCERIES.overlays["bakery_bread"].content.lower()
+        assert "bagels" in content
+
+    def test_frozen_mentions_iqf(self):
+        content = GROCERIES.overlays["frozen_foods"].content.lower()
+        assert "iqf" in content
+
+    def test_pantry_mentions_san_marzano(self):
+        content = GROCERIES.overlays["pantry_cooking"].content.lower()
+        assert "san marzano" in content
+
+    def test_snacks_mentions_jerky(self):
+        content = GROCERIES.overlays["snacks_candy"].content.lower()
+        assert "jerky" in content
+
+    def test_beverages_mentions_tonic(self):
+        content = GROCERIES.overlays["beverages_soft_drinks"].content.lower()
+        assert "tonic" in content
+
+    def test_coffee_mentions_nespresso(self):
+        content = GROCERIES.overlays["coffee_tea"].content.lower()
+        assert "nespresso" in content
+
+    def test_cleaning_mentions_epa(self):
+        content = GROCERIES.overlays["cleaning_disinfectants"].content.lower()
+        assert "epa" in content
+
+    def test_laundry_mentions_pods(self):
+        content = GROCERIES.overlays["laundry"].content.lower()
+        assert "pods" in content
+
+    def test_paper_mentions_trash_bag(self):
+        content = GROCERIES.overlays["paper_disposables_trash"].content.lower()
+        assert "trash bag" in content
+
+    def test_health_mentions_gummy(self):
+        content = GROCERIES.overlays["health_otc_vitamins"].content.lower()
+        assert "gummy" in content
+
+    def test_personal_care_mentions_spf(self):
+        content = GROCERIES.overlays["personal_care_beauty"].content.lower()
+        assert "spf" in content
+
+    def test_baby_mentions_diaper(self):
+        content = GROCERIES.overlays["baby_care"].content.lower()
+        assert "diaper" in content
+
+    def test_pet_mentions_kibble(self):
+        content = GROCERIES.overlays["pet_supplies"].content.lower()
+        assert "kibble" in content
+
+    def test_alcohol_mentions_abv(self):
+        content = GROCERIES.overlays["adult_beverages_alcohol"].content.lower()
+        assert "abv" in content
+
+    def test_core_has_allergen_gate(self):
+        core = GROCERIES.core.lower()
+        assert "allergen" in core
+        assert "hard constraint" in core
+
+    def test_core_has_storage_class(self):
+        core = GROCERIES.core.lower()
+        assert "frozen" in core
+        assert "shelf-stable" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("nutrition_free_from", "gluten-free"),
+            ("nutrition_free_from", "allergen"),
+            ("nutrition_free_from", "kosher"),
+            ("nutrition_free_from", "halal"),
+            ("nutrition_free_from", "sugar-free"),
+            ("nutrition_free_from", "keto"),
+            ("nutrition_free_from", "dairy-free"),
+            ("produce_fresh", "organic"),
+            ("produce_fresh", "fresh"),
+            ("produce_fresh", "scallions"),
+            ("produce_fresh", "variable-measure"),
+            ("meat_poultry", "ribeye"),
+            ("meat_poultry", "bone-in"),
+            ("meat_poultry", "ground meat"),
+            ("meat_poultry", "80/20"),
+            ("seafood_shellfish", "iqf"),
+            ("seafood_shellfish", "wild-caught"),
+            ("seafood_shellfish", "shrimp"),
+            ("seafood_shellfish", "21/25"),
+            ("deli_prepared", "rotisserie"),
+            ("deli_prepared", "sliced-to-order"),
+            ("deli_prepared", "variable weight"),
+            ("dairy_eggs", "lactose-free"),
+            ("dairy_eggs", "shredded"),
+            ("dairy_eggs", "oat"),
+            ("bakery_bread", "bagels"),
+            ("bakery_bread", "tortillas"),
+            ("frozen_foods", "iqf"),
+            ("frozen_foods", "ice cream"),
+            ("pantry_cooking", "san marzano"),
+            ("pantry_cooking", "baking soda"),
+            ("pantry_cooking", "baking powder"),
+            ("pantry_cooking", "extra virgin"),
+            ("snacks_candy", "jerky"),
+            ("snacks_candy", "multipack"),
+            ("beverages_soft_drinks", "tonic"),
+            ("beverages_soft_drinks", "seltzer"),
+            ("beverages_soft_drinks", "club soda"),
+            ("beverages_soft_drinks", "caffeine-free"),
+            ("coffee_tea", "nespresso"),
+            ("coffee_tea", "k-cup"),
+            ("coffee_tea", "decaf"),
+            ("coffee_tea", "whole bean"),
+            ("coffee_tea", "loose leaf"),
+            ("cleaning_disinfectants", "epa"),
+            ("cleaning_disinfectants", "disinfectant"),
+            ("cleaning_disinfectants", "bleach"),
+            ("laundry", "pods"),
+            ("laundry", "free & clear"),
+            ("laundry", "fabric softener"),
+            ("paper_disposables_trash", "trash bag"),
+            ("paper_disposables_trash", "ply"),
+            ("paper_disposables_trash", "compostable"),
+            ("health_otc_vitamins", "gummy"),
+            ("health_otc_vitamins", "d3"),
+            ("health_otc_vitamins", "tablet"),
+            ("personal_care_beauty", "spf"),
+            ("personal_care_beauty", "antiperspirant"),
+            ("personal_care_beauty", "fragrance-free"),
+            ("baby_care", "diaper"),
+            ("baby_care", "infant formula"),
+            ("baby_care", "wipes"),
+            ("baby_care", "pull-ups"),
+            ("pet_supplies", "grain-free"),
+            ("pet_supplies", "kibble"),
+            ("pet_supplies", "litter"),
+            ("pet_supplies", "puppy"),
+            ("adult_beverages_alcohol", "abv"),
+            ("adult_beverages_alcohol", "ipa"),
+            ("adult_beverages_alcohol", "non-alcoholic"),
+            ("adult_beverages_alcohol", "hard seltzer"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in GROCERIES.overlays[key].content.lower()
+
+
+HOME_IMPROVEMENT_OVERLAY_KEYS = [
+    "building_materials",
+    "doors_windows",
+    "electrical_lighting",
+    "flooring",
+    "hvac",
+    "kitchen_bath",
+    "outdoor_garden",
+    "paint_finishes",
+    "plumbing",
+    "tools_equipment",
+]
+
+
+class TestHomeImprovementOverlays:
+    def test_home_improvement_has_overlays(self):
+        assert len(HOME_IMPROVEMENT.overlays) == 10
+
+    def test_overlay_keys(self):
+        assert set(HOME_IMPROVEMENT.overlays.keys()) == set(
+            HOME_IMPROVEMENT_OVERLAY_KEYS
+        )
+
+    @pytest.mark.parametrize("key", HOME_IMPROVEMENT_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = HOME_IMPROVEMENT.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_electrical_mentions_gfci(self):
+        content = HOME_IMPROVEMENT.overlays["electrical_lighting"].content.lower()
+        assert "gfci" in content
+
+    def test_plumbing_mentions_pex(self):
+        content = HOME_IMPROVEMENT.overlays["plumbing"].content.lower()
+        assert "pex" in content
+
+    def test_flooring_mentions_laminate(self):
+        content = HOME_IMPROVEMENT.overlays["flooring"].content.lower()
+        assert "laminate" in content
+
+    def test_building_materials_mentions_plywood(self):
+        content = HOME_IMPROVEMENT.overlays["building_materials"].content.lower()
+        assert "plywood" in content
+
+    def test_tools_mentions_drill(self):
+        content = HOME_IMPROVEMENT.overlays["tools_equipment"].content.lower()
+        assert "drill" in content
+
+    def test_doors_windows_mentions_prehung(self):
+        content = HOME_IMPROVEMENT.overlays["doors_windows"].content.lower()
+        assert "prehung" in content
+
+    def test_paint_mentions_primer(self):
+        content = HOME_IMPROVEMENT.overlays["paint_finishes"].content.lower()
+        assert "primer" in content
+
+    def test_hvac_mentions_seer(self):
+        content = HOME_IMPROVEMENT.overlays["hvac"].content.lower()
+        assert "seer" in content
+
+    def test_kitchen_bath_mentions_faucet(self):
+        content = HOME_IMPROVEMENT.overlays["kitchen_bath"].content.lower()
+        assert "faucet" in content
+
+    def test_outdoor_mentions_grill(self):
+        content = HOME_IMPROVEMENT.overlays["outdoor_garden"].content.lower()
+        assert "grill" in content
+
+    def test_core_has_code_compliance(self):
+        core = HOME_IMPROVEMENT.core.lower()
+        assert "nec" in core
+        assert "gfci" in core
+
+    def test_core_has_material_compatibility(self):
+        core = HOME_IMPROVEMENT.core.lower()
+        assert "pex" in core
+        assert "cpvc" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("electrical_lighting", "gfci"),
+            ("electrical_lighting", "afci"),
+            ("electrical_lighting", "nm-b"),
+            ("electrical_lighting", "conduit"),
+            ("electrical_lighting", "led"),
+            ("electrical_lighting", "240v"),
+            ("electrical_lighting", "dimmer"),
+            ("plumbing", "pex"),
+            ("plumbing", "cpvc"),
+            ("plumbing", "copper"),
+            ("plumbing", "sharkbite"),
+            ("plumbing", "ball valve"),
+            ("plumbing", "solvent cement"),
+            ("plumbing", "gas"),
+            ("flooring", "laminate"),
+            ("flooring", "luxury vinyl"),
+            ("flooring", "hardwood"),
+            ("flooring", "tile"),
+            ("flooring", "underlayment"),
+            ("flooring", "pei"),
+            ("building_materials", "plywood"),
+            ("building_materials", "osb"),
+            ("building_materials", "drywall"),
+            ("building_materials", "lvl"),
+            ("building_materials", "pressure-treated"),
+            ("building_materials", "joist hanger"),
+            ("tools_equipment", "drill"),
+            ("tools_equipment", "impact driver"),
+            ("tools_equipment", "circular saw"),
+            ("tools_equipment", "battery"),
+            ("tools_equipment", "milwaukee"),
+            ("doors_windows", "prehung"),
+            ("doors_windows", "slab"),
+            ("doors_windows", "double-hung"),
+            ("doors_windows", "tempered"),
+            ("doors_windows", "casement"),
+            ("doors_windows", "low-e"),
+            ("paint_finishes", "primer"),
+            ("paint_finishes", "stain"),
+            ("paint_finishes", "eggshell"),
+            ("paint_finishes", "semi-gloss"),
+            ("paint_finishes", "latex"),
+            ("hvac", "btu"),
+            ("hvac", "seer"),
+            ("hvac", "furnace"),
+            ("hvac", "thermostat"),
+            ("hvac", "merv"),
+            ("hvac", "r410a"),
+            ("kitchen_bath", "faucet"),
+            ("kitchen_bath", "dishwasher"),
+            ("kitchen_bath", "countertop"),
+            ("kitchen_bath", "range hood"),
+            ("kitchen_bath", "rough-in"),
+            ("outdoor_garden", "grill"),
+            ("outdoor_garden", "propane"),
+            ("outdoor_garden", "composite"),
+            ("outdoor_garden", "irrigation"),
+            ("outdoor_garden", "solar"),
+            ("outdoor_garden", "mower"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in HOME_IMPROVEMENT.overlays[key].content.lower()
 
 
 class TestCustomVertical:

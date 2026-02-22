@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fashion vertical split into core + 13 category overlays: sneakers_athletic_shoes, boots, sandals_slides, heels_and_dress_shoes, denim_jeans, intimates_bras_lingerie, activewear_athleisure, outerwear_rain_down, tailored_menswear, swimwear_upf, kids_baby_apparel, jewelry_precious_metals, resale_vintage
 - Furniture vertical split into core + 16 category overlays: sofas_sectionals, motion_seating, sleepers_daybeds_futons, beds_frames_headboards, mattresses_toppers_bases, casegoods_storage, dining_tables_sets, chairs_stools_benches, home_office, outdoor_patio, bathroom_vanities, makeup_vanities_dressing_tables, media_consoles_tv_stands, rugs, nursery_kids, commercial_contract
 - Groceries vertical split into core + 20 category overlays: nutrition_free_from, produce_fresh, meat_poultry, seafood_shellfish, deli_prepared, dairy_eggs, bakery_bread, frozen_foods, pantry_cooking, snacks_candy, beverages_soft_drinks, coffee_tea, cleaning_disinfectants, laundry, paper_disposables_trash, health_otc_vitamins, personal_care_beauty, baby_care, pet_supplies, adult_beverages_alcohol
+- Home improvement vertical split into core + 10 category overlays: electrical_lighting, plumbing, flooring, building_materials, tools_equipment, doors_windows, paint_finishes, hvac, kitchen_bath, outdoor_garden
 
 ### Changed
 
