@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Externalized all LLM prompt strings (5 system prompts + 14 vertical cores + 232 overlay contents) from inline Python to standalone markdown files under `src/veritail/prompts/`. Python modules now load prompts via `load_prompt()` with LRU caching. No behavioral change — loaded content is identical to the previous inline strings.
+
 ### Breaking Changes
 
 - Removed `--rubric` CLI flag and custom rubric support. The built-in ecommerce relevance rubric is now always used. The `rubric` field has been removed from `ExperimentConfig` and run metadata. Resume config mismatch checks no longer include rubric.
