@@ -169,6 +169,7 @@ class TestFoodserviceOverlays:
                 "groceries",
                 "home-improvement",
                 "industrial",
+                "medical",
             }
         ],
     )
@@ -1778,6 +1779,104 @@ class TestIndustrialOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in INDUSTRIAL.overlays[key].content.lower()
+
+
+MEDICAL_OVERLAY_KEYS = [
+    "diabetes_management",
+    "dme_mobility_orthopedics",
+    "hypodermic_infusion",
+    "ppe_hygiene",
+    "respiratory_therapy",
+    "surgical_instruments",
+    "urology_incontinence",
+    "wound_care",
+]
+
+
+class TestMedicalOverlays:
+    def test_medical_has_overlays(self):
+        assert len(MEDICAL.overlays) == 8
+
+    def test_overlay_keys(self):
+        assert set(MEDICAL.overlays.keys()) == set(MEDICAL_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", MEDICAL_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = MEDICAL.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_surgical_mentions_scalpel(self):
+        assert "scalpel" in MEDICAL.overlays["surgical_instruments"].content.lower()
+
+    def test_respiratory_mentions_cpap(self):
+        assert "cpap" in MEDICAL.overlays["respiratory_therapy"].content.lower()
+
+    def test_wound_care_mentions_alginate(self):
+        assert "alginate" in MEDICAL.overlays["wound_care"].content.lower()
+
+    def test_ppe_hygiene_mentions_aql(self):
+        assert "aql" in MEDICAL.overlays["ppe_hygiene"].content.lower()
+
+    def test_urology_mentions_coude(self):
+        content = MEDICAL.overlays["urology_incontinence"].content.lower()
+        assert "coud" in content
+
+    def test_diabetes_mentions_cgm(self):
+        assert "cgm" in MEDICAL.overlays["diabetes_management"].content.lower()
+
+    def test_dme_mentions_wheelchair(self):
+        content = MEDICAL.overlays["dme_mobility_orthopedics"].content.lower()
+        assert "wheelchair" in content
+
+    def test_hypodermic_mentions_luer(self):
+        assert "luer" in MEDICAL.overlays["hypodermic_infusion"].content.lower()
+
+    def test_core_has_sterility(self):
+        core = MEDICAL.core.lower()
+        assert "sterile" in core
+
+    def test_core_has_french_sizing(self):
+        core = MEDICAL.core.lower()
+        assert "french" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("surgical_instruments", "scalpel"),
+            ("surgical_instruments", "tungsten carbide"),
+            ("surgical_instruments", "mayo"),
+            ("surgical_instruments", "metzenbaum"),
+            ("surgical_instruments", "hemostat"),
+            ("respiratory_therapy", "cpap"),
+            ("respiratory_therapy", "bipap"),
+            ("respiratory_therapy", "oxygen"),
+            ("respiratory_therapy", "pulse dose"),
+            ("wound_care", "alginate"),
+            ("wound_care", "hydrocolloid"),
+            ("wound_care", "hydrogel"),
+            ("wound_care", "silver"),
+            ("ppe_hygiene", "aql"),
+            ("ppe_hygiene", "n95"),
+            ("ppe_hygiene", "astm"),
+            ("ppe_hygiene", "aami"),
+            ("urology_incontinence", "foley"),
+            ("urology_incontinence", "hydrophilic"),
+            ("urology_incontinence", "intermittent"),
+            ("diabetes_management", "test strip"),
+            ("diabetes_management", "lancet"),
+            ("diabetes_management", "cgm"),
+            ("dme_mobility_orthopedics", "wheelchair"),
+            ("dme_mobility_orthopedics", "rollator"),
+            ("dme_mobility_orthopedics", "bariatric"),
+            ("hypodermic_infusion", "luer lock"),
+            ("hypodermic_infusion", "luer slip"),
+            ("hypodermic_infusion", "insulin"),
+            ("hypodermic_infusion", "safety"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in MEDICAL.overlays[key].content.lower()
 
 
 class TestCustomVertical:

@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Groceries vertical split into core + 20 category overlays: nutrition_free_from, produce_fresh, meat_poultry, seafood_shellfish, deli_prepared, dairy_eggs, bakery_bread, frozen_foods, pantry_cooking, snacks_candy, beverages_soft_drinks, coffee_tea, cleaning_disinfectants, laundry, paper_disposables_trash, health_otc_vitamins, personal_care_beauty, baby_care, pet_supplies, adult_beverages_alcohol
 - Home improvement vertical split into core + 10 category overlays: electrical_lighting, plumbing, flooring, building_materials, tools_equipment, doors_windows, paint_finishes, hvac, kitchen_bath, outdoor_garden
 - Industrial vertical split into core + 22 category overlays: fasteners, bearings, power_transmission, hydraulic_fittings_hose, pneumatic, electrical, motors_drives, pipe_valves_fittings, pumps, ppe_head_eye_face, ppe_hand, ppe_arc_flash_fr, ppe_respiratory_foot, welding, cutting_tools, abrasives, adhesives_sealants, lubrication, seals_gaskets_orings, material_handling, test_measurement, raw_materials
+- Medical vertical split into core + 8 category overlays: surgical_instruments, respiratory_therapy, wound_care, ppe_hygiene, urology_incontinence, diabetes_management, dme_mobility_orthopedics, hypodermic_infusion
 
 ### Changed
 
