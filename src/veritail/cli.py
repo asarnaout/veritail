@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import threading
 from dataclasses import asdict
@@ -18,6 +19,7 @@ from veritail.adapter import load_adapter
 from veritail.backends import create_backend
 from veritail.checks.custom import CustomCheckFn, load_checks
 from veritail.llm.client import create_llm_client
+from veritail.logging import configure_logging
 from veritail.pipeline import (
     run_batch_evaluation,
     run_dual_batch_evaluation,
@@ -33,6 +35,8 @@ from veritail.scaffold import (
     scaffold_project,
 )
 from veritail.types import ExperimentConfig, VerticalContext
+
+logger = logging.getLogger(__name__)
 
 console = Console()
 
@@ -123,6 +127,13 @@ def _run_search_pipeline(  # noqa: PLR0913
     cancel_event: threading.Event | None = None,
 ) -> list[Path]:
     """Run the search evaluation pipeline. Returns list of HTML report paths."""
+    logger.debug(
+        "search pipeline: model=%s, top_k=%d, backend=%s, batch=%s",
+        llm_model,
+        top_k,
+        backend_type,
+        use_batch,
+    )
     query_entries = load_queries(queries_path)
     total_queries = len(query_entries)
 
@@ -407,6 +418,13 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
     cancel_event: threading.Event | None = None,
 ) -> list[Path]:
     """Run the autocomplete evaluation pipeline. Returns list of HTML report paths."""
+    logger.debug(
+        "autocomplete pipeline: model=%s, top_k=%d, backend=%s, batch=%s",
+        llm_model,
+        top_k,
+        backend_type,
+        use_batch,
+    )
     from veritail.autocomplete.adapter import load_suggest_adapter
     from veritail.autocomplete.pipeline import (
         run_autocomplete_evaluation,
@@ -695,9 +713,16 @@ def _warn_custom_model(model: str, base_url: str | None) -> None:
 
 @click.group()
 @click.version_option(package_name="veritail")
-def main() -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Enable debug logging to stderr.",
+)
+def main(verbose: bool) -> None:
     """veritail: Ecommerce search relevance evaluation tool."""
-    pass
+    configure_logging(verbose=verbose)
 
 
 @main.command()
@@ -1223,14 +1248,35 @@ def run(
     # ---- Resolve context and vertical (shared by search and autocomplete) ----
     if context and Path(context).is_file():
         context = Path(context).read_text(encoding="utf-8").rstrip()
+        logger.debug("loaded context from file (%d chars)", len(context))
 
     vertical_context: VerticalContext | None = None
     if vertical:
         from veritail.verticals import load_vertical
 
         vertical_context = load_vertical(vertical)
+        overlays = vertical_context.overlays
+        overlay_count = len(overlays) if overlays else 0
+        logger.debug(
+            "vertical loaded: %s, core=%d chars, overlays=%d",
+            vertical,
+            len(vertical_context.core),
+            overlay_count,
+        )
 
     # ---- Run evaluations ----
+    modes = []
+    if queries:
+        modes.append("search")
+    if autocomplete_prefixes:
+        modes.append("autocomplete")
+    dual = len(adapters) == 2
+    logger.debug(
+        "evaluation mode: %s, %s, %s",
+        "+".join(modes),
+        "batch" if use_batch else "sync",
+        "dual" if dual else "single",
+    )
     output_dir_is_new = backend_type == "file" and not Path(output_dir).exists()
     html_paths: list[Path] = []
     cancel_event: threading.Event | None = None
