@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-22
+
 ### Changed
 
 - Externalized all LLM prompt strings (5 system prompts + 14 vertical cores + 232 overlay contents) from inline Python to standalone markdown files under `src/veritail/prompts/`. Python modules now load prompts via `load_prompt()` with LRU caching. No behavioral change — loaded content is identical to the previous inline strings.
@@ -124,5 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preflight check validates LLM credentials before running
 - `veritail init` and the first `veritail run` (file backend) print a tip reminding users to add the output directory to `.gitignore`
 
-[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/asarnaout/veritail/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/asarnaout/veritail/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/asarnaout/veritail/releases/tag/v0.1.0
