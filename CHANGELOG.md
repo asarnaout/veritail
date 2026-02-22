@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Foodservice terminology equivalences split between core (cross-cutting terms) and overlays (category-specific terms) to reduce context dilution
 - 6 new foodservice category overlays: ice_machines (ice makers, bins, dispensers — split from refrigeration), underbar (bar workstations, ice bins, speed rails, blender stations), water_filtration (commercial water filters for equipment protection), replacement_parts (OEM parts, repair kits, maintenance items), plumbing (sinks, faucets, pre-rinse units, grease traps), waste_reduction (garbage disposers, pulpers, compactors, oil disposal)
 - Automotive vertical split into core + 13 category overlays: general, oil_change, fluids_and_chemicals, brakes_and_friction, wheels_tires_tpms, batteries_starting_charging, lighting_and_visibility, engine_ignition_and_sensors, suspension_steering_and_hubs, exhaust_and_emissions, hvac_air_conditioning, body_collision_paint_glass, accessories_and_tools
+- Beauty vertical split into core + 22 category overlays: complexion_makeup, eye_makeup, lip_products, cheek_color_contour, makeup_tools, cleansers_makeup_removal, exfoliants_peels, acne_and_breakouts, retinoids_antiaging, brightening_dark_spots, hydration_barrier_repair, masks_and_treatments, sunscreen_spf, sunless_tanning, shampoo_conditioner, textured_curl_hair, hair_color_toning, hair_styling_and_tools, fragrance, nails, body_care_personal, gift_sets_kits
 
 ### Changed
 

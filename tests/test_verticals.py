@@ -153,7 +153,7 @@ class TestFoodserviceOverlays:
 
     @pytest.mark.parametrize(
         "name",
-        [n for n in ALL_BUILTINS if n not in {"foodservice", "automotive"}],
+        [n for n in ALL_BUILTINS if n not in {"foodservice", "automotive", "beauty"}],
     )
     def test_other_verticals_have_no_overlays(self, name):
         vertical = load_vertical(name)
@@ -446,6 +446,174 @@ class TestAutomotiveOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in AUTOMOTIVE.overlays[key].content.lower()
+
+
+BEAUTY_OVERLAY_KEYS = [
+    "acne_and_breakouts",
+    "body_care_personal",
+    "brightening_dark_spots",
+    "cheek_color_contour",
+    "cleansers_makeup_removal",
+    "complexion_makeup",
+    "exfoliants_peels",
+    "eye_makeup",
+    "fragrance",
+    "gift_sets_kits",
+    "hair_color_toning",
+    "hair_styling_and_tools",
+    "hydration_barrier_repair",
+    "lip_products",
+    "makeup_tools",
+    "masks_and_treatments",
+    "nails",
+    "retinoids_antiaging",
+    "shampoo_conditioner",
+    "sunless_tanning",
+    "sunscreen_spf",
+    "textured_curl_hair",
+]
+
+
+class TestBeautyOverlays:
+    def test_beauty_has_overlays(self):
+        assert len(BEAUTY.overlays) == 22
+
+    def test_overlay_keys(self):
+        assert set(BEAUTY.overlays.keys()) == set(BEAUTY_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", BEAUTY_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = BEAUTY.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_complexion_mentions_shade(self):
+        content = BEAUTY.overlays["complexion_makeup"].content.lower()
+        assert "shade" in content
+
+    def test_eye_makeup_mentions_mascara(self):
+        content = BEAUTY.overlays["eye_makeup"].content.lower()
+        assert "mascara" in content
+
+    def test_lip_products_mentions_lipstick(self):
+        content = BEAUTY.overlays["lip_products"].content.lower()
+        assert "lipstick" in content
+
+    def test_fragrance_mentions_edp(self):
+        content = BEAUTY.overlays["fragrance"].content.lower()
+        assert "edp" in content
+
+    def test_sunscreen_mentions_spf(self):
+        content = BEAUTY.overlays["sunscreen_spf"].content.lower()
+        assert "spf" in content
+
+    def test_nails_mentions_gel(self):
+        content = BEAUTY.overlays["nails"].content.lower()
+        assert "gel" in content
+
+    def test_retinoids_mentions_retinol(self):
+        content = BEAUTY.overlays["retinoids_antiaging"].content.lower()
+        assert "retinol" in content
+
+    def test_acne_mentions_benzoyl_peroxide(self):
+        content = BEAUTY.overlays["acne_and_breakouts"].content.lower()
+        assert "benzoyl peroxide" in content
+
+    def test_shampoo_mentions_conditioner(self):
+        content = BEAUTY.overlays["shampoo_conditioner"].content.lower()
+        assert "conditioner" in content
+
+    def test_body_care_mentions_deodorant(self):
+        content = BEAUTY.overlays["body_care_personal"].content.lower()
+        assert "deodorant" in content
+
+    def test_core_has_hard_constraints(self):
+        core = BEAUTY.core.lower()
+        assert "hard constraint" in core
+        assert "shade" in core
+        assert "spf" in core
+
+    def test_core_has_pregnancy_safety(self):
+        core = BEAUTY.core.lower()
+        assert "pregnancy" in core
+        assert "retinoid" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("complexion_makeup", "shade"),
+            ("complexion_makeup", "undertone"),
+            ("complexion_makeup", "foundation"),
+            ("complexion_makeup", "concealer"),
+            ("complexion_makeup", "primer"),
+            ("eye_makeup", "mascara"),
+            ("eye_makeup", "eyeliner"),
+            ("eye_makeup", "false lash"),
+            ("eye_makeup", "brow"),
+            ("eye_makeup", "kohl"),
+            ("lip_products", "lipstick"),
+            ("lip_products", "lip gloss"),
+            ("lip_products", "lip stain"),
+            ("lip_products", "matte"),
+            ("cheek_color_contour", "blush"),
+            ("cheek_color_contour", "bronzer"),
+            ("cheek_color_contour", "contour"),
+            ("cheek_color_contour", "highlighter"),
+            ("makeup_tools", "brush"),
+            ("makeup_tools", "sponge"),
+            ("cleansers_makeup_removal", "cleansing oil"),
+            ("cleansers_makeup_removal", "micellar"),
+            ("cleansers_makeup_removal", "double cleansing"),
+            ("exfoliants_peels", "aha"),
+            ("exfoliants_peels", "bha"),
+            ("exfoliants_peels", "scrub"),
+            ("acne_and_breakouts", "benzoyl peroxide"),
+            ("acne_and_breakouts", "salicylic acid"),
+            ("acne_and_breakouts", "pimple patch"),
+            ("retinoids_antiaging", "retinol"),
+            ("retinoids_antiaging", "retinal"),
+            ("retinoids_antiaging", "pregnancy"),
+            ("brightening_dark_spots", "vitamin c"),
+            ("brightening_dark_spots", "niacinamide"),
+            ("brightening_dark_spots", "hyperpigmentation"),
+            ("hydration_barrier_repair", "hyaluronic acid"),
+            ("hydration_barrier_repair", "ceramide"),
+            ("hydration_barrier_repair", "barrier"),
+            ("masks_and_treatments", "sheet mask"),
+            ("masks_and_treatments", "clay"),
+            ("masks_and_treatments", "sleeping mask"),
+            ("sunscreen_spf", "spf"),
+            ("sunscreen_spf", "mineral"),
+            ("sunscreen_spf", "broad spectrum"),
+            ("sunless_tanning", "self-tanner"),
+            ("sunless_tanning", "dha"),
+            ("shampoo_conditioner", "shampoo"),
+            ("shampoo_conditioner", "dry shampoo"),
+            ("shampoo_conditioner", "purple shampoo"),
+            ("textured_curl_hair", "cgm"),
+            ("textured_curl_hair", "porosity"),
+            ("textured_curl_hair", "curl"),
+            ("hair_color_toning", "developer"),
+            ("hair_color_toning", "toner"),
+            ("hair_color_toning", "bleach"),
+            ("hair_styling_and_tools", "heat protectant"),
+            ("hair_styling_and_tools", "flat iron"),
+            ("hair_styling_and_tools", "pomade"),
+            ("fragrance", "edp"),
+            ("fragrance", "edt"),
+            ("fragrance", "flanker"),
+            ("nails", "gel polish"),
+            ("nails", "press-on"),
+            ("nails", "dip powder"),
+            ("body_care_personal", "deodorant"),
+            ("body_care_personal", "antiperspirant"),
+            ("body_care_personal", "body wash"),
+            ("gift_sets_kits", "discovery set"),
+            ("gift_sets_kits", "bundle"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in BEAUTY.overlays[key].content.lower()
 
 
 class TestCustomVertical:
