@@ -156,7 +156,8 @@ class TestFoodserviceOverlays:
         [
             n
             for n in ALL_BUILTINS
-            if n not in {"foodservice", "automotive", "beauty", "electronics"}
+            if n
+            not in {"foodservice", "automotive", "beauty", "electronics", "fashion"}
         ],
     )
     def test_other_verticals_have_no_overlays(self, name):
@@ -810,6 +811,184 @@ class TestElectronicsOverlays:
     )
     def test_category_terminology_in_overlay(self, key, term):
         assert term in ELECTRONICS.overlays[key].content.lower()
+
+
+FASHION_OVERLAY_KEYS = [
+    "activewear_athleisure",
+    "boots",
+    "denim_jeans",
+    "heels_and_dress_shoes",
+    "intimates_bras_lingerie",
+    "jewelry_precious_metals",
+    "kids_baby_apparel",
+    "outerwear_rain_down",
+    "resale_vintage",
+    "sandals_slides",
+    "sneakers_athletic_shoes",
+    "swimwear_upf",
+    "tailored_menswear",
+]
+
+
+class TestFashionOverlays:
+    def test_fashion_has_overlays(self):
+        assert len(FASHION.overlays) == 13
+
+    def test_overlay_keys(self):
+        assert set(FASHION.overlays.keys()) == set(FASHION_OVERLAY_KEYS)
+
+    @pytest.mark.parametrize("key", FASHION_OVERLAY_KEYS)
+    def test_overlay_content_non_empty(self, key):
+        overlay = FASHION.overlays[key]
+        assert len(overlay.content) > 50
+        assert len(overlay.description) > 10
+
+    def test_sneakers_mentions_running(self):
+        content = FASHION.overlays["sneakers_athletic_shoes"].content.lower()
+        assert "running" in content
+
+    def test_boots_mentions_waterproof(self):
+        content = FASHION.overlays["boots"].content.lower()
+        assert "waterproof" in content
+
+    def test_denim_mentions_selvedge(self):
+        content = FASHION.overlays["denim_jeans"].content.lower()
+        assert "selvedge" in content
+
+    def test_intimates_mentions_underwire(self):
+        content = FASHION.overlays["intimates_bras_lingerie"].content.lower()
+        assert "underwire" in content
+
+    def test_activewear_mentions_moisture_wicking(self):
+        content = FASHION.overlays["activewear_athleisure"].content.lower()
+        assert "moisture-wicking" in content
+
+    def test_outerwear_mentions_fill_power(self):
+        content = FASHION.overlays["outerwear_rain_down"].content.lower()
+        assert "fill power" in content
+
+    def test_tailored_mentions_tuxedo(self):
+        content = FASHION.overlays["tailored_menswear"].content.lower()
+        assert "tuxedo" in content
+
+    def test_swimwear_mentions_upf(self):
+        content = FASHION.overlays["swimwear_upf"].content.lower()
+        assert "upf" in content
+
+    def test_kids_mentions_toddler(self):
+        content = FASHION.overlays["kids_baby_apparel"].content.lower()
+        assert "toddler" in content
+
+    def test_jewelry_mentions_karat(self):
+        content = FASHION.overlays["jewelry_precious_metals"].content.lower()
+        assert "karat" in content
+
+    def test_resale_mentions_vintage(self):
+        content = FASHION.overlays["resale_vintage"].content.lower()
+        assert "vintage" in content
+
+    def test_heels_mentions_stiletto(self):
+        content = FASHION.overlays["heels_and_dress_shoes"].content.lower()
+        assert "stiletto" in content
+
+    def test_sandals_mentions_espadrille(self):
+        content = FASHION.overlays["sandals_slides"].content.lower()
+        assert "espadrille" in content
+
+    def test_core_has_gender_alignment(self):
+        core = FASHION.core.lower()
+        assert "gender" in core
+        assert "unisex" in core
+
+    def test_core_has_size_system(self):
+        core = FASHION.core.lower()
+        assert "size system" in core
+        assert "petite" in core
+
+    @pytest.mark.parametrize(
+        "key,term",
+        [
+            ("sneakers_athletic_shoes", "running"),
+            ("sneakers_athletic_shoes", "basketball"),
+            ("sneakers_athletic_shoes", "width"),
+            ("sneakers_athletic_shoes", "deadstock"),
+            ("sneakers_athletic_shoes", "trainer"),
+            ("sneakers_athletic_shoes", "skate"),
+            ("boots", "ankle"),
+            ("boots", "chelsea"),
+            ("boots", "wide calf"),
+            ("boots", "waterproof"),
+            ("boots", "steel toe"),
+            ("boots", "duck boot"),
+            ("boots", "insulated"),
+            ("sandals_slides", "slide"),
+            ("sandals_slides", "flip-flop"),
+            ("sandals_slides", "espadrille"),
+            ("sandals_slides", "wedge"),
+            ("sandals_slides", "arch support"),
+            ("heels_and_dress_shoes", "stiletto"),
+            ("heels_and_dress_shoes", "kitten heel"),
+            ("heels_and_dress_shoes", "pumps"),
+            ("heels_and_dress_shoes", "oxford"),
+            ("heels_and_dress_shoes", "mary jane"),
+            ("heels_and_dress_shoes", "block heel"),
+            ("denim_jeans", "selvedge"),
+            ("denim_jeans", "raw"),
+            ("denim_jeans", "sanforized"),
+            ("denim_jeans", "rise"),
+            ("denim_jeans", "bootcut"),
+            ("denim_jeans", "shrink-to-fit"),
+            ("denim_jeans", "inseam"),
+            ("intimates_bras_lingerie", "band"),
+            ("intimates_bras_lingerie", "cup"),
+            ("intimates_bras_lingerie", "underwire"),
+            ("intimates_bras_lingerie", "bralette"),
+            ("intimates_bras_lingerie", "shapewear"),
+            ("intimates_bras_lingerie", "strapless"),
+            ("activewear_athleisure", "moisture-wicking"),
+            ("activewear_athleisure", "compression"),
+            ("activewear_athleisure", "sports bra"),
+            ("activewear_athleisure", "base layer"),
+            ("activewear_athleisure", "athleisure"),
+            ("activewear_athleisure", "quick-dry"),
+            ("outerwear_rain_down", "waterproof"),
+            ("outerwear_rain_down", "fill power"),
+            ("outerwear_rain_down", "3-in-1"),
+            ("outerwear_rain_down", "dwr"),
+            ("outerwear_rain_down", "parka"),
+            ("outerwear_rain_down", "shell"),
+            ("tailored_menswear", "40r"),
+            ("tailored_menswear", "drop"),
+            ("tailored_menswear", "tuxedo"),
+            ("tailored_menswear", "dress shirt"),
+            ("tailored_menswear", "black tie"),
+            ("tailored_menswear", "sport coat"),
+            ("swimwear_upf", "upf"),
+            ("swimwear_upf", "rash guard"),
+            ("swimwear_upf", "boardshort"),
+            ("swimwear_upf", "tankini"),
+            ("kids_baby_apparel", "toddler"),
+            ("kids_baby_apparel", "2t"),
+            ("kids_baby_apparel", "husky"),
+            ("kids_baby_apparel", "newborn"),
+            ("kids_baby_apparel", "preemie"),
+            ("kids_baby_apparel", "youth"),
+            ("jewelry_precious_metals", "karat"),
+            ("jewelry_precious_metals", "vermeil"),
+            ("jewelry_precious_metals", "sterling silver"),
+            ("jewelry_precious_metals", "nickel-free"),
+            ("jewelry_precious_metals", "gold filled"),
+            ("resale_vintage", "nwt"),
+            ("resale_vintage", "deadstock"),
+            ("resale_vintage", "vintage"),
+            ("resale_vintage", "pre-owned"),
+            ("resale_vintage", "euc"),
+            ("resale_vintage", "nwot"),
+            ("resale_vintage", "authentication"),
+        ],
+    )
+    def test_category_terminology_in_overlay(self, key, term):
+        assert term in FASHION.overlays[key].content.lower()
 
 
 class TestCustomVertical:
