@@ -167,9 +167,9 @@ Scoring guidance is layered — the universal rubric applies to every evaluation
 
 ```mermaid
 flowchart TD
-    A["Rubric: Universal ecommerce search\nrelevance rules applied to every evaluation"]
-    B["Vertical: Domain-specific rules for each\nmajor retail business domain\n(e.g. foodservice, home improvement, fashion)"]
-    C["Overlay: Category-specific rules selected\nbased on the user query\n(e.g. tabletop supplies, commercial kitchen equipment)"]
+    A["<b>Rubric</b> — Universal ecommerce search relevance rules applied to every evaluation"]
+    B["<b>Vertical</b> — Domain-specific rules for each major retail business domain <i>(e.g. foodservice, home improvement, fashion)</i>"]
+    C["<b>Overlay</b> — Category-specific rules selected based on the user query <i>(e.g. tabletop supplies, commercial kitchen equipment)</i>"]
 
     A --> B --> C
 ```
