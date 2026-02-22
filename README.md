@@ -163,6 +163,17 @@ The comparison report shows metric deltas, overlap, rank correlation, and positi
 
 `--vertical` injects domain-specific scoring guidance into the judge prompt. Each vertical teaches the LLM judge what matters most in a particular ecommerce domain — the hard constraints, industry jargon, certification requirements, and category-specific nuances that generic relevance scoring would miss.
 
+Scoring guidance is layered — the universal rubric applies to every evaluation, the vertical adds domain rules, and the overlay injects category-specific rules selected per query:
+
+```mermaid
+flowchart TD
+    A["Rubric: Universal ecommerce search\nrelevance rules applied to every evaluation"]
+    B["Vertical: Domain-specific rules for each\nmajor retail business domain\n(e.g. foodservice, home improvement, fashion)"]
+    C["Overlay: Category-specific rules selected\nbased on the user query\n(e.g. tabletop supplies, commercial kitchen equipment)"]
+
+    A --> B --> C
+```
+
 Choose the vertical that best matches the ecommerce site you are evaluating.
 
 | Vertical | Description | Example retailers |
