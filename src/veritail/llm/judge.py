@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 
 from veritail.llm.client import BatchRequest, LLMClient, LLMResponse
 from veritail.prompts import load_prompt
 from veritail.types import CorrectionJudgment, JudgmentRecord, SearchResult
+
+logger = logging.getLogger(__name__)
 
 CORRECTION_SYSTEM_PROMPT = load_prompt("llm/correction.md")
 
@@ -52,6 +55,13 @@ class RelevanceJudge:
         response = self._client.complete(self._system_prompt, user_prompt)
 
         score, attribute_verdict, reasoning = self._parse_response(response.content)
+        logger.debug(
+            "relevance judge: query=%r, product=%s, score=%d, attrs=%s",
+            query,
+            result.product_id,
+            score,
+            attribute_verdict,
+        )
 
         return JudgmentRecord(
             query=query,
@@ -133,6 +143,7 @@ class RelevanceJudge:
         # Extract score
         score_match = re.search(r"(?i)SCORE\s*[:=]\s*(\d)", response_text)
         if not score_match:
+            logger.debug("parse failure: %s", response_text[:200])
             raise ValueError(
                 f"Could not parse score from LLM response. "
                 f"Expected 'SCORE: <0-3>'. Got:\n{response_text}"
@@ -184,6 +195,12 @@ class CorrectionJudge:
         response = self._client.complete(self._system_prompt, user_prompt)
 
         verdict, reasoning = self._parse_response(response.content)
+        logger.debug(
+            "correction judge: %r -> %r, verdict=%s",
+            original_query,
+            corrected_query,
+            verdict,
+        )
 
         return CorrectionJudgment(
             original_query=original_query,

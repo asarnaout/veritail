@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections import defaultdict
 from collections.abc import Callable
@@ -56,6 +57,7 @@ from veritail.types import (
     VerticalContext,
 )
 
+logger = logging.getLogger(__name__)
 console = Console()
 
 
@@ -101,6 +103,12 @@ def _classify_missing_query_types(
                 classified += 1
             if inferred_overlay is not None:
                 query_entry.overlay = inferred_overlay
+            logger.debug(
+                "classified %r -> type=%s, overlay=%s",
+                query_entry.query,
+                inferred_type,
+                inferred_overlay,
+            )
             progress.advance(task)
 
     console.print(f"[dim]Classified {classified}/{len(targets)} queries[/dim]")
@@ -152,6 +160,11 @@ def _classify_missing_query_types_batch(
         f"{len(batch_requests)} requests...[/cyan]"
     )
     batch_id = llm_client.submit_batch(batch_requests)
+    logger.debug(
+        "classification batch submitted: id=%s, count=%d",
+        batch_id,
+        len(batch_requests),
+    )
 
     poll_until_done(
         llm_client,
@@ -226,6 +239,12 @@ def run_evaluation(
         format_user_prompt,
         config.name,
     )
+    logger.debug(
+        "run_evaluation: experiment=%s, queries=%d, top_k=%d",
+        config.name,
+        len(queries),
+        config.top_k,
+    )
 
     # Build correction judge
     if prefix_parts:
@@ -282,6 +301,11 @@ def run_evaluation(
                     all_judgments.append(j)
                     judgments_by_query[int(qi)].append(j)
             remaining = len(queries) - len(completed_indices)
+            logger.debug(
+                "resume: %d queries already complete, %d remaining",
+                len(completed_indices),
+                remaining,
+            )
             console.print(
                 f"[bold]Resuming: {len(completed_indices)} queries already "
                 f"complete, {remaining} remaining[/bold]"
@@ -319,6 +343,13 @@ def run_evaluation(
                 progress.advance(task)
                 continue
 
+            logger.debug(
+                "adapter returned %d results for %r%s",
+                len(results),
+                query_entry.query,
+                f" (corrected: {corrected_query!r})" if corrected_query else "",
+            )
+
             # Step 2: Run deterministic checks
             checks = run_all_checks(query_entry, results, custom_checks=custom_checks)
             all_checks.extend(checks)
@@ -337,6 +368,15 @@ def run_evaluation(
                 )
                 correction_entries.append(
                     (query_index, query_entry.query, corrected_query)
+                )
+
+            failed_count = sum(1 for c in checks if not c.passed)
+            if failed_count:
+                logger.debug(
+                    "checks: %d failed out of %d for %r",
+                    failed_count,
+                    len(checks),
+                    query_entry.query,
                 )
 
             # Build failed-checks info per product.
@@ -396,6 +436,15 @@ def run_evaluation(
                         query_type=query_entry.type,
                         metadata={"error": str(e)},
                     )
+                logger.debug(
+                    "judgment: query=%r, product=%s, score=%d, attrs=%s, tokens=%d+%d",
+                    query_entry.query,
+                    result.product_id,
+                    judgment.score,
+                    judgment.attribute_verdict,
+                    judgment.metadata.get("input_tokens", 0),
+                    judgment.metadata.get("output_tokens", 0),
+                )
                 # Annotate with check failures
                 if product_failed_checks:
                     judgment.metadata["failed_checks"] = product_failed_checks
@@ -441,6 +490,12 @@ def run_evaluation(
                         experiment=config.name,
                         metadata={"error": str(e)},
                     )
+                logger.debug(
+                    "correction: %r -> %r, verdict=%s",
+                    original,
+                    corrected,
+                    cj.verdict,
+                )
                 all_correction_judgments.append(cj)
                 try:
                     backend.log_correction_judgment(cj)
@@ -514,6 +569,11 @@ def run_dual_evaluation(
     console.print(
         f"\n[bold]Running dual evaluation: "
         f"'{config_a.name}' vs '{config_b.name}'[/bold]\n"
+    )
+    logger.debug(
+        "dual evaluation: config_a=%s, config_b=%s",
+        config_a.name,
+        config_b.name,
     )
 
     # Run evaluation for config A
@@ -873,6 +933,11 @@ def run_batch_evaluation(
         )
         batch_id = llm_client.submit_batch(batch_requests)
         console.print(f"[dim]Batch ID: {batch_id}[/dim]")
+        logger.debug(
+            "relevance batch submitted: id=%s, requests=%d",
+            batch_id,
+            len(batch_requests),
+        )
 
         # Save partial checkpoint immediately so the relevance batch ID
         # survives even if the correction submit below raises.
@@ -905,6 +970,11 @@ def run_batch_evaluation(
                 f"{len(corr_requests)} requests...[/cyan]"
             )
             corr_batch_id = llm_client.submit_batch(corr_requests)
+            logger.debug(
+                "correction batch submitted: id=%s, requests=%d",
+                corr_batch_id,
+                len(corr_requests),
+            )
 
             # Update checkpoint with correction batch info
             gemini_corr_order = getattr(llm_client, "_batch_custom_ids", {}).get(
@@ -987,6 +1057,7 @@ def run_batch_evaluation(
     console.print("[cyan]Retrieving batch results...[/cyan]")
     batch_results = llm_client.retrieve_batch_results(batch_id)
     results_by_id = {r.custom_id: r for r in batch_results}
+    logger.debug("batch results retrieved: %d", len(batch_results))
 
     all_judgments: list[JudgmentRecord] = []
     judgments_by_query: dict[int | str, list[JudgmentRecord]] = defaultdict(list)
@@ -1157,6 +1228,11 @@ def run_dual_batch_evaluation(
     console.print(
         f"\n[bold]Running dual batch evaluation: "
         f"'{config_a.name}' vs '{config_b.name}'[/bold]\n"
+    )
+    logger.debug(
+        "dual batch evaluation: config_a=%s, config_b=%s",
+        config_a.name,
+        config_b.name,
     )
 
     judgments_a, checks_a, metrics_a, corrections_a = run_batch_evaluation(

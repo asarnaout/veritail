@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import re
 
 from veritail.llm.client import LLMClient
 from veritail.prompts import load_prompt
+
+logger = logging.getLogger(__name__)
 
 CLASSIFICATION_SYSTEM_PROMPT = load_prompt("llm/classification.md")
 
@@ -150,6 +153,14 @@ def classify_query(
             system_prompt, user_prompt, max_tokens=CLASSIFICATION_MAX_TOKENS
         )
     except Exception:
+        logger.debug("classification failed for %r", query, exc_info=True)
         return None, None
 
-    return parse_classification_with_overlay(response.content, overlay_keys)
+    result = parse_classification_with_overlay(response.content, overlay_keys)
+    logger.debug(
+        "classify_query %r -> type=%s, overlay=%s",
+        query,
+        result[0],
+        result[1],
+    )
+    return result

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -120,12 +123,18 @@ class AnthropicClient(LLMClient):
             ],
             messages=[{"role": "user", "content": user_prompt}],
         )
-        return LLMResponse(
+        resp = LLMResponse(
             content=response.content[0].text,  # type: ignore[union-attr]
             model=self._model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
         )
+        logger.debug(
+            "anthropic complete: tokens=%d+%d",
+            resp.input_tokens,
+            resp.output_tokens,
+        )
+        return resp
 
     def preflight_check(self) -> None:
         import anthropic
@@ -142,6 +151,7 @@ class AnthropicClient(LLMClient):
                 f"Model '{self._model}' not found on Anthropic. "
                 "Check the --llm-model value."
             ) from exc
+        logger.debug("anthropic preflight ok: model=%s", self._model)
 
     def supports_batch(self) -> bool:
         return True
@@ -166,6 +176,11 @@ class AnthropicClient(LLMClient):
             for req in requests
         ]
         batch = self._client.messages.batches.create(requests=request_dicts)  # type: ignore[arg-type]
+        logger.debug(
+            "anthropic batch submitted: id=%s, requests=%d",
+            batch.id,
+            len(requests),
+        )
         return batch.id
 
     def poll_batch(self, batch_id: str) -> tuple[str, int, int]:
@@ -178,6 +193,7 @@ class AnthropicClient(LLMClient):
         counts = batch.request_counts
         completed = counts.succeeded + counts.errored + counts.canceled + counts.expired
         total = completed + counts.processing
+        logger.debug("anthropic poll: status=%s, %d/%d", status, completed, total)
         return status, completed, total
 
     def retrieve_batch_results(self, batch_id: str) -> list[BatchResult]:
@@ -243,12 +259,18 @@ class OpenAIClient(LLMClient):
         )
         choice = response.choices[0]
         usage = response.usage
-        return LLMResponse(
+        resp = LLMResponse(
             content=choice.message.content or "",
             model=self._model,
             input_tokens=usage.prompt_tokens if usage else 0,
             output_tokens=usage.completion_tokens if usage else 0,
         )
+        logger.debug(
+            "openai complete: tokens=%d+%d",
+            resp.input_tokens,
+            resp.output_tokens,
+        )
+        return resp
 
     def preflight_check(self) -> None:
         import openai
@@ -269,6 +291,11 @@ class OpenAIClient(LLMClient):
             # OpenAI-compatible APIs may not implement the models endpoint;
             # skip validation and let the first real call surface errors.
             pass
+        logger.debug(
+            "openai preflight ok: model=%s, base_url=%s",
+            self._model,
+            self._base_url,
+        )
 
     def supports_batch(self) -> bool:
         return self._base_url is None
@@ -306,6 +333,11 @@ class OpenAIClient(LLMClient):
             endpoint="/v1/chat/completions",
             completion_window="24h",
         )
+        logger.debug(
+            "openai batch submitted: id=%s, requests=%d",
+            batch.id,
+            len(requests),
+        )
         return batch.id
 
     def poll_batch(self, batch_id: str) -> tuple[str, int, int]:
@@ -329,6 +361,7 @@ class OpenAIClient(LLMClient):
         else:
             completed = 0
             total = 0
+        logger.debug("openai poll: status=%s, %d/%d", status, completed, total)
         return status, completed, total
 
     def retrieve_batch_results(self, batch_id: str) -> list[BatchResult]:
@@ -436,12 +469,18 @@ class GeminiClient(LLMClient):
         )
         text: str = response.text or ""
         usage = response.usage_metadata
-        return LLMResponse(
+        resp = LLMResponse(
             content=text,
             model=self._model,
             input_tokens=usage.prompt_token_count if usage else 0,
             output_tokens=usage.candidates_token_count if usage else 0,
         )
+        logger.debug(
+            "gemini complete: tokens=%d+%d",
+            resp.input_tokens,
+            resp.output_tokens,
+        )
+        return resp
 
     def preflight_check(self) -> None:
         try:
@@ -462,6 +501,7 @@ class GeminiClient(LLMClient):
                     "Check the --llm-model value."
                 ) from exc
             raise RuntimeError(f"Gemini preflight check failed: {exc}") from exc
+        logger.debug("gemini preflight ok: model=%s", self._model)
 
     def supports_batch(self) -> bool:
         return True
@@ -487,6 +527,11 @@ class GeminiClient(LLMClient):
         )
         batch_id: str = job.name
         self._batch_custom_ids[batch_id] = custom_ids
+        logger.debug(
+            "gemini batch submitted: id=%s, requests=%d",
+            batch_id,
+            len(requests),
+        )
         return batch_id
 
     def poll_batch(self, batch_id: str) -> tuple[str, int, int]:
@@ -512,6 +557,7 @@ class GeminiClient(LLMClient):
         else:
             completed = 0
             total = 0
+        logger.debug("gemini poll: status=%s, %d/%d", status, completed, total)
         return status, completed, total
 
     def retrieve_batch_results(self, batch_id: str) -> list[BatchResult]:
@@ -590,7 +636,15 @@ def create_llm_client(
     or any other OpenAI-compatible server.
     """
     if model.startswith("claude"):
-        return AnthropicClient(model=model)
-    if model.startswith("gemini"):
-        return GeminiClient(model=model)
-    return OpenAIClient(model=model, base_url=base_url, api_key=api_key)
+        client: LLMClient = AnthropicClient(model=model)
+    elif model.startswith("gemini"):
+        client = GeminiClient(model=model)
+    else:
+        client = OpenAIClient(model=model, base_url=base_url, api_key=api_key)
+    logger.debug(
+        "provider=%s, model=%s, base_url=%s",
+        type(client).__name__,
+        model,
+        base_url,
+    )
+    return client
