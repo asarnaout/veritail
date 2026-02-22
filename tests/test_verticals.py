@@ -117,24 +117,30 @@ FOODSERVICE_OVERLAY_KEYS = [
     "dry_goods",
     "food_prep",
     "furniture",
+    "ice_machines",
     "janitorial",
     "frozen_dessert_equipment",
+    "plumbing",
     "prepared_foods",
     "produce",
     "proteins",
     "refrigeration",
+    "replacement_parts",
     "serving_holding",
     "storage_transport",
     "smallwares",
     "tabletop",
+    "underbar",
     "ventilation",
     "warewash",
+    "waste_reduction",
+    "water_filtration",
 ]
 
 
 class TestFoodserviceOverlays:
     def test_foodservice_has_overlays(self):
-        assert len(FOODSERVICE.overlays) == 20
+        assert len(FOODSERVICE.overlays) == 26
 
     def test_overlay_keys(self):
         assert set(FOODSERVICE.overlays.keys()) == set(FOODSERVICE_OVERLAY_KEYS)
@@ -168,8 +174,8 @@ class TestFoodserviceOverlays:
     def test_serving_holding_mentions_holding(self):
         assert "holding" in FOODSERVICE.overlays["serving_holding"].content.lower()
 
-    def test_tabletop_mentions_dinnerware(self):
-        assert "dinnerware" in FOODSERVICE.overlays["tabletop"].content.lower()
+    def test_tabletop_mentions_serviceware(self):
+        assert "serviceware" in FOODSERVICE.overlays["tabletop"].content.lower()
 
     def test_ventilation_mentions_hood(self):
         assert "hood" in FOODSERVICE.overlays["ventilation"].content.lower()
@@ -185,17 +191,17 @@ class TestFoodserviceOverlays:
         content = FOODSERVICE.overlays["beverage_equipment"].content.lower()
         assert "soft serve" not in content
 
-    def test_proteins_mentions_imps(self):
-        assert "imps" in FOODSERVICE.overlays["proteins"].content.lower()
+    def test_proteins_mentions_cut(self):
+        assert "cut" in FOODSERVICE.overlays["proteins"].content.lower()
 
-    def test_proteins_mentions_usda(self):
-        assert "usda" in FOODSERVICE.overlays["proteins"].content.lower()
+    def test_proteins_mentions_seafood(self):
+        assert "seafood" in FOODSERVICE.overlays["proteins"].content.lower()
 
-    def test_prepared_foods_mentions_cn_label(self):
-        assert "cn label" in FOODSERVICE.overlays["prepared_foods"].content.lower()
+    def test_prepared_foods_mentions_frozen(self):
+        assert "frozen" in FOODSERVICE.overlays["prepared_foods"].content.lower()
 
-    def test_prepared_foods_mentions_parbaked(self):
-        assert "parbaked" in FOODSERVICE.overlays["prepared_foods"].content.lower()
+    def test_prepared_foods_mentions_par_cooked(self):
+        assert "par-cooked" in FOODSERVICE.overlays["prepared_foods"].content.lower()
 
     def test_prepared_foods_mentions_rte(self):
         assert "ready-to-eat" in FOODSERVICE.overlays["prepared_foods"].content.lower()
@@ -203,8 +209,8 @@ class TestFoodserviceOverlays:
     def test_dry_goods_mentions_flour(self):
         assert "flour" in FOODSERVICE.overlays["dry_goods"].content.lower()
 
-    def test_disposables_mentions_clamshell(self):
-        assert "clamshell" in FOODSERVICE.overlays["disposables"].content.lower()
+    def test_disposables_mentions_compostable(self):
+        assert "compostable" in FOODSERVICE.overlays["disposables"].content.lower()
 
     def test_smallwares_does_not_mention_disposables(self):
         assert "disposable" not in FOODSERVICE.overlays["smallwares"].content.lower()
@@ -227,55 +233,63 @@ class TestFoodserviceOverlays:
     @pytest.mark.parametrize(
         "key,term",
         [
-            ("cooking", "salamander"),
             ("cooking", "combi"),
-            ("cooking", "charbroiler"),
-            ("cooking", "impinger"),
-            ("cooking", "deck oven"),
+            ("cooking", "fryer"),
+            ("cooking", "convection"),
+            ("cooking", "btu"),
             ("refrigeration", "lowboy"),
             ("refrigeration", "reach-in"),
             ("refrigeration", "chef base"),
-            ("serving_holding", "bain-marie"),
-            ("smallwares", "lexan"),
-            ("ventilation", "grease hood"),
-            ("ventilation", "ansul"),
-            ("frozen_dessert_equipment", "batch freezer"),
-            ("frozen_dessert_equipment", "dipping cabinet"),
-            ("furniture", "banquet chair"),
-            ("dry_goods", "powdered sugar"),
+            ("refrigeration", "blast chiller"),
+            ("refrigeration", "pizza prep"),
+            ("serving_holding", "holding"),
+            ("serving_holding", "steam table"),
+            ("smallwares", "hotel pan"),
+            ("smallwares", "gn pan"),
+            ("smallwares", "cambro"),
+            ("ventilation", "type i"),
+            ("ventilation", "cfm"),
+            ("ventilation", "fire suppression"),
+            ("frozen_dessert_equipment", "soft serve"),
+            ("frozen_dessert_equipment", "granita"),
+            ("furniture", "booth"),
+            ("furniture", "bifma"),
             ("dry_goods", "#10"),
-            ("dry_goods", "smoke point"),
-            ("proteins", "filet mignon"),
-            ("proteins", "imps"),
+            ("dry_goods", "flour"),
+            ("dry_goods", "baking powder"),
+            ("proteins", "ribeye"),
             ("proteins", "catch weight"),
-            ("proteins", "iqf"),
-            ("proteins", "ny strip"),
-            ("produce", "plu"),
-            ("produce", "iqf"),
-            ("produce", "fresh-cut"),
-            ("produce", "markon"),
-            ("produce", "usda organic"),
-            ("produce", "extra fancy"),
-            ("produce", "count-per-case"),
-            ("prepared_foods", "cn label"),
-            ("prepared_foods", "parbaked"),
-            ("prepared_foods", "soup base"),
-            ("prepared_foods", "dough ball"),
-            ("prepared_foods", "thaw-and-serve"),
-            ("disposables", "clamshell"),
-            ("disposables", "sterno"),
+            ("proteins", "shrimp"),
+            ("produce", "organic"),
+            ("produce", "fresh"),
+            ("prepared_foods", "ready-to-eat"),
+            ("prepared_foods", "par-cooked"),
+            ("disposables", "compostable"),
+            ("disposables", "bpi"),
             ("janitorial", "quat"),
-            ("janitorial", "ecolab"),
             ("janitorial", "haccp"),
-            ("janitorial", "burnisher"),
-            ("janitorial", "can liner"),
-            ("janitorial", "j-fill"),
-            ("storage_transport", "dunnage"),
-            ("storage_transport", "nsf"),
-            ("storage_transport", "camshelving"),
-            ("storage_transport", "queen mary"),
-            ("storage_transport", "camdolly"),
-            ("storage_transport", "metromax"),
+            ("janitorial", "rtu"),
+            ("storage_transport", "sheet pan rack"),
+            ("storage_transport", "chrome"),
+            ("beverage_equipment", "espresso"),
+            ("beverage_equipment", "bag-in-box"),
+            ("beverages", "bib"),
+            ("beverages", "rtd"),
+            ("ice_machines", "nugget"),
+            ("ice_machines", "flake"),
+            ("ice_machines", "modular"),
+            ("underbar", "cocktail station"),
+            ("underbar", "speed rail"),
+            ("water_filtration", "cartridge"),
+            ("water_filtration", "scale"),
+            ("replacement_parts", "gasket"),
+            ("replacement_parts", "oem"),
+            ("plumbing", "pre-rinse"),
+            ("plumbing", "grease trap"),
+            ("waste_reduction", "pulper"),
+            ("waste_reduction", "compactor"),
+            ("warewash", "glasswasher"),
+            ("warewash", "conveyor"),
         ],
     )
     def test_category_terminology_in_overlay(self, key, term):

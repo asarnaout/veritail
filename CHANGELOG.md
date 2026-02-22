@@ -14,14 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `QueryEntry.overlay` field for classified overlay keys in query CSV/JSON files
 - Classifier determines query type and overlay key in a single LLM call (zero extra cost)
 - Overlay classifier supports `none` option for queries outside all domain overlays, with bias-toward-matching to prevent overuse
-- Foodservice vertical split into core + 20 category overlays: beverage_equipment, beverages, cooking, dairy_eggs, disposables, dry_goods, food_prep, furniture, janitorial, frozen_dessert_equipment, prepared_foods, produce, proteins, refrigeration, serving_holding, smallwares, storage_transport, tabletop, ventilation, warewash
+- Foodservice vertical split into core + 26 category overlays: beverage_equipment, beverages, cooking, dairy_eggs, disposables, dry_goods, food_prep, furniture, ice_machines, janitorial, frozen_dessert_equipment, plumbing, prepared_foods, produce, proteins, refrigeration, replacement_parts, serving_holding, smallwares, storage_transport, tabletop, underbar, ventilation, warewash, waste_reduction, water_filtration
 - Foodservice terminology equivalences split between core (cross-cutting terms) and overlays (category-specific terms) to reduce context dilution
-- 12 new foodservice category overlays: ventilation (exhaust hoods, makeup air, fire suppression), frozen_dessert_equipment (soft serve, batch freezers, gelato cases), furniture (seating, tables, booths), disposables (cups, to-go containers, paper products, gloves), dry_goods (pantry staples, canned goods, baking, oils, sauces, condiments, spices), beverages (consumable drink products — coffee, tea, juice, soda syrup), dairy_eggs (dairy products, eggs, butter, cheese, cream, cultured dairy), proteins (meat, poultry, seafood), prepared_foods (frozen entrees, appetizers, soups, bakery, desserts, pizza, CN labeling), produce (fresh fruits, vegetables, herbs, USDA grades, PLU codes, processed forms), storage_transport (shelving, racks, carts, dollies, insulated carriers), janitorial (facility cleaning — sanitizers, floor care, mops, can liners, dilution systems)
+- 6 new foodservice category overlays: ice_machines (ice makers, bins, dispensers — split from refrigeration), underbar (bar workstations, ice bins, speed rails, blender stations), water_filtration (commercial water filters for equipment protection), replacement_parts (OEM parts, repair kits, maintenance items), plumbing (sinks, faucets, pre-rinse units, grease traps), waste_reduction (garbage disposers, pulpers, compactors, oil disposal)
 
 ### Changed
 
 - Beverage equipment overlay renamed from `beverage` to `beverage_equipment` to distinguish from new `beverages` consumable overlay; soft serve moved to new frozen_dessert_equipment overlay
 - Smallwares overlay: disposables moved to new disposables overlay; smallwares now focuses on durable kitchen tools, pans, and food storage
+- All foodservice overlay content rewritten to be more concise and focused on hard constraints; verbose terminology glossaries replaced with short key-term lists
+- Ice machines split out of the `refrigeration` overlay into a dedicated `ice_machines` overlay
 
 - `load_vertical()` returns `VerticalContext` instead of `str`; custom file verticals are wrapped automatically
 - Classification pre-pass runs for all queries when overlays are available (to assign overlay keys), preserving pre-existing query types
