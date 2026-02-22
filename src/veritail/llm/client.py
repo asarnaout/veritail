@@ -562,7 +562,7 @@ class GeminiClient(LLMClient):
 
     def retrieve_batch_results(self, batch_id: str) -> list[BatchResult]:
         job = self._client.batches.get(name=batch_id)
-        custom_ids = self._batch_custom_ids.pop(batch_id, [])
+        custom_ids = self._batch_custom_ids.get(batch_id, [])
         results: list[BatchResult] = []
 
         if not job.dest or not job.dest.inlined_responses:
