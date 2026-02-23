@@ -72,7 +72,10 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
 }
 
 QUERY_TYPE_DISPLAY_NAMES: dict[str, str] = {
-    "long_tail": "long-tail",
+    "attribute": "Attribute",
+    "broad": "Broad",
+    "long_tail": "Long-Tail",
+    "navigational": "Navigational",
 }
 
 QUERY_TYPE_DESCRIPTIONS: dict[str, str] = {

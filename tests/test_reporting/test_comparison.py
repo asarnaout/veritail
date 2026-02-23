@@ -319,7 +319,7 @@ class TestGenerateComparisonReport:
             format="html",
         )
         assert "Metrics by Query Type" in report
-        assert "broad" in report
+        assert "Broad" in report
 
     def test_html_deterministic_checks_comparison(self):
         """Deterministic checks comparison table appears."""
@@ -445,7 +445,7 @@ class TestGenerateComparisonReport:
             judgments_a=judgments_a,
         )
         assert "NDCG@10 Scatter Plot" in report
-        assert "broad" in report
+        assert "Broad" in report
 
     def test_html_mean_relevance_by_position(self):
         """Mean relevance by position chart appears with polylines."""

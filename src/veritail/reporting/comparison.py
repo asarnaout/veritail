@@ -168,7 +168,8 @@ def _generate_terminal(
     if all_types:
         console.print("\n")
         for qt in sorted(all_types):
-            type_table = Table(title=f"Query Type: {qt}", show_header=True)
+            qt_display = QUERY_TYPE_DISPLAY_NAMES.get(qt, qt)
+            type_table = Table(title=f"Query Type: {qt_display}", show_header=True)
             type_table.add_column("Metric", style="cyan")
             type_table.add_column(config_a, justify="right")
             type_table.add_column(config_b, justify="right")

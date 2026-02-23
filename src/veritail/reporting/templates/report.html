@@ -155,7 +155,7 @@
 
             {% for p in scatter_plot.points %}
             <circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" opacity="0.8">
-                <title>{{ p.query }} — {{ config_a }}: {{ p.ndcg_a }}, {{ config_b }}: {{ p.ndcg_b }} ({{ p.type }})</title>
+                <title>{{ p.query }} — {{ config_a }}: {{ p.ndcg_a }}, {{ config_b }}: {{ p.ndcg_b }} ({{ query_type_display_names.get(p.type, p.type) }})</title>
             </circle>
             {% endfor %}
 
@@ -168,7 +168,7 @@
         {% if scatter_plot.legend %}
         <div style="display:flex; gap:16px; font-size:13px; margin-top:12px; justify-content:center; flex-wrap:wrap;">
             {% for entry in scatter_plot.legend %}
-            <span><span style="display:inline-block; width:10px; height:10px; background:{{ entry.color }}; border-radius:50%; vertical-align:middle; margin-right:4px;"></span> {{ entry.type }}</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:{{ entry.color }}; border-radius:50%; vertical-align:middle; margin-right:4px;"></span> {{ query_type_display_names.get(entry.type, entry.type) }}</span>
             {% endfor %}
         </div>
         {% endif %}

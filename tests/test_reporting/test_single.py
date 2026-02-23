@@ -376,7 +376,7 @@ class TestGenerateSingleReport:
     def test_html_metrics_by_query_type(self):
         report = generate_single_report(_make_metrics(), _make_checks(), format="html")
         assert "Metrics by Query Type" in report
-        assert "broad" in report
+        assert "Broad" in report
         assert "0.8500" in report
 
     def test_html_metrics_by_query_type_absent_when_no_types(self):
@@ -610,7 +610,7 @@ class TestGenerateSingleReport:
         )
         assert "Query Type" in report
         assert "Failed Checks" in report
-        assert "broad" in report
+        assert "Broad" in report
         assert 'href="#query-' in report
 
     def test_html_worst_queries_no_judgments_graceful(self):
@@ -826,8 +826,8 @@ class TestGenerateSingleReport:
             judgments=judgments,
         )
         assert "By Query Type" in report
-        assert "broad" in report
-        assert "navigational" in report
+        assert "Broad" in report
+        assert "Navigational" in report
 
     def test_html_score_by_query_type_absent_when_all_unknown(self):
         judgments = [
@@ -883,4 +883,4 @@ class TestGenerateSingleReport:
             judgments=judgments,
         )
         assert "By Query Type" in report
-        assert "broad" in report
+        assert "Broad" in report
