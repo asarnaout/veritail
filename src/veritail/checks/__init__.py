@@ -5,6 +5,10 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
+from veritail.checks.correction import (
+    check_correction_vocabulary,
+    check_unnecessary_correction,
+)
 from veritail.checks.query_level import check_result_count, check_zero_results
 from veritail.checks.result_level import (
     check_duplicates,
