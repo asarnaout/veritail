@@ -63,7 +63,12 @@
         <tbody>
             {% for d in check_comparison %}
             <tr>
-                <td>{{ d.name }}</td>
+                <td>
+                    {{ d.name }}
+                    {% if check_descriptions and check_descriptions.get(d.internal_name) %}
+                    <span class="tip" data-tip="{{ check_descriptions[d.internal_name] }}">?</span>
+                    {% endif %}
+                </td>
                 <td class="positive">{{ d.passed_a }}</td>
                 <td class="{% if d.failed_a != 0 and d.failed_a != '-' %}negative{% else %}neutral{% endif %}">{{ d.failed_a }}</td>
                 <td class="positive">{{ d.passed_b }}</td>

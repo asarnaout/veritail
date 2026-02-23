@@ -99,6 +99,8 @@ class TestGenerateAutocompleteComparisonReport:
         )
         assert "<html" in report
         assert "Comparison" in report
+        # Comparison checks should have tooltips like the single report
+        assert 'class="tip"' in report
 
 
 def _make_judgment(

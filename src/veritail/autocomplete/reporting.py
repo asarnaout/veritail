@@ -478,6 +478,7 @@ def _generate_comparison_html(
         check_comparison.append(
             {
                 "name": CHECK_DISPLAY_NAMES.get(name, name),
+                "internal_name": name,
                 "passed_a": sa["passed_display"],
                 "failed_a": sa["failed"],
                 "passed_b": sb["passed_display"],
@@ -507,6 +508,7 @@ def _generate_comparison_html(
         config_b=config_b,
         check_comparison=check_comparison,
         overlap_checks=overlap_checks[:10],
+        check_descriptions=CHECK_DESCRIPTIONS,
         run_metadata_rows=metadata_rows,
         sibling_report=sibling_report,
     )
