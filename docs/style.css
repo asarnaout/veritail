@@ -178,8 +178,15 @@ img {
   font-size: clamp(1rem, 2vw, 1.25rem);
   color: var(--text-secondary);
   max-width: 640px;
-  margin: 0 auto var(--space-lg);
+  margin: 0 auto var(--space-md);
   line-height: 1.6;
+}
+
+.hero-positioning {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: var(--space-md);
 }
 
 .hero-install {
