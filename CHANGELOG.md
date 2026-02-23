@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-02-22
+
 ### Fixed
 
 - Price outlier detection now works correctly for small result sets (3-7 results) using Modified Z-Score (MAD), and uses properly interpolated quartiles for IQR (8+ results)
