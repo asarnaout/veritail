@@ -21,6 +21,18 @@ _JINJA_ENV = Environment(
     autoescape=select_autoescape(("html", "xml"), default_for_string=True),
 )
 
+CHECK_DISPLAY_NAMES: dict[str, str] = {
+    "empty_suggestions": "Empty Suggestions",
+    "duplicate_suggestion": "Duplicate Suggestion",
+    "prefix_coherence": "Prefix Coherence",
+    "offensive_content": "Offensive Content",
+    "suggestion_overlap": "Suggestion Overlap",
+    "rank_agreement": "Rank Agreement",
+    "encoding_issues": "Encoding Issues",
+    "length_anomaly": "Length Anomaly",
+    "latency": "Latency",
+}
+
 CHECK_DESCRIPTIONS: dict[str, str] = {
     "empty_suggestions": "Fails when a prefix returns no suggestions at all",
     "duplicate_suggestion": "Detects duplicate suggestions in the response",
@@ -46,7 +58,7 @@ def _summarize_checks(
     for c in checks:
         if c.check_name not in summary:
             summary[c.check_name] = {
-                "display_name": c.check_name,
+                "display_name": CHECK_DISPLAY_NAMES.get(c.check_name, c.check_name),
                 "passed": 0,
                 "failed": 0,
                 "passed_display": "0",
@@ -160,7 +172,9 @@ def _generate_terminal(
         fail_table.add_column("Check")
         fail_table.add_column("Detail", style="dim")
         for c in failed_checks[:20]:
-            fail_table.add_row(c.query, c.check_name, c.detail)
+            fail_table.add_row(
+                c.query, CHECK_DISPLAY_NAMES.get(c.check_name, c.check_name), c.detail
+            )
         if len(failed_checks) > 20:
             con.print(f"[dim]  ... and {len(failed_checks) - 20} more[/dim]")
         con.print(fail_table)
@@ -302,7 +316,7 @@ def _generate_comparison_terminal(
         sa = summary_a.get(name, {"passed_display": "-", "failed": "-"})
         sb = summary_b.get(name, {"passed_display": "-", "failed": "-"})
         table.add_row(
-            name,
+            CHECK_DISPLAY_NAMES.get(name, name),
             str(sa["passed_display"]),
             str(sa["failed"]),
             str(sb["passed_display"]),
@@ -360,7 +374,10 @@ def _generate_html(
                 "type": entry.type or "",
                 "suggestions": resp.suggestions if resp else [],
                 "failed_checks": [
-                    {"name": c.check_name, "detail": c.detail}
+                    {
+                        "name": CHECK_DISPLAY_NAMES.get(c.check_name, c.check_name),
+                        "detail": c.detail,
+                    }
                     for c in prefix_failures.get(entry.prefix, [])
                 ],
             }
@@ -460,7 +477,7 @@ def _generate_comparison_html(
         sb = summary_b.get(name, {"passed_display": "-", "failed": "-"})
         check_comparison.append(
             {
-                "name": name,
+                "name": CHECK_DISPLAY_NAMES.get(name, name),
                 "passed_a": sa["passed_display"],
                 "failed_a": sa["failed"],
                 "passed_b": sb["passed_display"],

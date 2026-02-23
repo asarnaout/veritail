@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Metric names in reports now use proper casing: NDCG@5, NDCG@10, MRR, MAP, P@5, P@10, Attribute Match@5, Attribute Match@10
 - Query type labels in reports now use title case: Attribute, Broad, Long-Tail, Navigational
-- Deterministic check names in reports now use human-friendly labels (e.g. "Keyword Coverage", "Near-Duplicate Products", "Product Title Length")
+- Deterministic check names in reports now use human-friendly labels (e.g. "Keyword Coverage", "Near-Duplicate Products", "Product Title Length") — applies to both search and autocomplete reports
 
 ## [0.2.1] - 2026-02-22
 
