@@ -321,15 +321,15 @@
         <tbody>
             {% for w in winners %}
             <tr>
-                <td>{{ w.query }}</td>
+                <td>{% if w.has_details %}<a href="javascript:void(0)" onclick="var d=document.getElementById('winner-{{ loop.index0 }}');if(d)d.toggleAttribute('open')" style="color:#4f6bed; text-decoration:none; font-weight:500;">{{ w.query }}</a>{% else %}{{ w.query }}{% endif %}</td>
                 <td class="metric-value">{{ "%.4f"|format(w.value_a) }}</td>
                 <td class="metric-value">{{ "%.4f"|format(w.value_b) }}</td>
                 <td class="metric-value positive">{{ "%+.1f"|format(w.pct_change) }}%</td>
             </tr>
             {% if w.has_details %}
             <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
-                <details style="padding:8px 16px;">
-                    <summary style="cursor:pointer; font-size:13px; color:#6b7280;">Show results side-by-side</summary>
+                <details id="winner-{{ loop.index0 }}" style="padding:8px 16px;">
+                    <summary style="display:none;"></summary>
                     <div style="display:flex; gap:24px; margin-top:10px; flex-wrap:wrap;">
                         {% for label, results in [(config_a, w.results_a), (config_b, w.results_b)] %}
                         {% if results %}
@@ -378,15 +378,15 @@
         <tbody>
             {% for l in losers %}
             <tr>
-                <td>{{ l.query }}</td>
+                <td>{% if l.has_details %}<a href="javascript:void(0)" onclick="var d=document.getElementById('loser-{{ loop.index0 }}');if(d)d.toggleAttribute('open')" style="color:#4f6bed; text-decoration:none; font-weight:500;">{{ l.query }}</a>{% else %}{{ l.query }}{% endif %}</td>
                 <td class="metric-value">{{ "%.4f"|format(l.value_a) }}</td>
                 <td class="metric-value">{{ "%.4f"|format(l.value_b) }}</td>
                 <td class="metric-value negative">{{ "%+.1f"|format(l.pct_change) }}%</td>
             </tr>
             {% if l.has_details %}
             <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
-                <details style="padding:8px 16px;">
-                    <summary style="cursor:pointer; font-size:13px; color:#6b7280;">Show results side-by-side</summary>
+                <details id="loser-{{ loop.index0 }}" style="padding:8px 16px;">
+                    <summary style="display:none;"></summary>
                     <div style="display:flex; gap:24px; margin-top:10px; flex-wrap:wrap;">
                         {% for label, results in [(config_a, l.results_a), (config_b, l.results_b)] %}
                         {% if results %}

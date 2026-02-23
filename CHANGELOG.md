@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Query type labels in reports now use title case: Attribute, Broad, Long-Tail, Navigational
 - Deterministic check names in reports now use human-friendly labels (e.g. "Keyword Coverage", "Near-Duplicate Products", "Product Title Length") — applies to both search and autocomplete reports
 - Comparison report: removed redundant Delta column from metrics table (% Change is sufficient) and replaced Delta with % Change in metrics-by-query-type tables
+- Comparison report: query names in Biggest Improvements/Regressions tables are now clickable to expand side-by-side results (replaces separate "Show results side-by-side" row)
 
 ## [0.2.1] - 2026-02-22
 

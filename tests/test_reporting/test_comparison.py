@@ -650,7 +650,8 @@ class TestGenerateComparisonReport:
             judgments_a=judgments_a,
             judgments_b=judgments_b,
         )
-        assert "Show results side-by-side" in report
         assert "<details" in report
+        # Query text should be a clickable link that toggles the details
+        assert 'onclick=' in report
         assert "Nike Shoes" in report
         assert "SKU-1" in report
