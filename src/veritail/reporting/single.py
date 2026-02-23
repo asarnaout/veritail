@@ -132,7 +132,15 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
 
 FAILURE_ONLY_CHECKS: set[str] = {"duplicate"}
 CHECK_DISPLAY_NAMES: dict[str, str] = {
-    "duplicate": "duplicate (flagged pairs)",
+    "zero_results": "Zero Results",
+    "result_count": "Low Result Count",
+    "text_overlap": "Keyword Coverage",
+    "price_outlier": "Price Outlier",
+    "duplicate": "Near-Duplicate Products",
+    "title_length": "Product Title Length",
+    "out_of_stock_prominence": "Out-of-Stock Prominence",
+    "correction_vocabulary": "Correction Term Coverage",
+    "unnecessary_correction": "Unnecessary Correction",
 }
 
 # Display order for the deterministic checks table.  Checks not listed

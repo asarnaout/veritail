@@ -70,8 +70,8 @@ class TestGenerateSingleReport:
 
     def test_terminal_report_contains_checks(self):
         report = generate_single_report(_make_metrics(), _make_checks())
-        assert "zero_results" in report
-        assert "text_overlap" in report
+        assert "Zero Results" in report
+        assert "Keyword Coverage" in report
 
     def test_duplicate_check_displays_as_failure_only_in_terminal(self):
         checks = [
@@ -84,7 +84,7 @@ class TestGenerateSingleReport:
             ),
         ]
         report = generate_single_report(_make_metrics(), checks)
-        assert "duplicate (flagged pairs)" in report
+        assert "Near-Duplicate Products" in report
         assert "n/a" in report
 
     def test_terminal_report_worst_queries(self):
@@ -127,7 +127,7 @@ class TestGenerateSingleReport:
             ),
         ]
         report = generate_single_report(_make_metrics(), checks, format="html")
-        assert "duplicate (flagged pairs)" in report
+        assert "Near-Duplicate Products" in report
         assert ">n/a<" in report
         assert ">1<" in report
 
@@ -533,7 +533,7 @@ class TestGenerateSingleReport:
         assert "SKU-1" in report
         assert "SKU-2" in report
         # Check name is the expandable element (no separate "Show N" row)
-        assert "text_overlap" in report
+        assert "Keyword Coverage" in report
 
     def test_html_check_failures_severity_badge(self):
         checks = [

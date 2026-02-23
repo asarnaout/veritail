@@ -366,7 +366,7 @@ class TestGenerateComparisonReport:
             checks_b=checks_b,
         )
         assert "Deterministic Checks" in report
-        assert "zero_results" in report
+        assert "Zero Results" in report
 
     def test_html_result_overlap_summary(self):
         """Result overlap summary shows mean Jaccard and interpretation."""
