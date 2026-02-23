@@ -55,6 +55,16 @@ def _slugify_name(raw: str) -> str:
     return slug or "config"
 
 
+def _deduplicate_config_name(name: str, output_dir: str) -> str:
+    """Append .2, .3, … if the experiment directory already exists."""
+    if not (Path(output_dir) / name).exists():
+        return name
+    n = 2
+    while (Path(output_dir) / f"{name}.{n}").exists():
+        n += 1
+    return f"{name}.{n}"
+
+
 def _generate_config_names(adapters: tuple[str, ...]) -> tuple[str, ...]:
     """Generate readable, unique config names from adapter paths."""
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -1202,6 +1212,17 @@ def run(
             "[dim]No --config-name provided. Using generated names: "
             f"{', '.join(config_names)}[/dim]",
         )
+    elif not use_resume:
+        deduped: list[str] = []
+        for cn in config_names:
+            new_name = _deduplicate_config_name(cn, output_dir)
+            if new_name != cn:
+                console.print(
+                    f"[yellow]Config '{cn}' already exists. "
+                    f"Using '{new_name}' instead.[/yellow]"
+                )
+            deduped.append(new_name)
+        config_names = tuple(deduped)
 
     if sample is not None and sample < 1:
         raise click.UsageError("--sample must be >= 1.")

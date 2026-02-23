@@ -10,6 +10,148 @@ from veritail.cli import main
 from veritail.types import MetricResult
 
 
+class TestDeduplicateConfigName:
+    def test_returns_name_unchanged_when_no_conflict(self, tmp_path):
+        from veritail.cli import _deduplicate_config_name
+
+        assert _deduplicate_config_name("my-run", str(tmp_path)) == "my-run"
+
+    def test_appends_dot_2_on_first_conflict(self, tmp_path):
+        from veritail.cli import _deduplicate_config_name
+
+        (tmp_path / "my-run").mkdir()
+        assert _deduplicate_config_name("my-run", str(tmp_path)) == "my-run.2"
+
+    def test_increments_suffix_past_existing(self, tmp_path):
+        from veritail.cli import _deduplicate_config_name
+
+        (tmp_path / "my-run").mkdir()
+        (tmp_path / "my-run.2").mkdir()
+        (tmp_path / "my-run.3").mkdir()
+        assert _deduplicate_config_name("my-run", str(tmp_path)) == "my-run.4"
+
+    def test_cli_prints_warning_on_dedup(self, tmp_path):
+        """When --config-name collides, CLI warns and uses deduplicated name."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        output_dir = tmp_path / "results"
+        # Pre-create the directory to force a collision
+        (output_dir / "my-run").mkdir(parents=True)
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "my-run",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(output_dir),
+                    "--llm-model",
+                    "test-model",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "already exists" in result.output
+        assert "my-run.2" in result.output
+        # Results land in the deduplicated directory
+        assert (output_dir / "my-run.2" / "report.html").exists()
+
+    def test_resume_does_not_deduplicate(self, tmp_path):
+        """--resume should reuse the existing directory, not create .2."""
+        queries_file = tmp_path / "queries.csv"
+        queries_file.write_text("query\nshoes\n")
+
+        adapter_file = tmp_path / "adapter.py"
+        adapter_file.write_text(
+            "from veritail.types import SearchResult\n"
+            "def search(q):\n"
+            "    return [SearchResult(\n"
+            "        product_id='SKU-1', title='Shoe',\n"
+            "        description='A shoe',\n"
+            "        category='Shoes', price=50.0, position=0)]\n"
+        )
+
+        output_dir = tmp_path / "results"
+        exp_dir = output_dir / "my-run"
+        exp_dir.mkdir(parents=True)
+        # Write a matching config so resume validation passes
+        (exp_dir / "config.json").write_text(
+            json.dumps({"llm_model": "test-model", "top_k": 10}),
+            encoding="utf-8",
+        )
+
+        from unittest.mock import Mock, patch
+
+        from veritail.llm.client import LLMClient, LLMResponse
+
+        mock_client = Mock(spec=LLMClient)
+        mock_client.complete.return_value = LLMResponse(
+            content="SCORE: 2\nREASONING: Good match",
+            model="test-model",
+            input_tokens=100,
+            output_tokens=50,
+        )
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "run",
+                    "--queries",
+                    str(queries_file),
+                    "--adapter",
+                    str(adapter_file),
+                    "--config-name",
+                    "my-run",
+                    "--backend",
+                    "file",
+                    "--output-dir",
+                    str(output_dir),
+                    "--llm-model",
+                    "test-model",
+                    "--resume",
+                ],
+            )
+
+        assert result.exit_code == 0
+        # Should NOT have created my-run.2
+        assert "already exists" not in result.output
+        assert not (output_dir / "my-run.2").exists()
+
+
 class TestCLI:
     def test_init_creates_starter_files(self, tmp_path):
         runner = CliRunner()

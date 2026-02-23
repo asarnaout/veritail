@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Price outlier detection now works correctly for small result sets (3-7 results) using Modified Z-Score (MAD), and uses properly interpolated quartiles for IQR (8+ results)
+- Reusing a `--config-name` no longer silently overwrites previous results. The CLI now auto-appends a `.2`, `.3`, … suffix when the experiment directory already exists and warns the user. `--resume` is unaffected and continues to reuse the existing directory as before.
 
 ## [0.2.0] - 2026-02-22
 
