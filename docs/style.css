@@ -662,8 +662,8 @@ img {
 }
 
 .pill-flagged {
-  border-color: rgba(251, 146, 60, 0.4);
-  color: #fb923c;
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #f87171;
 }
 
 .autocomplete-scores {
