@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veritail — Ecommerce Search Evaluation</title>
+  <meta name="description" content="Ecommerce search evaluation powered by LLM-as-a-Judge. Domain-aware scoring, deterministic checks, and full IR metrics.">
+  <meta name="theme-color" content="#09090B">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80' fill='%23818CF8'>V</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ====== Nav ====== -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="container">
+      <a href="/" class="nav-logo" aria-label="Veritail home">veritail</a>
+      <ul class="nav-links">
+        <li><a href="https://github.com/asarnaout/veritail/tree/main/docs">Docs</a></li>
+        <li><a href="https://github.com/asarnaout/veritail">GitHub</a></li>
+        <li><a href="https://pypi.org/project/veritail/">PyPI</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ====== Hero ====== -->
+  <section class="hero">
+    <div class="container">
+      <h1>Every query scored.<br>Every defect caught.</h1>
+      <p class="hero-subtitle">
+        Ecommerce search evaluation powered by LLM-as-a-Judge. Domain-aware scoring, deterministic checks, and full IR metrics.
+      </p>
+      <div class="hero-install">
+        <span class="prompt">$</span>
+        <span class="cmd">pip install veritail</span>
+      </div>
+      <div class="hero-ctas">
+        <a href="https://github.com/asarnaout/veritail/tree/main/docs" class="btn btn-primary">Read the docs</a>
+        <a href="https://github.com/asarnaout/veritail" class="btn btn-secondary">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Demo ====== -->
+  <section class="demo">
+    <div class="container">
+      <div class="demo-frame">
+        <img src="assets/main.gif" alt="Veritail CLI demo showing search evaluation in action" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Features ====== -->
+  <section class="section">
+    <div class="container">
+      <p class="section-label">Features</p>
+      <h2 class="section-title">Everything you need to evaluate search</h2>
+      <div class="features-grid">
+
+        <div class="feature-card">
+          <div class="feature-icon" aria-hidden="true">&#x2696;</div>
+          <h3>LLM-as-a-Judge</h3>
+          <p>Score every result 0&ndash;3 with structured rubrics, automatic retries, and batch mode for 50% cost reduction.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" aria-hidden="true">&#x2731;</div>
+          <h3>14 Industry Verticals</h3>
+          <p>Built-in domain expertise for automotive, electronics, fashion, groceries, medical, and more &mdash; with per-query overlay classification at zero extra cost.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" aria-hidden="true">&#x2713;</div>
+          <h3>Deterministic Quality Checks</h3>
+          <p>Catch price outliers, empty fields, duplicate results, and ranking issues with fast, rule-based checks that run before LLM scoring.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon" aria-hidden="true">&#x2261;</div>
+          <h3>Metrics &amp; Reports</h3>
+          <p>NDCG, MRR, MAP, Precision@K, and attribute-match metrics with rich HTML reports and A/B comparison views.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== How It Works ====== -->
+  <section class="section">
+    <div class="container">
+      <p class="section-label">How it works</p>
+      <h2 class="section-title">Three steps to scored results</h2>
+      <div class="steps">
+
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Load queries</h3>
+          <p>Import your search queries from CSV or JSON. Veritail classifies each query and assigns domain-specific overlays automatically.</p>
+        </div>
+
+        <div class="step-connector" aria-hidden="true">&#x2192;</div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Evaluate</h3>
+          <p>Your search adapter returns results. Deterministic checks flag defects, then the LLM judge scores each result on a 0&ndash;3 rubric.</p>
+        </div>
+
+        <div class="step-connector" aria-hidden="true">&#x2192;</div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Report</h3>
+          <p>Get IR metrics, per-query breakdowns, and rich HTML reports. Compare two configurations side by side with dual-mode evaluation.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Quick Start ====== -->
+  <section class="section">
+    <div class="container">
+      <p class="section-label">Quick start</p>
+      <h2 class="section-title">Up and running in minutes</h2>
+      <div class="quickstart-blocks">
+
+        <div class="code-block">
+          <div class="code-block-header">Install</div>
+<pre><span class="syn-prompt">$ </span>pip install veritail
+<span class="syn-comment"># With Anthropic / Gemini support:</span>
+<span class="syn-prompt">$ </span>pip install <span class="syn-string">"veritail[cloud]"</span></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">Create an adapter</div>
+<pre><span class="syn-comment"># my_adapter.py</span>
+<span class="syn-keyword">from</span> veritail <span class="syn-keyword">import</span> SearchAdapter, SearchResult
+
+<span class="syn-keyword">class</span> <span class="syn-class">MyAdapter</span><span class="syn-op">(</span>SearchAdapter<span class="syn-op">):</span>
+    <span class="syn-keyword">def</span> <span class="syn-function">search</span><span class="syn-op">(</span><span class="syn-param">self</span><span class="syn-op">,</span> <span class="syn-param">query</span><span class="syn-op">:</span> <span class="syn-builtin">str</span><span class="syn-op">,</span> **<span class="syn-param">kwargs</span><span class="syn-op">)</span> <span class="syn-op">-></span> <span class="syn-builtin">list</span><span class="syn-op">[</span>SearchResult<span class="syn-op">]:</span>
+        <span class="syn-comment"># Call your search engine here</span>
+        <span class="syn-keyword">return</span> <span class="syn-op">[</span>
+            SearchResult<span class="syn-op">(</span>
+                <span class="syn-param">title</span><span class="syn-op">=</span><span class="syn-string">"Product Name"</span><span class="syn-op">,</span>
+                <span class="syn-param">price</span><span class="syn-op">=</span><span class="syn-number">29.99</span><span class="syn-op">,</span>
+                <span class="syn-param">url</span><span class="syn-op">=</span><span class="syn-string">"https://example.com/product"</span><span class="syn-op">,</span>
+            <span class="syn-op">)</span>
+        <span class="syn-op">]</span></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">Run evaluation</div>
+<pre><span class="syn-prompt">$ </span>veritail <span class="syn-flag">--adapter</span> my_adapter.MyAdapter \
+          <span class="syn-flag">--queries</span> queries.csv \
+          <span class="syn-flag">--vertical</span> electronics</pre>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Footer ====== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="/" class="nav-logo">veritail</a>
+          <p>Ecommerce search evaluation powered by LLM-as-a-Judge.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Documentation</h4>
+          <ul>
+            <li><a href="https://github.com/asarnaout/veritail/blob/main/docs/cli-reference.md">CLI Reference</a></li>
+            <li><a href="https://github.com/asarnaout/veritail/blob/main/docs/evaluation-model.md">Evaluation Model</a></li>
+            <li><a href="https://github.com/asarnaout/veritail/blob/main/docs/custom-checks.md">Custom Checks</a></li>
+            <li><a href="https://github.com/asarnaout/veritail/blob/main/docs/batch-mode-and-resume.md">Batch Mode</a></li>
+            <li><a href="https://github.com/asarnaout/veritail/blob/main/docs/supported-llm-providers.md">LLM Providers</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/asarnaout/veritail">GitHub</a></li>
+            <li><a href="https://pypi.org/project/veritail/">PyPI</a></li>
+            <li><a href="https://github.com/asarnaout/veritail/issues">Issues</a></li>
+            <li><a href="https://github.com/asarnaout/veritail/blob/main/CHANGELOG.md">Changelog</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>Built by <a href="https://github.com/asarnaout">Ahmed Arnaout</a></span>
+        <span>MIT License</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
