@@ -489,6 +489,41 @@ img {
   flex-shrink: 0;
 }
 
+.mono-cell {
+  font-family: var(--font-mono);
+  font-size: 0.825rem;
+}
+
+.verdict-appropriate {
+  color: #34d399;
+  font-weight: 600;
+  font-size: 0.825rem;
+}
+
+.verdict-inappropriate {
+  color: #fb923c;
+  font-weight: 600;
+  font-size: 0.825rem;
+}
+
+.output-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  font-style: italic;
+}
+
+.type-cell {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.checks-failed {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: #fb923c;
+}
+
 /* ============================================================
    How It Works — Steps
    ============================================================ */

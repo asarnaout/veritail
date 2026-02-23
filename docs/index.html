@@ -95,12 +95,10 @@
               <tr><th>Metric</th><th>Value</th></tr>
             </thead>
             <tbody>
-              <tr><td>ndcg@5</td><td class="metric-val">0.9829</td></tr>
-              <tr><td>ndcg@10</td><td class="metric-val">0.9829</td></tr>
-              <tr><td>mrr</td><td class="metric-val">0.9800</td></tr>
-              <tr><td>map</td><td class="metric-val">0.9751</td></tr>
-              <tr><td>p@5</td><td class="metric-val">0.7040</td></tr>
-              <tr><td>attribute_match@5</td><td class="metric-val">0.7787</td></tr>
+              <tr><td>NDCG@5</td><td class="metric-val">0.9829</td></tr>
+              <tr><td>NDCG@10</td><td class="metric-val">0.9829</td></tr>
+              <tr><td>MRR</td><td class="metric-val">0.9800</td></tr>
+              <tr><td>MAP</td><td class="metric-val">0.9751</td></tr>
             </tbody>
           </table>
         </div>
@@ -108,7 +106,7 @@
         <!-- Position Score Chart -->
         <div class="output-card">
           <h3 class="output-card-title">Avg Score by Position</h3>
-          <p class="chart-hint">Bars should decrease left to right if ranking is correct.</p>
+          <p class="chart-hint">Bars should decrease top to bottom if ranking is correct.</p>
           <div class="bar-chart">
             <div class="bar-row">
               <span class="bar-label">#1</span>
@@ -136,6 +134,56 @@
               <span class="bar-value">1.16</span>
             </div>
           </div>
+        </div>
+
+        <!-- Query Corrections -->
+        <div class="output-card">
+          <h3 class="output-card-title">Query Corrections</h3>
+          <table class="metrics-table">
+            <thead>
+              <tr><th>Original</th><th>Corrected</th><th>Verdict</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono-cell">intrior paint</td>
+                <td class="mono-cell">interior paint</td>
+                <td><span class="verdict-appropriate">appropriate</span></td>
+              </tr>
+              <tr>
+                <td class="mono-cell">led lighrs</td>
+                <td class="mono-cell">red lights</td>
+                <td><span class="verdict-inappropriate">inappropriate</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="output-note">Veritail catches when autocorrect fixes a typo but changes the product.</p>
+        </div>
+
+        <!-- Worst Performing Queries -->
+        <div class="output-card">
+          <h3 class="output-card-title">Worst Performing Queries</h3>
+          <table class="metrics-table">
+            <thead>
+              <tr><th>Query</th><th>Type</th><th>NDCG@10</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>self drilling drywall anchors</td>
+                <td class="type-cell">long-tail</td>
+                <td class="metric-val">0.7829</td>
+              </tr>
+              <tr>
+                <td>pex crimp tool</td>
+                <td class="type-cell">broad</td>
+                <td class="metric-val">0.8554</td>
+              </tr>
+              <tr>
+                <td>1/2 inch pex tubing 100ft red</td>
+                <td class="type-cell">long-tail</td>
+                <td class="metric-val">0.9697</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
       </div>
