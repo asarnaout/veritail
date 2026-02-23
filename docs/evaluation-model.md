@@ -46,7 +46,7 @@ Deterministic checks run alongside LLM evaluation and catch structural quality i
 | Check | What it catches | Severity |
 |---|---|---|
 | `text_overlap` | Low token overlap (Jaccard similarity) between query and result text (title, category, description) | warning |
-| `price_outlier` | Price far outside the result set norm, detected via IQR method (below Q1 - 1.5*IQR or above Q3 + 1.5*IQR) | warning |
+| `price_outlier` | Price far outside the result set norm. Uses Modified Z-Score (MAD) for 3-7 results and IQR method (Q1 - 1.5*IQR / Q3 + 1.5*IQR) for 8+ results | warning |
 | `duplicate` | Near-duplicate results detected by title similarity (SequenceMatcher ratio >= 0.85) | warning |
 | `title_length` | Title shorter than 10 characters or longer than 120 characters | info |
 | `out_of_stock_prominence` | Out-of-stock product at position 1 (fail) or positions 2-5 (warning) | fail / warning |

@@ -110,7 +110,123 @@ class TestPriceOutliers:
     def test_too_few_results(self):
         results = [_make_result("SKU-1", price=10), _make_result("SKU-2", price=20)]
         checks = check_price_outliers("shoes", results)
-        assert len(checks) == 0  # Need at least 3 for IQR
+        assert len(checks) == 0  # Need at least 3
+
+    # --- MAD path (n=3-7) ---
+
+    def test_mad_3_items_obvious_outlier(self):
+        results = [
+            _make_result(f"SKU-{i}", price=p) for i, p in enumerate([20, 20, 5000])
+        ]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) == 1
+        assert "5000" in outliers[0].detail
+
+    def test_mad_3_items_low_outlier(self):
+        results = [
+            _make_result(f"SKU-{i}", price=p) for i, p in enumerate([1, 500, 500])
+        ]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) == 1
+        assert "1.00" in outliers[0].detail
+
+    def test_mad_3_items_no_outlier(self):
+        results = [
+            _make_result(f"SKU-{i}", price=p) for i, p in enumerate([20, 22, 25])
+        ]
+        checks = check_price_outliers("shoes", results)
+        assert all(c.passed for c in checks)
+
+    def test_mad_5_items_outlier(self):
+        results = [
+            _make_result(f"SKU-{i}", price=p)
+            for i, p in enumerate([10, 12, 11, 13, 500])
+        ]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) >= 1
+        assert any("500" in c.detail for c in outliers)
+
+    def test_mad_7_items_outlier(self):
+        results = [
+            _make_result(f"SKU-{i}", price=p)
+            for i, p in enumerate([50, 52, 48, 51, 49, 53, 900])
+        ]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) >= 1
+        assert any("900" in c.detail for c in outliers)
+
+    def test_mad_all_same_price(self):
+        results = [_make_result(f"SKU-{i}", price=20) for i in range(3)]
+        checks = check_price_outliers("shoes", results)
+        assert all(c.passed for c in checks)
+
+    # --- IQR path (n>=8) ---
+
+    def test_iqr_8_items_outlier(self):
+        prices = [100, 102, 98, 105, 101, 99, 103, 999]
+        results = [_make_result(f"SKU-{i}", price=p) for i, p in enumerate(prices)]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) >= 1
+        assert any("999" in c.detail for c in outliers)
+
+    def test_iqr_8_items_no_outlier(self):
+        prices = [100, 102, 98, 105, 101, 99, 103, 104]
+        results = [_make_result(f"SKU-{i}", price=p) for i, p in enumerate(prices)]
+        checks = check_price_outliers("shoes", results)
+        assert all(c.passed for c in checks)
+
+    def test_iqr_interpolated_quartiles(self):
+        """Verify interpolation works — the old naive method would not flag this."""
+        # 9 items: old method Q1=sorted[2], Q3=sorted[6]
+        # With interpolation, quartiles are more precise
+        prices = [10, 20, 30, 40, 50, 60, 70, 80, 300]
+        results = [_make_result(f"SKU-{i}", price=p) for i, p in enumerate(prices)]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) >= 1
+        assert any("300" in c.detail for c in outliers)
+
+    # --- Boundary tests ---
+
+    def test_boundary_n7_uses_mad(self):
+        """7 items — MAD path should detect outlier that old IQR would miss."""
+        prices = [20, 21, 22, 23, 24, 25, 500]
+        results = [_make_result(f"SKU-{i}", price=p) for i, p in enumerate(prices)]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) >= 1
+        assert any("500" in c.detail for c in outliers)
+
+    def test_boundary_n8_uses_iqr(self):
+        """8 items — IQR path should work correctly."""
+        prices = [20, 21, 22, 23, 24, 25, 26, 500]
+        results = [_make_result(f"SKU-{i}", price=p) for i, p in enumerate(prices)]
+        checks = check_price_outliers("shoes", results)
+        outliers = [c for c in checks if not c.passed]
+        assert len(outliers) >= 1
+        assert any("500" in c.detail for c in outliers)
+
+    # --- False-positive regression tests ---
+
+    def test_mad_no_false_positive_small_diff(self):
+        """Normal price variation among identical items must not be flagged."""
+        for prices in [
+            [20, 20, 25],  # 25% diff
+            [20, 20, 40],  # 2x diff
+            [100, 100, 150],  # 50% diff
+            [100, 100, 100, 100, 200],  # n=5, 2x
+        ]:
+            results = [_make_result(f"SKU-{i}", price=p) for i, p in enumerate(prices)]
+            checks = check_price_outliers("shoes", results)
+            outliers = [c for c in checks if not c.passed]
+            assert outliers == [], (
+                f"False positive in {prices}: {[c.detail for c in outliers]}"
+            )
 
 
 class TestDuplicates:

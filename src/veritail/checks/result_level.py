@@ -79,6 +79,50 @@ def check_text_overlap(
     return checks
 
 
+def _interpolated_percentile(sorted_data: list[float], percentile: float) -> float:
+    """Compute percentile using linear interpolation (numpy-style)."""
+    n = len(sorted_data)
+    pos = percentile * (n - 1)
+    lo = int(pos)
+    hi = min(lo + 1, n - 1)
+    frac = pos - lo
+    return sorted_data[lo] + frac * (sorted_data[hi] - sorted_data[lo])
+
+
+def _mad_outlier_bounds(
+    sorted_prices: list[float], threshold: float = 3.0
+) -> tuple[float, float]:
+    """Compute outlier bounds using Modified Z-Score (MAD-based).
+
+    When MAD = 0 (more than half the values are identical), falls back to
+    relative bounds: prices beyond ``threshold`` times the median are flagged.
+    Mean absolute deviation cannot be used here because the outlier itself
+    contaminates the measure at small n, producing false positives.
+    """
+    n = len(sorted_prices)
+    median = (
+        sorted_prices[n // 2]
+        if n % 2
+        else (sorted_prices[n // 2 - 1] + sorted_prices[n // 2]) / 2
+    )
+    abs_devs = sorted([abs(p - median) for p in sorted_prices])
+    mad = abs_devs[n // 2] if n % 2 else (abs_devs[n // 2 - 1] + abs_devs[n // 2]) / 2
+
+    if mad == 0:
+        # MAD=0 means more than half the values cluster at the median.
+        # Use relative bounds: flag prices more than threshold× the median.
+        if median == 0:
+            # No meaningful price scale when the majority are $0.
+            return (sorted_prices[0], sorted_prices[-1])
+        return (median / threshold, median * threshold)
+
+    # Scale MAD to be consistent with std dev for normal data
+    mad_scaled = mad * 1.4826
+    lower = median - threshold * mad_scaled
+    upper = median + threshold * mad_scaled
+    return (lower, upper)
+
+
 def check_price_outliers(
     query: str,
     results: list[SearchResult],
@@ -86,7 +130,7 @@ def check_price_outliers(
 ) -> list[CheckResult]:
     """Flag results with prices far outside the result set norm.
 
-    Uses IQR method: outliers are prices below Q1 - 1.5*IQR or above Q3 + 1.5*IQR.
+    Uses Modified Z-Score (MAD) for 3-7 results and IQR method for 8+.
     """
     checks: list[CheckResult] = []
 
@@ -96,12 +140,21 @@ def check_price_outliers(
 
     sorted_prices = sorted(prices)
     n = len(sorted_prices)
-    q1 = sorted_prices[n // 4]
-    q3 = sorted_prices[(3 * n) // 4]
-    iqr = q3 - q1
 
-    lower_bound = q1 - iqr_multiplier * iqr
-    upper_bound = q3 + iqr_multiplier * iqr
+    if n < 8:
+        lower_bound, upper_bound = _mad_outlier_bounds(sorted_prices)
+    else:
+        q1 = _interpolated_percentile(sorted_prices, 0.25)
+        q3 = _interpolated_percentile(sorted_prices, 0.75)
+        iqr = q3 - q1
+        if iqr == 0:
+            # IQR=0 means ≥50% of values are identical (Q1 == Q3).
+            # Fall back to relative bounds to avoid false positives
+            # from bounds collapsing to a single point.
+            lower_bound, upper_bound = _mad_outlier_bounds(sorted_prices)
+        else:
+            lower_bound = q1 - iqr_multiplier * iqr
+            upper_bound = q3 + iqr_multiplier * iqr
 
     for result in results:
         is_outlier = result.price < lower_bound or result.price > upper_bound

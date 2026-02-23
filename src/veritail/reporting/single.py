@@ -86,7 +86,7 @@ CHECK_DESCRIPTIONS: dict[str, str] = {
     ),
     "price_outlier": (
         "Flags results with prices far outside the "
-        "result set's normal range using the IQR method"
+        "result set's normal range using IQR and Modified Z-Score (MAD)"
     ),
     "duplicate": (
         "Detects near-duplicate products in results based on title similarity"
