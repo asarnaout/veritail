@@ -111,7 +111,6 @@ def _generate_terminal(
     table.add_column("Metric", style="cyan")
     table.add_column(config_a, justify="right")
     table.add_column(config_b, justify="right")
-    table.add_column("Delta", justify="right")
     table.add_column("% Change", justify="right")
 
     metrics_b_lookup = {m.metric_name: m for m in metrics_b}
@@ -128,7 +127,6 @@ def _generate_terminal(
                     "[dim]N/A[/dim]",
                     "[dim]N/A[/dim]",
                     "[dim]-[/dim]",
-                    "[dim]-[/dim]",
                 )
                 continue
 
@@ -139,22 +137,18 @@ def _generate_terminal(
 
             delta = m_b.value - m_a.value
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
-            delta_str = f"{delta:+.4f}"
             pct_str = f"{pct:+.1f}%"
 
             # Color: green for improvement, red for regression
             if delta > 0:
-                delta_str = f"[green]{delta_str}[/green]"
                 pct_str = f"[green]{pct_str}[/green]"
             elif delta < 0:
-                delta_str = f"[red]{delta_str}[/red]"
                 pct_str = f"[red]{pct_str}[/red]"
 
             table.add_row(
                 display,
                 _fmt_value(m_a),
                 _fmt_value(m_b),
-                delta_str,
                 pct_str,
             )
 
@@ -173,7 +167,7 @@ def _generate_terminal(
             type_table.add_column("Metric", style="cyan")
             type_table.add_column(config_a, justify="right")
             type_table.add_column(config_b, justify="right")
-            type_table.add_column("Delta", justify="right")
+            type_table.add_column("% Change", justify="right")
 
             for m_a in metrics_a:
                 m_b = metrics_b_lookup.get(m_a.metric_name)
@@ -181,16 +175,17 @@ def _generate_terminal(
                     va = m_a.by_query_type[qt]
                     vb = m_b.by_query_type[qt]
                     delta = vb - va
-                    delta_str = f"{delta:+.4f}"
+                    pct = (delta / va * 100) if va != 0 else 0.0
+                    pct_str = f"{pct:+.1f}%"
                     if delta > 0:
-                        delta_str = f"[green]{delta_str}[/green]"
+                        pct_str = f"[green]{pct_str}[/green]"
                     elif delta < 0:
-                        delta_str = f"[red]{delta_str}[/red]"
+                        pct_str = f"[red]{pct_str}[/red]"
                     type_table.add_row(
                         metric_display_name(m_a.metric_name),
                         f"{va:.4f}",
                         f"{vb:.4f}",
-                        delta_str,
+                        pct_str,
                     )
 
             console.print(type_table)
@@ -670,7 +665,15 @@ def _generate_html(
                     qt_delta: float | None = (
                         (vb - va) if va is not None and vb is not None else None
                     )
-                    per_type[qt] = {"value_a": va, "value_b": vb, "delta": qt_delta}
+                    qt_pct: float | None = None
+                    if qt_delta is not None and va is not None:
+                        qt_pct = (qt_delta / va * 100) if va != 0 else 0.0
+                    per_type[qt] = {
+                        "value_a": va,
+                        "value_b": vb,
+                        "delta": qt_delta,
+                        "pct_change": qt_pct,
+                    }
                 type_comparison.append(
                     {"name": metric_display_name(m_a.metric_name), "types": per_type}
                 )

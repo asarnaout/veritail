@@ -59,7 +59,6 @@
                 <th>Metric</th>
                 <th>{{ config_a }}</th>
                 <th>{{ config_b }}</th>
-                <th>Delta</th>
                 <th>% Change</th>
             </tr>
         </thead>
@@ -71,11 +70,7 @@
                 <td class="metric-value">{% if d.b_na %}<span style="color:#9ca3af">N/A</span>{% else %}{{ "%.4f"|format(d.value_b) }}{% endif %}</td>
                 {% if d.a_na and d.b_na %}
                 <td class="metric-value" style="color:#9ca3af">-</td>
-                <td class="metric-value" style="color:#9ca3af">-</td>
                 {% else %}
-                <td class="metric-value {% if d.delta > 0 %}positive{% elif d.delta < 0 %}negative{% else %}neutral{% endif %}">
-                    {{ "%+.4f"|format(d.delta) }}
-                </td>
                 <td class="metric-value {% if d.pct_change > 0 %}positive{% elif d.pct_change < 0 %}negative{% else %}neutral{% endif %}">
                     {{ "%+.1f"|format(d.pct_change) }}%
                 </td>
@@ -444,7 +439,7 @@
                     <th style="font-weight:400; font-size:12px;">Metric</th>
                     <th style="font-weight:400; font-size:12px;">{{ config_a }}</th>
                     <th style="font-weight:400; font-size:12px;">{{ config_b }}</th>
-                    <th style="font-weight:400; font-size:12px;">Delta</th>
+                    <th style="font-weight:400; font-size:12px;">% Change</th>
                 </tr>
             </thead>
             <tbody>
@@ -455,8 +450,8 @@
                     <td>{{ m.name }}</td>
                     <td class="metric-value">{% if t.value_a is not none %}{{ "%.4f"|format(t.value_a) }}{% else %}-{% endif %}</td>
                     <td class="metric-value">{% if t.value_b is not none %}{{ "%.4f"|format(t.value_b) }}{% else %}-{% endif %}</td>
-                    <td class="metric-value {% if t.delta is not none and t.delta > 0 %}positive{% elif t.delta is not none and t.delta < 0 %}negative{% else %}neutral{% endif %}">
-                        {% if t.delta is not none %}{{ "%+.4f"|format(t.delta) }}{% else %}-{% endif %}
+                    <td class="metric-value {% if t.pct_change is not none and t.pct_change > 0 %}positive{% elif t.pct_change is not none and t.pct_change < 0 %}negative{% else %}neutral{% endif %}">
+                        {% if t.pct_change is not none %}{{ "%+.1f"|format(t.pct_change) }}%{% else %}-{% endif %}
                     </td>
                 </tr>
                 {% endif %}

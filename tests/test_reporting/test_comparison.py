@@ -76,8 +76,8 @@ class TestGenerateComparisonReport:
             "experiment",
         )
         assert "NDCG@10" in report
-        # Should show improvement
-        assert "+0.1000" in report
+        # Should show improvement as percentage
+        assert "+13.3%" in report
 
     def test_terminal_report_contains_position_shifts(self):
         report = generate_comparison_report(
