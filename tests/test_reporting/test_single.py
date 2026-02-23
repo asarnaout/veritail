@@ -64,9 +64,9 @@ def _make_checks() -> list[CheckResult]:
 class TestGenerateSingleReport:
     def test_terminal_report_contains_metrics(self):
         report = generate_single_report(_make_metrics(), _make_checks())
-        assert "ndcg@10" in report
+        assert "NDCG@10" in report
         assert "0.8500" in report
-        assert "mrr" in report
+        assert "MRR" in report
 
     def test_terminal_report_contains_checks(self):
         report = generate_single_report(_make_metrics(), _make_checks())
@@ -94,7 +94,7 @@ class TestGenerateSingleReport:
     def test_html_report(self):
         report = generate_single_report(_make_metrics(), _make_checks(), format="html")
         assert "<html" in report
-        assert "ndcg@10" in report
+        assert "NDCG@10" in report
         assert "0.8500" in report
 
     def test_html_report_includes_run_metadata_footer(self):

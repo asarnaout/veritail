@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Static landing page served via GitHub Pages from `docs/`
 
+### Changed
+
+- Metric names in reports now use proper casing: NDCG@5, NDCG@10, MRR, MAP, P@5, P@10, Attribute Match@5, Attribute Match@10
+
 ## [0.2.1] - 2026-02-22
 
 ### Fixed

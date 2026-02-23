@@ -75,7 +75,7 @@ class TestGenerateComparisonReport:
             "baseline",
             "experiment",
         )
-        assert "ndcg@10" in report
+        assert "NDCG@10" in report
         # Should show improvement
         assert "+0.1000" in report
 

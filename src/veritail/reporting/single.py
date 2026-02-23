@@ -22,6 +22,23 @@ _JINJA_ENV = Environment(
     autoescape=select_autoescape(("html", "xml"), default_for_string=True),
 )
 
+METRIC_DISPLAY_NAMES: dict[str, str] = {
+    "ndcg@5": "NDCG@5",
+    "ndcg@10": "NDCG@10",
+    "mrr": "MRR",
+    "map": "MAP",
+    "p@5": "P@5",
+    "p@10": "P@10",
+    "attribute_match@5": "Attribute Match@5",
+    "attribute_match@10": "Attribute Match@10",
+}
+
+
+def metric_display_name(metric_name: str) -> str:
+    """Return the human-friendly display name for a metric."""
+    return METRIC_DISPLAY_NAMES.get(metric_name, metric_name)
+
+
 METRIC_DESCRIPTIONS: dict[str, str] = {
     "ndcg@5": (
         "Ranking quality at top 5 — rewards placing the "
@@ -254,9 +271,10 @@ def _generate_terminal(
     table.add_column("Value", justify="right")
 
     for m in metrics:
+        display = metric_display_name(m.metric_name)
         if m.query_count is not None and m.query_count == 0:
             table.add_row(
-                m.metric_name,
+                display,
                 "[dim]N/A (no queries with attribute constraints)[/dim]",
             )
         elif (
@@ -265,12 +283,12 @@ def _generate_terminal(
             and m.query_count < m.total_queries
         ):
             table.add_row(
-                m.metric_name,
+                display,
                 f"{m.value:.4f}  [dim](n={m.query_count} of"
                 f" {m.total_queries} queries)[/dim]",
             )
         else:
-            table.add_row(m.metric_name, f"{m.value:.4f}")
+            table.add_row(display, f"{m.value:.4f}")
 
     console.print(table)
 
@@ -312,7 +330,7 @@ def _generate_terminal(
             type_table.add_column(display, justify="right")
 
         for m in type_metrics:
-            row = [m.metric_name]
+            row = [metric_display_name(m.metric_name)]
             for qt in sorted_types:
                 val = m.by_query_type.get(qt)
                 row.append(f"{val:.4f}" if val is not None else "-")
@@ -700,6 +718,7 @@ def _generate_html(
         is_comparison=False,
         judgments_for_template=judgments_for_template,
         metric_descriptions=METRIC_DESCRIPTIONS,
+        metric_display_names=METRIC_DISPLAY_NAMES,
         check_descriptions=CHECK_DESCRIPTIONS,
         check_failures=check_failures,
         run_metadata_rows=metadata_rows,

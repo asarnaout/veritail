@@ -509,7 +509,7 @@
             {% for m in metrics %}
             <tr>
                 <td>
-                  {{ m.metric_name }}
+                  {{ metric_display_names[m.metric_name] if metric_display_names and metric_display_names.get(m.metric_name) else m.metric_name }}
                   {% if metric_descriptions and metric_descriptions.get(m.metric_name) %}
                   <span class="tip" data-tip="{{ metric_descriptions[m.metric_name] }}">?</span>
                   {% endif %}
@@ -652,7 +652,7 @@
         <tbody>
             {% for m in type_metrics %}
             <tr>
-                <td>{{ m.metric_name }}</td>
+                <td>{{ metric_display_names[m.metric_name] if metric_display_names and metric_display_names.get(m.metric_name) else m.metric_name }}</td>
                 {% for qt in query_types %}
                 <td class="metric-value">{% if m.by_query_type.get(qt) is not none %}{{ "%.4f"|format(m.by_query_type[qt]) }}{% else %}-{% endif %}</td>
                 {% endfor %}

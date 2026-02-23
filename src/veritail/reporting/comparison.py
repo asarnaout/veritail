@@ -14,8 +14,10 @@ from rich.table import Table
 from veritail.reporting.single import (
     CHECK_DESCRIPTIONS,
     METRIC_DESCRIPTIONS,
+    METRIC_DISPLAY_NAMES,
     QUERY_TYPE_DESCRIPTIONS,
     QUERY_TYPE_DISPLAY_NAMES,
+    metric_display_name,
     summarize_checks,
 )
 from veritail.types import CheckResult, CorrectionJudgment, JudgmentRecord, MetricResult
@@ -119,9 +121,10 @@ def _generate_terminal(
             # Check if both sides have no applicable queries
             a_na = m_a.query_count is not None and m_a.query_count == 0
             b_na = m_b.query_count is not None and m_b.query_count == 0
+            display = metric_display_name(m_a.metric_name)
             if a_na and b_na:
                 table.add_row(
-                    m_a.metric_name,
+                    display,
                     "[dim]N/A[/dim]",
                     "[dim]N/A[/dim]",
                     "[dim]-[/dim]",
@@ -148,7 +151,7 @@ def _generate_terminal(
                 pct_str = f"[red]{pct_str}[/red]"
 
             table.add_row(
-                m_a.metric_name,
+                display,
                 _fmt_value(m_a),
                 _fmt_value(m_b),
                 delta_str,
@@ -183,7 +186,7 @@ def _generate_terminal(
                     elif delta < 0:
                         delta_str = f"[red]{delta_str}[/red]"
                     type_table.add_row(
-                        m_a.metric_name,
+                        metric_display_name(m_a.metric_name),
                         f"{va:.4f}",
                         f"{vb:.4f}",
                         delta_str,
@@ -310,7 +313,7 @@ def _generate_html(
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
             comparison_data.append(
                 {
-                    "name": m_a.metric_name,
+                    "name": metric_display_name(m_a.metric_name),
                     "value_a": m_a.value,
                     "value_b": m_b.value,
                     "delta": delta,
@@ -667,7 +670,9 @@ def _generate_html(
                         (vb - va) if va is not None and vb is not None else None
                     )
                     per_type[qt] = {"value_a": va, "value_b": vb, "delta": qt_delta}
-                type_comparison.append({"name": m_a.metric_name, "types": per_type})
+                type_comparison.append(
+                    {"name": metric_display_name(m_a.metric_name), "types": per_type}
+                )
 
     # Deterministic checks comparison
     check_comparison: list[dict[str, object]] = []
@@ -758,6 +763,7 @@ def _generate_html(
         query_type_display_names=QUERY_TYPE_DISPLAY_NAMES,
         query_type_descriptions=QUERY_TYPE_DESCRIPTIONS,
         metric_descriptions=METRIC_DESCRIPTIONS,
+        metric_display_names=METRIC_DISPLAY_NAMES,
         check_comparison=check_comparison,
         check_descriptions=CHECK_DESCRIPTIONS,
         correction_data_a=correction_data_a,
