@@ -80,6 +80,68 @@
     </div>
   </section>
 
+  <!-- ====== Sample Output ====== -->
+  <section class="section">
+    <div class="container">
+      <p class="section-label">Sample output</p>
+      <h2 class="section-title">What you get after a run</h2>
+      <div class="output-grid">
+
+        <!-- IR Metrics Table -->
+        <div class="output-card">
+          <h3 class="output-card-title">IR Metrics</h3>
+          <table class="metrics-table">
+            <thead>
+              <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>ndcg@5</td><td class="metric-val">0.9829</td></tr>
+              <tr><td>ndcg@10</td><td class="metric-val">0.9829</td></tr>
+              <tr><td>mrr</td><td class="metric-val">0.9800</td></tr>
+              <tr><td>map</td><td class="metric-val">0.9751</td></tr>
+              <tr><td>p@5</td><td class="metric-val">0.7040</td></tr>
+              <tr><td>attribute_match@5</td><td class="metric-val">0.7787</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Position Score Chart -->
+        <div class="output-card">
+          <h3 class="output-card-title">Avg Score by Position</h3>
+          <p class="chart-hint">Bars should decrease left to right if ranking is correct.</p>
+          <div class="bar-chart">
+            <div class="bar-row">
+              <span class="bar-label">#1</span>
+              <div class="bar-track"><div class="bar-fill bar-green" style="width: 96%;"></div></div>
+              <span class="bar-value">2.88</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">#2</span>
+              <div class="bar-track"><div class="bar-fill bar-green" style="width: 100%;"></div></div>
+              <span class="bar-value">3.00</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">#3</span>
+              <div class="bar-track"><div class="bar-fill bar-green" style="width: 84%;"></div></div>
+              <span class="bar-value">2.52</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">#4</span>
+              <div class="bar-track"><div class="bar-fill bar-yellow" style="width: 61.3%;"></div></div>
+              <span class="bar-value">1.84</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-label">#5</span>
+              <div class="bar-track"><div class="bar-fill bar-orange" style="width: 38.7%;"></div></div>
+              <span class="bar-value">1.16</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <!-- ====== How It Works ====== -->
   <section class="section">
     <div class="container">
