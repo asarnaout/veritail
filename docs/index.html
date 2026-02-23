@@ -186,6 +186,100 @@
           </table>
         </div>
 
+        <!-- Autocomplete Quality -->
+        <div class="output-card">
+          <h3 class="output-card-title">Autocomplete Quality</h3>
+          <table class="metrics-table">
+            <thead>
+              <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Avg Relevance</td>
+                <td class="metric-val">2.94<span class="metric-denom">/3</span></td>
+              </tr>
+              <tr>
+                <td>Avg Diversity</td>
+                <td class="metric-val">2.50<span class="metric-denom">/3</span></td>
+              </tr>
+              <tr>
+                <td>Total Flagged</td>
+                <td class="metric-val">4</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Deterministic Checks -->
+        <div class="output-card">
+          <h3 class="output-card-title">Deterministic Checks</h3>
+          <table class="metrics-table">
+            <thead>
+              <tr><th>Check</th><th>Passed</th><th>Failed</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Near-duplicate products</td>
+                <td class="check-passed">103</td>
+                <td class="check-failed-val">22</td>
+              </tr>
+              <tr>
+                <td>Out-of-stock prominence</td>
+                <td class="check-passed">124</td>
+                <td class="check-failed-val">1</td>
+              </tr>
+              <tr>
+                <td>Price outlier</td>
+                <td class="check-passed">108</td>
+                <td class="check-failed-val">17</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Judgment Detail -->
+        <div class="output-card output-card-wide">
+          <h3 class="output-card-title">Search Result Judgment <span class="judgment-query">Query: simpson strong tie joist hanger 2x10</span></h3>
+          <div class="judgment-results">
+            <div class="judgment-result">
+              <div class="judgment-header">
+                <span class="judgment-position">#1</span>
+                <span class="judgment-product">Simpson Strong-Tie LUS210 2x10 Joist Hanger</span>
+                <span class="judgment-score score-green">3/3</span>
+                <span class="judgment-attr attr-match">match</span>
+              </div>
+              <p class="judgment-reason">Exact specification match. Brand, product type, and 2x10 dimensional rating all satisfied. In stock at position 1.</p>
+            </div>
+            <div class="judgment-result">
+              <div class="judgment-header">
+                <span class="judgment-position">#3</span>
+                <span class="judgment-product">Simpson Strong-Tie LUS28 2x8 Joist Hanger</span>
+                <span class="judgment-score score-orange">1/3</span>
+                <span class="judgment-attr attr-mismatch">mismatch</span>
+              </div>
+              <p class="judgment-reason">Query specifies 2x10 but this is rated for 2x8. A 2x8 hanger cannot safely support a 2x10 joist &mdash; dimensional mismatch makes this a structural failure risk.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Autocomplete Judgment -->
+        <div class="output-card output-card-wide">
+          <h3 class="output-card-title">Autocomplete Judgment <span class="judgment-query">Prefix: "dec"</span></h3>
+          <div class="suggestion-pills">
+            <span class="pill">deck screws</span>
+            <span class="pill">deck stain</span>
+            <span class="pill">deck boards composite</span>
+            <span class="pill">deck railing</span>
+            <span class="pill pill-flagged">decaf coffee</span>
+            <span class="pill">deck post cap</span>
+          </div>
+          <div class="autocomplete-scores">
+            <span class="judgment-score score-green">Relevance 2/3</span>
+            <span class="judgment-score score-yellow">Diversity 2/3</span>
+          </div>
+          <p class="judgment-reason">Five of six suggestions target deck materials, but "decaf coffee" is completely off-domain &mdash; a grocery item with no relevance to home improvement, degrading the suggestion set.</p>
+        </div>
+
       </div>
     </div>
   </section>
