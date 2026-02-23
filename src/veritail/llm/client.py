@@ -600,6 +600,7 @@ class GeminiClient(LLMClient):
                         error=error_msg,
                     )
                 )
+        self._batch_custom_ids.pop(batch_id, None)
         return results
 
     def batch_error_message(self, batch_id: str) -> str | None:
