@@ -474,12 +474,15 @@ def _generate_html(
         for query in ndcg_a.per_query:
             if query in ndcg_b.per_query:
                 d = ndcg_b.per_query[query] - ndcg_a.per_query[query]
+                va = ndcg_a.per_query[query]
+                pct = (d / va * 100) if va != 0 else 0.0
                 deltas.append(
                     {
                         "query": query,
-                        "value_a": ndcg_a.per_query[query],
+                        "value_a": va,
                         "value_b": ndcg_b.per_query[query],
                         "delta": d,
+                        "pct_change": pct,
                     }
                 )
         deltas.sort(key=lambda x: float(str(x["delta"])))
@@ -660,17 +663,19 @@ def _generate_html(
             if m_b:
                 per_type: dict[str, dict[str, float | None]] = {}
                 for qt in query_types:
-                    va = m_a.by_query_type.get(qt)
-                    vb = m_b.by_query_type.get(qt)
+                    qt_va = m_a.by_query_type.get(qt)
+                    qt_vb = m_b.by_query_type.get(qt)
                     qt_delta: float | None = (
-                        (vb - va) if va is not None and vb is not None else None
+                        (qt_vb - qt_va)
+                        if qt_va is not None and qt_vb is not None
+                        else None
                     )
                     qt_pct: float | None = None
-                    if qt_delta is not None and va is not None:
-                        qt_pct = (qt_delta / va * 100) if va != 0 else 0.0
+                    if qt_delta is not None and qt_va is not None:
+                        qt_pct = (qt_delta / qt_va * 100) if qt_va != 0 else 0.0
                     per_type[qt] = {
-                        "value_a": va,
-                        "value_b": vb,
+                        "value_a": qt_va,
+                        "value_b": qt_vb,
                         "delta": qt_delta,
                         "pct_change": qt_pct,
                     }

@@ -315,7 +315,7 @@
                 <th>Query</th>
                 <th>{{ config_a }}</th>
                 <th>{{ config_b }}</th>
-                <th>Delta</th>
+                <th>% Change</th>
             </tr>
         </thead>
         <tbody>
@@ -324,7 +324,7 @@
                 <td>{{ w.query }}</td>
                 <td class="metric-value">{{ "%.4f"|format(w.value_a) }}</td>
                 <td class="metric-value">{{ "%.4f"|format(w.value_b) }}</td>
-                <td class="metric-value positive">{{ "%+.4f"|format(w.delta) }}</td>
+                <td class="metric-value positive">{{ "%+.1f"|format(w.pct_change) }}%</td>
             </tr>
             {% if w.has_details %}
             <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
@@ -372,7 +372,7 @@
                 <th>Query</th>
                 <th>{{ config_a }}</th>
                 <th>{{ config_b }}</th>
-                <th>Delta</th>
+                <th>% Change</th>
             </tr>
         </thead>
         <tbody>
@@ -381,7 +381,7 @@
                 <td>{{ l.query }}</td>
                 <td class="metric-value">{{ "%.4f"|format(l.value_a) }}</td>
                 <td class="metric-value">{{ "%.4f"|format(l.value_b) }}</td>
-                <td class="metric-value negative">{{ "%+.4f"|format(l.delta) }}</td>
+                <td class="metric-value negative">{{ "%+.1f"|format(l.pct_change) }}%</td>
             </tr>
             {% if l.has_details %}
             <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
