@@ -298,7 +298,7 @@ img {
 }
 
 /* ============================================================
-   Features — 2x2 Grid
+   Features — Lightweight Accent Layout
    ============================================================ */
 .features-grid {
   display: grid;
@@ -313,75 +313,127 @@ img {
 }
 
 .feature-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-lg);
-  transition: border-color 0.3s, box-shadow 0.3s;
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-card::before {
-  content: "";
-  position: absolute;
-  top: -40px;
-  right: -40px;
-  width: 160px;
-  height: 160px;
-  background: radial-gradient(circle, rgba(129, 140, 248, 0.08) 0%, transparent 70%);
-  pointer-events: none;
+  padding: var(--space-md) var(--space-md) var(--space-md) var(--space-lg);
+  border-left: 3px solid var(--accent);
+  transition: border-color 0.3s;
 }
 
 .feature-card:hover {
-  border-color: var(--border-hover);
-  box-shadow: 0 0 32px rgba(129, 140, 248, 0.08);
+  border-left-color: #a5b4fc;
+}
+
+.feature-card:hover h3 {
+  color: #a5b4fc;
 }
 
 .feature-icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--accent-dim);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   margin-bottom: var(--space-sm);
   color: var(--accent);
 }
 
 .feature-card h3 {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  transition: color 0.3s;
 }
 
 .feature-card p {
-  font-size: 0.95rem;
+  font-size: 0.925rem;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 /* ============================================================
-   Sample Output
+   Sample Output — Section Background
+   ============================================================ */
+.section-output {
+  background: linear-gradient(180deg, rgba(24, 24, 27, 0.4) 0%, var(--bg-primary) 100%);
+}
+
+/* ============================================================
+   Terminal Window Chrome
+   ============================================================ */
+.terminal-window {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow:
+    0 0 60px rgba(129, 140, 248, 0.06),
+    0 0 120px rgba(129, 140, 248, 0.03);
+}
+
+.terminal-titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(24, 24, 27, 0.6);
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot-red {
+  background: #f87171;
+}
+
+.dot-yellow {
+  background: #fbbf24;
+}
+
+.dot-green {
+  background: #34d399;
+}
+
+.terminal-command {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
+   Sample Output — Bento Grid
    ============================================================ */
 .output-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-lg);
+  gap: var(--space-sm);
+  padding: var(--space-md);
 }
 
 @media (min-width: 640px) {
   .output-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 .output-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
   padding: var(--space-md);
 }
 
@@ -905,10 +957,6 @@ img {
    Responsive — 1024px+
    ============================================================ */
 @media (min-width: 1024px) {
-  .features-grid {
-    gap: var(--space-md);
-  }
-
   .hero {
     padding: var(--space-2xl) 0 var(--space-xl);
   }

@@ -95,10 +95,19 @@
   </section>
 
   <!-- ====== Sample Output ====== -->
-  <section class="section">
+  <section class="section section-output">
     <div class="container">
       <p class="section-label">Sample output</p>
       <h2 class="section-title">What you get after a run</h2>
+      <div class="terminal-window">
+        <div class="terminal-titlebar">
+          <div class="terminal-dots">
+            <span class="terminal-dot dot-red"></span>
+            <span class="terminal-dot dot-yellow"></span>
+            <span class="terminal-dot dot-green"></span>
+          </div>
+          <span class="terminal-command">veritail --queries queries.csv --vertical home-improvement</span>
+        </div>
       <div class="output-grid">
 
         <!-- IR Metrics Table -->
@@ -303,6 +312,7 @@
           <p class="judgment-reason">Five of six suggestions target deck materials, but "decaf coffee" is completely off-domain &mdash; a grocery item with no relevance to home improvement, degrading the suggestion set.</p>
         </div>
 
+      </div>
       </div>
     </div>
   </section>
