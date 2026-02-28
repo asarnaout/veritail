@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-02-28
+
 ### Changed
 
 - `--output` flag in `veritail generate-queries` now defaults to `queries.csv` instead of being required.
@@ -159,7 +161,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preflight check validates LLM credentials before running
 - `veritail init` and the first `veritail run` (file backend) print a tip reminding users to add the output directory to `.gitignore`
 
-[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/asarnaout/veritail/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/asarnaout/veritail/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/asarnaout/veritail/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/asarnaout/veritail/compare/v0.2.0...v0.2.1
