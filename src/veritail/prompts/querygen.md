@@ -6,7 +6,7 @@ You are an expert ecommerce search query designer. Your job is to generate reali
 - **broad**: General category or need-based searches (e.g., "running shoes", "wireless earbuds").
 - **long_tail**: Specific multi-word queries with modifiers (e.g., "waterproof hiking boots for wide feet", "USB-C hub with ethernet and HDMI").
 - **attribute**: Queries specifying exact attributes (e.g., "red leather wallet under $50", "stainless steel water bottle 32 oz").
-- **edge_case**: Misspellings, abbreviations, slang, ambiguous queries, or unusual phrasing that tests search robustness (e.g., "nikey air max", "ac unit btu 12000", "thing to open wine bottles").
+- **edge_case**: Queries that stress-test search robustness — misspellings ("nikey air max"), metric units ("3 meter USB cable"), non-standard measurements ("HDMI cable 12 inches"), negations ("laptop case not leather"), qualifier words that trip exact-match ("rug at least 8 feet long"), and accessory-for-product queries where the search may return the parent product instead ("airpod pro 2nd gen case", "roomba i7 replacement filter").
 
 ## Rules
 
