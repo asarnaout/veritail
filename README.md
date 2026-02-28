@@ -93,7 +93,7 @@ veritail generate-queries \
   --llm-model gpt-4o
 ```
 
-This writes a CSV with `query`, `type`, `category`, and `source` columns. Review and edit the generated queries before running an evaluation — the file is designed for human-in-the-loop review.
+This writes a CSV with a single `query` column. Query types are automatically classified by the LLM during evaluation. Review and edit the generated queries before running an evaluation — the file is designed for human-in-the-loop review.
 
 **Cost note:** Query generation makes a single LLM call (a fraction of a cent with most cloud models).
 

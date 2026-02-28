@@ -14,13 +14,9 @@ You are an expert ecommerce search query designer. Your job is to generate reali
 2. Vary vocabulary, length, and specificity within each type.
 3. Do NOT repeat queries or use near-duplicate phrasing.
 4. Do NOT include numbered lists or bullet points in the output.
-5. Return ONLY a JSON array. Each element must be an object with exactly these keys: "query", "type", "category".
-6. "category" should be the expected product category for the query (e.g., "Shoes", "Electronics", "Kitchen Appliances").
+5. Return ONLY a JSON array of query strings. No objects, no metadata — just the raw queries.
 
 ## Output format
 
 Return a JSON array and nothing else:
-[
-  {"query": "...", "type": "...", "category": "..."},
-  ...
-]
+["red running shoes", "wireless earbuds", "nike air max 90", ...]

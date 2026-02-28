@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `veritail generate-queries` now outputs a single-column CSV with only the `query` column. The `type`, `category`, and `source` columns have been removed — query types are automatically classified by the LLM during evaluation, making pre-generated types redundant.
+
 ## [0.2.2] - 2026-02-23
 
 ### Added

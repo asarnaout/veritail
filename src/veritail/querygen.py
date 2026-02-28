@@ -83,12 +83,13 @@ def _build_user_prompt(
     return "\n".join(parts)
 
 
-def _parse_response(content: str) -> list[dict[str, str]]:
-    """Parse LLM response into a list of query dicts.
+def _parse_response(content: str) -> list[str]:
+    """Parse LLM response into a list of query strings.
 
     Handles clean JSON arrays, markdown code fences, and JSON embedded
-    in surrounding text.  Missing ``type``/``category`` default to
-    ``"broad"`` / ``""``.  Empty queries are skipped.
+    in surrounding text.  Accepts both plain string arrays
+    (``["shoes", "boots"]``) and legacy object arrays
+    (``[{"query": "shoes", ...}]``).  Empty queries are skipped.
 
     Raises ``ValueError`` when no valid JSON array can be extracted.
     """
@@ -114,20 +115,17 @@ def _parse_response(content: str) -> list[dict[str, str]]:
     if not isinstance(parsed, list):
         raise ValueError("LLM response is not a JSON array.")
 
-    queries: list[dict[str, str]] = []
+    queries: list[str] = []
     for item in parsed:
-        if not isinstance(item, dict):
+        if isinstance(item, str):
+            query = item.strip()
+        elif isinstance(item, dict):
+            # Accept legacy object format for robustness
+            query = str(item.get("query", "")).strip()
+        else:
             continue
-        query = str(item.get("query", "")).strip()
-        if not query:
-            continue
-        queries.append(
-            {
-                "query": query,
-                "type": str(item.get("type", "broad")).strip(),
-                "category": str(item.get("category", "")).strip(),
-            }
-        )
+        if query:
+            queries.append(query)
 
     if not queries:
         raise ValueError("No valid queries found in LLM response.")
@@ -146,21 +144,14 @@ def _try_parse_json_array(text: str) -> list[object] | None:
     return None
 
 
-def _write_csv(queries: list[dict[str, str]], output_path: Path) -> None:
-    """Write queries to CSV with a ``source`` column for traceability."""
+def _write_csv(queries: list[str], output_path: Path) -> None:
+    """Write queries to a single-column CSV."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["query", "type", "category", "source"])
-        writer.writeheader()
+        writer = csv.writer(f)
+        writer.writerow(["query"])
         for q in queries:
-            writer.writerow(
-                {
-                    "query": q["query"],
-                    "type": q["type"],
-                    "category": q["category"],
-                    "source": "generated",
-                }
-            )
+            writer.writerow([q])
 
 
 def generate_queries(
@@ -170,7 +161,7 @@ def generate_queries(
     count: int = DEFAULT_QUERY_COUNT,
     vertical: str | None = None,
     context: str | None = None,
-) -> list[dict[str, str]]:
+) -> list[str]:
     """Generate evaluation queries using an LLM and save to CSV.
 
     At least one of *vertical* or *context* must be provided so the LLM
@@ -186,7 +177,7 @@ def generate_queries(
         context: Business context string or file path.
 
     Returns:
-        List of generated query dicts.
+        List of generated query strings.
 
     Raises:
         ValueError: If neither vertical nor context is provided, or if

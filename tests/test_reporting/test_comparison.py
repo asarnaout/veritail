@@ -652,6 +652,6 @@ class TestGenerateComparisonReport:
         )
         assert "<details" in report
         # Query text should be a clickable link that toggles the details
-        assert 'onclick=' in report
+        assert "onclick=" in report
         assert "Nike Shoes" in report
         assert "SKU-1" in report

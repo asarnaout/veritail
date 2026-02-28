@@ -59,7 +59,26 @@ class TestComputeDistribution:
 
 
 class TestParseResponse:
-    def test_clean_json(self):
+    def test_clean_json_string_array(self):
+        raw = json.dumps(["shoes", "nike air max"])
+        result = _parse_response(raw)
+        assert len(result) == 2
+        assert result[0] == "shoes"
+        assert result[1] == "nike air max"
+
+    def test_markdown_fences(self):
+        raw = '```json\n["test", "query"]\n```'
+        result = _parse_response(raw)
+        assert len(result) == 1 or len(result) == 2
+        assert result[0] == "test"
+
+    def test_surrounding_text(self):
+        raw = 'Here are the queries:\n["laptop", "desktop"]\nHope that helps!'
+        result = _parse_response(raw)
+        assert len(result) == 2
+        assert result[0] == "laptop"
+
+    def test_legacy_object_format(self):
         raw = json.dumps(
             [
                 {"query": "shoes", "type": "broad", "category": "Footwear"},
@@ -68,36 +87,16 @@ class TestParseResponse:
         )
         result = _parse_response(raw)
         assert len(result) == 2
-        assert result[0]["query"] == "shoes"
-        assert result[1]["type"] == "navigational"
+        assert result[0] == "shoes"
+        assert result[1] == "nike"
 
-    def test_markdown_fences(self):
-        raw = '```json\n[{"query": "test", "type": "broad", "category": "X"}]\n```'
+    def test_empty_strings_skipped(self):
+        raw = json.dumps(["", "shoes", "  "])
         result = _parse_response(raw)
         assert len(result) == 1
-        assert result[0]["query"] == "test"
+        assert result[0] == "shoes"
 
-    def test_surrounding_text(self):
-        raw = (
-            "Here are the queries:\n"
-            '[{"query": "laptop", "type": "broad", "category": "Electronics"}]\n'
-            "Hope that helps!"
-        )
-        result = _parse_response(raw)
-        assert len(result) == 1
-        assert result[0]["query"] == "laptop"
-
-    def test_missing_type_defaults_to_broad(self):
-        raw = json.dumps([{"query": "shoes", "category": "Footwear"}])
-        result = _parse_response(raw)
-        assert result[0]["type"] == "broad"
-
-    def test_missing_category_defaults_to_empty(self):
-        raw = json.dumps([{"query": "shoes", "type": "broad"}])
-        result = _parse_response(raw)
-        assert result[0]["category"] == ""
-
-    def test_empty_queries_skipped(self):
+    def test_legacy_empty_query_skipped(self):
         raw = json.dumps(
             [
                 {"query": "", "type": "broad", "category": "X"},
@@ -106,9 +105,9 @@ class TestParseResponse:
         )
         result = _parse_response(raw)
         assert len(result) == 1
-        assert result[0]["query"] == "shoes"
+        assert result[0] == "shoes"
 
-    def test_missing_query_key_skipped(self):
+    def test_legacy_missing_query_key_skipped(self):
         raw = json.dumps(
             [
                 {"type": "broad", "category": "X"},
@@ -136,12 +135,18 @@ class TestParseResponse:
         with pytest.raises(ValueError, match="No valid queries"):
             _parse_response("[]")
 
-    def test_non_dict_items_skipped(self):
+    def test_non_string_non_dict_items_skipped(self):
         import pytest
 
-        raw = json.dumps(["shoes", "boots"])
+        raw = json.dumps([123, True])
         with pytest.raises(ValueError, match="No valid queries"):
             _parse_response(raw)
+
+    def test_whitespace_trimmed(self):
+        raw = json.dumps(["  running shoes  ", " boots "])
+        result = _parse_response(raw)
+        assert result[0] == "running shoes"
+        assert result[1] == "boots"
 
 
 # ---------------------------------------------------------------------------
@@ -150,40 +155,31 @@ class TestParseResponse:
 
 
 class TestWriteCsv:
-    def test_writes_valid_csv_with_source_column(self, tmp_path):
-        queries = [
-            {"query": "shoes", "type": "broad", "category": "Footwear"},
-            {"query": "nike", "type": "navigational", "category": "Shoes"},
-        ]
+    def test_writes_single_column_csv(self, tmp_path):
+        queries = ["shoes", "nike air max"]
         out = tmp_path / "queries.csv"
         _write_csv(queries, out)
 
         text = out.read_text(encoding="utf-8")
-        assert "query,type,category,source" in text
-        assert "generated" in text
-
         lines = text.strip().splitlines()
+        assert lines[0] == "query"
         assert len(lines) == 3  # header + 2 rows
 
     def test_compatible_with_load_queries(self, tmp_path):
         """Round-trip: generated CSV can be loaded by load_queries()."""
         from veritail.queries import load_queries
 
-        queries = [
-            {"query": "running shoes", "type": "broad", "category": "Shoes"},
-        ]
+        queries = ["running shoes"]
         out = tmp_path / "queries.csv"
         _write_csv(queries, out)
 
         loaded = load_queries(str(out))
         assert len(loaded) == 1
         assert loaded[0].query == "running shoes"
-        assert loaded[0].type == "broad"
-        assert loaded[0].category == "Shoes"
 
     def test_creates_parent_directories(self, tmp_path):
         out = tmp_path / "sub" / "dir" / "queries.csv"
-        _write_csv([{"query": "test", "type": "broad", "category": ""}], out)
+        _write_csv(["test"], out)
         assert out.exists()
 
 
@@ -193,10 +189,10 @@ class TestWriteCsv:
 
 
 class TestGenerateQueries:
-    def _make_mock_client(self, response_json: list[dict[str, str]]) -> Mock:
+    def _make_mock_client(self, response_queries: list[str]) -> Mock:
         mock = Mock(spec=LLMClient)
         mock.complete.return_value = LLMResponse(
-            content=json.dumps(response_json),
+            content=json.dumps(response_queries),
             model="test-model",
             input_tokens=500,
             output_tokens=200,
@@ -204,10 +200,7 @@ class TestGenerateQueries:
         return mock
 
     def test_end_to_end_with_mocked_client(self, tmp_path):
-        fake_queries = [
-            {"query": "laptop", "type": "broad", "category": "Electronics"},
-            {"query": "Dell XPS", "type": "navigational", "category": "Laptops"},
-        ]
+        fake_queries = ["laptop", "Dell XPS"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -219,6 +212,7 @@ class TestGenerateQueries:
         )
 
         assert len(result) == 2
+        assert result[0] == "laptop"
         assert out.exists()
         client.complete.assert_called_once()
 
@@ -236,9 +230,7 @@ class TestGenerateQueries:
             )
 
     def test_accepts_context_only(self, tmp_path):
-        fake_queries = [
-            {"query": "widgets", "type": "broad", "category": "Widgets"},
-        ]
+        fake_queries = ["widgets"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -252,9 +244,7 @@ class TestGenerateQueries:
         assert len(result) == 1
 
     def test_accepts_vertical_only(self, tmp_path):
-        fake_queries = [
-            {"query": "earbuds", "type": "broad", "category": "Audio"},
-        ]
+        fake_queries = ["earbuds"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -271,9 +261,7 @@ class TestGenerateQueries:
         ctx_file = tmp_path / "context.txt"
         ctx_file.write_text("B2B HVAC distributor", encoding="utf-8")
 
-        fake_queries = [
-            {"query": "hvac filter", "type": "broad", "category": "HVAC"},
-        ]
+        fake_queries = ["hvac filter"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -292,9 +280,7 @@ class TestGenerateQueries:
         assert str(ctx_file) not in user_prompt
 
     def test_distribution_appears_in_user_prompt(self, tmp_path):
-        fake_queries = [
-            {"query": "test", "type": "broad", "category": "X"},
-        ]
+        fake_queries = ["test"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -310,9 +296,7 @@ class TestGenerateQueries:
             assert qtype in user_prompt
 
     def test_max_tokens_passed_to_client(self, tmp_path):
-        fake_queries = [
-            {"query": "test", "type": "broad", "category": "X"},
-        ]
+        fake_queries = ["test"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -341,9 +325,7 @@ class TestGenerateQueries:
             )
 
     def test_accepts_count_at_max(self, tmp_path):
-        fake_queries = [
-            {"query": "test", "type": "broad", "category": "X"},
-        ]
+        fake_queries = ["test"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -358,10 +340,7 @@ class TestGenerateQueries:
     def test_warns_on_count_mismatch(self, tmp_path):
         import warnings as _warnings
 
-        fake_queries = [
-            {"query": "shoes", "type": "broad", "category": "Footwear"},
-            {"query": "boots", "type": "broad", "category": "Footwear"},
-        ]
+        fake_queries = ["shoes", "boots"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -380,9 +359,7 @@ class TestGenerateQueries:
     def test_no_warning_when_count_matches(self, tmp_path):
         import warnings as _warnings
 
-        fake_queries = [
-            {"query": f"query{i}", "type": "broad", "category": "X"} for i in range(5)
-        ]
+        fake_queries = [f"query{i}" for i in range(5)]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
 
@@ -406,16 +383,7 @@ class TestGenerateQueriesCLI:
     def _make_mock_client(self) -> Mock:
         mock = Mock(spec=LLMClient)
         mock.complete.return_value = LLMResponse(
-            content=json.dumps(
-                [
-                    {"query": "laptop", "type": "broad", "category": "Electronics"},
-                    {
-                        "query": "Dell XPS",
-                        "type": "navigational",
-                        "category": "Laptops",
-                    },
-                ]
-            ),
+            content=json.dumps(["laptop", "Dell XPS"]),
             model="test-model",
             input_tokens=500,
             output_tokens=200,
