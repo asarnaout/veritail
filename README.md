@@ -79,17 +79,17 @@ If you don't have query logs yet, let an LLM generate a starter set:
 
 ```bash
 # From a built-in vertical
-veritail generate-queries --vertical electronics --output queries.csv --llm-model gpt-4o
+veritail generate-queries --vertical electronics --llm-model gpt-4o
 
 # From business context
-veritail generate-queries --context "B2B industrial fastener distributor" --output queries.csv --llm-model gpt-4o
+veritail generate-queries --context "B2B industrial fastener distributor" --llm-model gpt-4o
 
-# Both vertical and context, custom count
+# Both vertical and context, custom count and output path
 veritail generate-queries \
   --vertical foodservice \
   --context "BBQ restaurant equipment supplier" \
-  --output queries.csv \
   --count 50 \
+  --output my_queries.csv \
   --llm-model gpt-4o
 ```
 

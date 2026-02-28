@@ -839,9 +839,9 @@ def vertical_show(name: str) -> None:
 @main.command("generate-queries")
 @click.option(
     "--output",
-    required=True,
+    default="queries.csv",
     type=str,
-    help="Output CSV path (must end with .csv).",
+    help="Output CSV path (default: queries.csv).",
 )
 @click.option(
     "--count",
@@ -1150,7 +1150,7 @@ def run(
             "  veritail init\n\n"
             "Option 2 - generate domain-aware queries with an LLM:\n"
             "  veritail generate-queries --vertical <vertical> "
-            "--output queries.csv --llm-model <model>\n\n"
+            "--llm-model <model>\n\n"
             "Then run:\n"
             "  veritail run --queries queries.csv "
             "--adapter adapter.py --llm-model <model>"

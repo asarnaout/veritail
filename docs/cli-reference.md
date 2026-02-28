@@ -78,7 +78,7 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 
 | Option | Default | Description |
 |---|---|---|
-| `--output` | *(required)* | Output CSV path (must end with `.csv`) |
+| `--output` | `queries.csv` | Output CSV path (must end with `.csv`) |
 | `--count` | `25` | Target number of queries to generate (max 50, approximate -- see note below) |
 | `--vertical` | *(none)* | Built-in vertical name or path to text file |
 | `--context` | *(none)* | Business context string or path to a text file |
