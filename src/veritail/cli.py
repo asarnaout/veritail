@@ -890,6 +890,18 @@ def vertical_show(name: str) -> None:
     help="API key override (useful for non-OpenAI endpoints that ignore keys).",
 )
 @click.option(
+    "--append",
+    is_flag=True,
+    default=False,
+    help="Add generated queries to an existing file (deduplicates automatically).",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing output file.",
+)
+@click.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -904,6 +916,8 @@ def generate_queries_cmd(
     llm_model: str,
     llm_base_url: str | None,
     llm_api_key: str | None,
+    append: bool,
+    force: bool,
     verbose: bool,
 ) -> None:
     """Generate evaluation queries with an LLM and save to CSV."""
@@ -923,6 +937,9 @@ def generate_queries_cmd(
     if not vertical and not context:
         raise click.UsageError("At least one of --vertical or --context is required.")
 
+    if append and force:
+        raise click.UsageError("--append and --force are mutually exclusive.")
+
     _warn_custom_model(llm_model, llm_base_url)
     llm_client = create_llm_client(
         llm_model, base_url=llm_base_url, api_key=llm_api_key
@@ -936,6 +953,13 @@ def generate_queries_cmd(
     from veritail.querygen import generate_queries
 
     output_path = Path(output)
+
+    existing_count = 0
+    if append and output_path.exists():
+        from veritail.querygen import _read_existing_queries
+
+        existing_count = len(_read_existing_queries(output_path))
+
     try:
         queries = generate_queries(
             llm_client=llm_client,
@@ -943,11 +967,21 @@ def generate_queries_cmd(
             count=count,
             vertical=vertical,
             context=context,
+            append=append,
+            force=force,
         )
     except (ValueError, FileNotFoundError) as exc:
         raise click.ClickException(str(exc)) from exc
+    except FileExistsError as exc:
+        raise click.ClickException(str(exc)) from exc
 
-    if len(queries) != count:
+    if append and existing_count:
+        new_added = len(queries) - existing_count
+        console.print(
+            f"[green]Added {new_added} new queries[/green] "
+            f"-> {output_path} ({len(queries)} total)"
+        )
+    elif len(queries) != count:
         console.print(
             f"[green]Generated {len(queries)} queries[/green] "
             f"[yellow](requested {count})[/yellow] -> {output_path}"

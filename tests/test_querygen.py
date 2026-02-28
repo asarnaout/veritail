@@ -13,7 +13,9 @@ from veritail.querygen import (
     MAX_QUERY_COUNT,
     QUERY_TYPES,
     _compute_distribution,
+    _deduplicate,
     _parse_response,
+    _read_existing_queries,
     _write_csv,
     generate_queries,
 )
@@ -181,6 +183,62 @@ class TestWriteCsv:
         out = tmp_path / "sub" / "dir" / "queries.csv"
         _write_csv(["test"], out)
         assert out.exists()
+
+
+# ---------------------------------------------------------------------------
+# TestReadExistingQueries
+# ---------------------------------------------------------------------------
+
+
+class TestReadExistingQueries:
+    def test_reads_single_column_csv(self, tmp_path):
+        out = tmp_path / "queries.csv"
+        out.write_text("query\nshoes\nboots\n", encoding="utf-8")
+        result = _read_existing_queries(out)
+        assert result == ["shoes", "boots"]
+
+    def test_returns_empty_for_nonexistent_file(self, tmp_path):
+        result = _read_existing_queries(tmp_path / "missing.csv")
+        assert result == []
+
+    def test_handles_csv_with_extra_columns(self, tmp_path):
+        out = tmp_path / "queries.csv"
+        out.write_text(
+            "query,type,category\nshoes,broad,Footwear\nboots,broad,Footwear\n",
+            encoding="utf-8",
+        )
+        result = _read_existing_queries(out)
+        assert result == ["shoes", "boots"]
+
+    def test_skips_empty_query_values(self, tmp_path):
+        out = tmp_path / "queries.csv"
+        out.write_text("query\nshoes\n\nboots\n   \n", encoding="utf-8")
+        result = _read_existing_queries(out)
+        assert result == ["shoes", "boots"]
+
+
+# ---------------------------------------------------------------------------
+# TestDeduplicateQueries
+# ---------------------------------------------------------------------------
+
+
+class TestDeduplicateQueries:
+    def test_case_insensitive(self):
+        assert _deduplicate(["Shoes", "shoes"]) == ["Shoes"]
+
+    def test_whitespace_normalization(self):
+        assert _deduplicate(["  shoes  ", "shoes"]) == ["shoes"]
+
+    def test_preserves_first_occurrence_order(self):
+        result = _deduplicate(["boots", "shoes", "Boots", "sandals"])
+        assert result == ["boots", "shoes", "sandals"]
+
+    def test_empty_list(self):
+        assert _deduplicate([]) == []
+
+    def test_no_duplicates(self):
+        result = _deduplicate(["shoes", "boots", "sandals"])
+        assert result == ["shoes", "boots", "sandals"]
 
 
 # ---------------------------------------------------------------------------
@@ -372,6 +430,72 @@ class TestGenerateQueries:
                 vertical="electronics",
             )
             assert len(w) == 0
+
+    def test_raises_file_exists_error_by_default(self, tmp_path):
+        import pytest
+
+        client = self._make_mock_client(["shoes"])
+        out = tmp_path / "queries.csv"
+        out.write_text("query\nboots\n", encoding="utf-8")
+
+        with pytest.raises(FileExistsError, match="already exists"):
+            generate_queries(
+                llm_client=client,
+                output_path=out,
+                count=5,
+                vertical="electronics",
+            )
+
+    def test_force_overwrites_existing(self, tmp_path):
+        client = self._make_mock_client(["shoes"])
+        out = tmp_path / "queries.csv"
+        out.write_text("query\nboots\n", encoding="utf-8")
+
+        result = generate_queries(
+            llm_client=client,
+            output_path=out,
+            count=5,
+            vertical="electronics",
+            force=True,
+        )
+
+        assert result == ["shoes"]
+        text = out.read_text(encoding="utf-8")
+        assert "boots" not in text
+
+    def test_append_merges_and_deduplicates(self, tmp_path):
+        client = self._make_mock_client(["shoes", "boots", "sandals"])
+        out = tmp_path / "queries.csv"
+        _write_csv(["boots", "sneakers"], out)
+
+        result = generate_queries(
+            llm_client=client,
+            output_path=out,
+            count=5,
+            vertical="electronics",
+            append=True,
+        )
+
+        assert "boots" in result
+        assert "sneakers" in result
+        assert "shoes" in result
+        assert "sandals" in result
+        assert len(result) == 4  # boots deduplicated
+
+    def test_append_with_no_existing_file(self, tmp_path):
+        client = self._make_mock_client(["shoes", "boots"])
+        out = tmp_path / "queries.csv"
+
+        result = generate_queries(
+            llm_client=client,
+            output_path=out,
+            count=5,
+            vertical="electronics",
+            append=True,
+        )
+
+        assert result == ["shoes", "boots"]
+        assert out.exists()
 
 
 # ---------------------------------------------------------------------------
@@ -606,3 +730,103 @@ class TestGenerateQueriesCLI:
         assert "--vertical" in result.output
         assert "--context" in result.output
         assert "--count" in result.output
+        assert "--append" in result.output
+        assert "--force" in result.output
+
+    def test_rejects_append_and_force_together(self, tmp_path):
+        out = tmp_path / "queries.csv"
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "generate-queries",
+                "--output",
+                str(out),
+                "--vertical",
+                "electronics",
+                "--llm-model",
+                "test-model",
+                "--append",
+                "--force",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output
+
+    def test_force_overwrites(self, tmp_path):
+        mock_client = self._make_mock_client()
+        out = tmp_path / "queries.csv"
+        out.write_text("query\nboots\n", encoding="utf-8")
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "generate-queries",
+                    "--output",
+                    str(out),
+                    "--vertical",
+                    "electronics",
+                    "--llm-model",
+                    "test-model",
+                    "--force",
+                ],
+            )
+
+        assert result.exit_code == 0
+        text = out.read_text(encoding="utf-8")
+        assert "boots" not in text
+        assert "laptop" in text
+
+    def test_append_deduplicates(self, tmp_path):
+        mock_client = self._make_mock_client()
+        out = tmp_path / "queries.csv"
+        _write_csv(["laptop", "shoes"], out)
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "generate-queries",
+                    "--output",
+                    str(out),
+                    "--vertical",
+                    "electronics",
+                    "--llm-model",
+                    "test-model",
+                    "--append",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "Added" in result.output
+        text = out.read_text(encoding="utf-8")
+        # "laptop" was in both existing and new — should appear once
+        assert text.count("laptop") == 1
+
+    def test_file_exists_error_without_flags(self, tmp_path):
+        mock_client = self._make_mock_client()
+        out = tmp_path / "queries.csv"
+        out.write_text("query\nboots\n", encoding="utf-8")
+
+        with patch("veritail.cli.create_llm_client", return_value=mock_client):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "generate-queries",
+                    "--output",
+                    str(out),
+                    "--vertical",
+                    "electronics",
+                    "--llm-model",
+                    "test-model",
+                ],
+            )
+
+        assert result.exit_code != 0
+        assert "already exists" in result.output
+        assert "--append" in result.output
+        assert "--force" in result.output

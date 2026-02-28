@@ -144,6 +144,35 @@ def _try_parse_json_array(text: str) -> list[object] | None:
     return None
 
 
+def _read_existing_queries(path: Path) -> list[str]:
+    """Read the ``query`` column from an existing CSV.
+
+    Returns an empty list if the file doesn't exist or contains no queries.
+    """
+    if not path.exists():
+        return []
+    queries: list[str] = []
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            value = row.get("query", "").strip()
+            if value:
+                queries.append(value)
+    return queries
+
+
+def _deduplicate(queries: list[str]) -> list[str]:
+    """Deduplicate queries by lowercased + stripped key, preserving first occurrence."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for q in queries:
+        key = q.strip().lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(q.strip())
+    return result
+
+
 def _write_csv(queries: list[str], output_path: Path) -> None:
     """Write queries to a single-column CSV."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,6 +190,8 @@ def generate_queries(
     count: int = DEFAULT_QUERY_COUNT,
     vertical: str | None = None,
     context: str | None = None,
+    append: bool = False,
+    force: bool = False,
 ) -> list[str]:
     """Generate evaluation queries using an LLM and save to CSV.
 
@@ -175,6 +206,9 @@ def generate_queries(
             :data:`MAX_QUERY_COUNT`.
         vertical: Built-in vertical name or text file path.
         context: Business context string or file path.
+        append: If ``True``, merge new queries into an existing file
+            (deduplicates automatically).
+        force: If ``True``, overwrite an existing file.
 
     Returns:
         List of generated query strings.
@@ -182,6 +216,8 @@ def generate_queries(
     Raises:
         ValueError: If neither vertical nor context is provided, or if
             *count* exceeds :data:`MAX_QUERY_COUNT`.
+        FileExistsError: If *output_path* already exists and neither
+            *append* nor *force* is set.
     """
     if count > MAX_QUERY_COUNT:
         raise ValueError(
@@ -194,6 +230,12 @@ def generate_queries(
         raise ValueError(
             "At least one of --vertical or --context is required "
             "so the LLM has enough domain context to generate useful queries."
+        )
+
+    if output_path.exists() and not append and not force:
+        raise FileExistsError(
+            f"{output_path} already exists. "
+            "Use --append to add new queries or --force to replace."
         )
 
     vertical_name: str | None = None
@@ -232,6 +274,11 @@ def generate_queries(
             "Review the output and supplement manually if needed.",
             stacklevel=2,
         )
+
+    if append and output_path.exists():
+        existing = _read_existing_queries(output_path)
+        combined = existing + queries
+        queries = _deduplicate(combined)
 
     _write_csv(queries, output_path)
 

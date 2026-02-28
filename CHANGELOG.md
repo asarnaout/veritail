@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `--output` flag in `veritail generate-queries` now defaults to `queries.csv` instead of being required.
+- `veritail generate-queries` now refuses to overwrite an existing file by default. Use `--append` to merge new queries into an existing file (with automatic deduplication) or `--force` to replace it.
 
 ## [0.3.0] - 2026-02-28
 

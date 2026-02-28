@@ -85,6 +85,8 @@ Generate evaluation queries with an LLM and save to CSV. At least one of `--vert
 | `--llm-model` | *(required)* | LLM model for generation (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`) |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |
+| `--append` | off | Add generated queries to an existing file (deduplicates automatically) |
+| `--force` | off | Overwrite existing output file |
 | `-v` / `--verbose` | off | Enable debug logging to stderr |
 
 > **Note:** Query counts are approximate. LLMs may return slightly fewer or more queries than requested. The CLI will report the actual count generated. For larger query sets, run the command multiple times or curate queries manually.
