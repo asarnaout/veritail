@@ -11,7 +11,7 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
-from veritail.metrics.bootstrap import paired_bootstrap_test
+from veritail.metrics.bootstrap import PairedBootstrapResult, paired_bootstrap_test
 from veritail.reporting.single import (
     CHECK_DESCRIPTIONS,
     METRIC_DESCRIPTIONS,
@@ -64,6 +64,20 @@ def generate_comparison_report(
     Returns:
         Formatted report string.
     """
+    # Compute paired bootstrap significance tests once for all metrics
+    metrics_b_lookup = {m.metric_name: m for m in metrics_b}
+    sig_results: dict[str, PairedBootstrapResult | None] = {}
+    for m_a in metrics_a:
+        m_b = metrics_b_lookup.get(m_a.metric_name)
+        if m_b:
+            common_keys = [q for q in m_a.per_query if q in m_b.per_query]
+            if len(common_keys) >= 2:
+                vals_a = [m_a.per_query[q] for q in common_keys]
+                vals_b = [m_b.per_query[q] for q in common_keys]
+                sig_results[m_a.metric_name] = paired_bootstrap_test(vals_a, vals_b)
+            else:
+                sig_results[m_a.metric_name] = None
+
     if format == "html":
         return _generate_html(
             metrics_a,
@@ -71,6 +85,7 @@ def generate_comparison_report(
             comparison_checks,
             config_a,
             config_b,
+            sig_results=sig_results,
             run_metadata=run_metadata,
             sibling_report=sibling_report,
             judgments_a=judgments_a,
@@ -86,6 +101,7 @@ def generate_comparison_report(
         comparison_checks,
         config_a,
         config_b,
+        sig_results=sig_results,
         correction_judgments_a=correction_judgments_a,
         correction_judgments_b=correction_judgments_b,
     )
@@ -97,6 +113,7 @@ def _generate_terminal(
     comparison_checks: list[CheckResult],
     config_a: str,
     config_b: str,
+    sig_results: dict[str, PairedBootstrapResult | None] | None = None,
     correction_judgments_a: list[CorrectionJudgment] | None = None,
     correction_judgments_b: list[CorrectionJudgment] | None = None,
 ) -> str:
@@ -149,13 +166,10 @@ def _generate_terminal(
             elif delta < 0:
                 pct_str = f"[red]{pct_str}[/red]"
 
-            # Paired bootstrap significance test
-            common_keys = [q for q in m_a.per_query if q in m_b.per_query]
+            # Paired bootstrap significance (pre-computed)
             sig_str = ""
-            if len(common_keys) >= 2:
-                vals_a = [m_a.per_query[q] for q in common_keys]
-                vals_b = [m_b.per_query[q] for q in common_keys]
-                test = paired_bootstrap_test(vals_a, vals_b)
+            if sig_results:
+                test = sig_results.get(m_a.metric_name)
                 if test and test.significant:
                     sig_str = "[bold]*[/bold]"
                     has_any_sig = True
@@ -301,6 +315,7 @@ def _generate_html(
     comparison_checks: list[CheckResult],
     config_a: str,
     config_b: str,
+    sig_results: dict[str, PairedBootstrapResult | None] | None = None,
     run_metadata: Mapping[str, object] | None = None,
     sibling_report: str | None = None,
     judgments_a: list[JudgmentRecord] | None = None,
@@ -325,14 +340,11 @@ def _generate_html(
             b_na = m_b.query_count is not None and m_b.query_count == 0
             delta = m_b.value - m_a.value
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
-            # Paired bootstrap significance test
-            common_keys = [q for q in m_a.per_query if q in m_b.per_query]
+            # Paired bootstrap significance (pre-computed)
             p_value: float | None = None
             significant = False
-            if len(common_keys) >= 2:
-                vals_a = [m_a.per_query[q] for q in common_keys]
-                vals_b = [m_b.per_query[q] for q in common_keys]
-                test = paired_bootstrap_test(vals_a, vals_b)
+            if sig_results:
+                test = sig_results.get(m_a.metric_name)
                 if test:
                     p_value = test.p_value
                     significant = test.significant
