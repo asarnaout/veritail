@@ -209,6 +209,27 @@ class TestPairedBootstrapTest:
         assert r1.p_value == r2.p_value
         assert r1.ci_lower == r2.ci_lower
 
+    def test_tiny_consistent_difference_not_significant(self) -> None:
+        """Reviewer's example: [0.5, 0.5] vs [0.51, 0.51] should NOT be significant.
+
+        With only n=2 and a tiny constant delta, a proper null-hypothesis
+        test should yield a high p-value (no evidence to reject H0).
+        """
+        a = [0.5, 0.5]
+        b = [0.51, 0.51]
+        result = paired_bootstrap_test(a, b)
+        assert result is not None
+        assert result.p_value > 0.05
+        assert not result.significant
+
+    def test_small_noisy_difference_not_significant(self) -> None:
+        """Mixed small deltas with n=5 should not be significant."""
+        a = [0.5, 0.6, 0.4, 0.55, 0.45]
+        b = [0.52, 0.58, 0.43, 0.54, 0.47]
+        result = paired_bootstrap_test(a, b)
+        assert result is not None
+        assert not result.significant
+
     def test_returns_paired_bootstrap_result_type(self) -> None:
         result = paired_bootstrap_test([0.1, 0.5], [0.2, 0.6])
         assert isinstance(result, PairedBootstrapResult)

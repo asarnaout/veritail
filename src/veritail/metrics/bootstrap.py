@@ -199,10 +199,15 @@ def paired_bootstrap_test(
     alpha: float = 0.05,
     seed: int = 42,
 ) -> PairedBootstrapResult | None:
-    """Paired bootstrap test on aligned per-query metric values.
+    """Paired bootstrap significance test on aligned per-query metric values.
 
-    Computes per-query deltas (B - A), bootstraps the mean delta, and
-    tests whether the confidence interval excludes zero.
+    Uses a null-centered (shifted) bootstrap test (Sakai 2006/2007):
+
+    1. Compute per-query deltas ``d_i = B_i - A_i`` and observed mean ``d_bar``.
+    2. Center deltas under H0: ``w_i = d_i - d_bar`` (so ``mean(w) = 0``).
+    3. Bootstrap resample from ``w`` to generate the null distribution.
+    4. p-value = fraction of null bootstrap means with ``|t*| >= |d_bar|``.
+    5. CI on the delta uses the original (uncentered) deltas via percentile method.
 
     Returns ``None`` when ``len < 2``.
     """
@@ -215,6 +220,7 @@ def paired_bootstrap_test(
 
     rng = random.Random(seed)
 
+    # CI via percentile method on original (uncentered) deltas
     boot_deltas: list[float] = []
     for _ in range(n_resamples):
         sample = rng.choices(deltas, k=n)
@@ -222,18 +228,31 @@ def paired_bootstrap_test(
 
     boot_deltas.sort()
 
-    # CI via percentile method (sufficient for deltas which are ~symmetric)
     lo_idx = max(0, int((alpha / 2.0) * n_resamples))
     hi_idx = min(n_resamples - 1, int((1.0 - alpha / 2.0) * n_resamples))
     ci_lower = boot_deltas[lo_idx]
     ci_upper = boot_deltas[hi_idx]
 
-    # Two-sided p-value: fraction of bootstrap resamples on opposite side of 0
-    if observed_delta >= 0:
-        count_opposite = sum(1 for d in boot_deltas if d <= 0)
+    # Null-centered bootstrap for p-value (Sakai 2006/2007)
+    # Center deltas so mean is 0 under H0
+    centered = [d - observed_delta for d in deltas]
+
+    # Degenerate case: all deltas identical → zero within-sample variance.
+    # Bootstrap cannot generate variability; fall back to the sign test:
+    # p = 2^(1-n) for non-zero constant delta, 1.0 for zero delta.
+    if all(c == centered[0] for c in centered):
+        p_value = 1.0 if observed_delta == 0 else 2.0 ** (1 - n)
     else:
-        count_opposite = sum(1 for d in boot_deltas if d >= 0)
-    p_value = min(1.0, 2.0 * count_opposite / n_resamples)
+        rng2 = random.Random(seed)
+        abs_observed = abs(observed_delta)
+        count_extreme = 0
+        for _ in range(n_resamples):
+            sample = rng2.choices(centered, k=n)
+            boot_mean = sum(sample) / n
+            if abs(boot_mean) >= abs_observed:
+                count_extreme += 1
+
+        p_value = count_extreme / n_resamples
 
     return PairedBootstrapResult(
         delta=observed_delta,
