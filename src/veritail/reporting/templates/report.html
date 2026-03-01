@@ -60,6 +60,7 @@
                 <th>{{ config_a }}</th>
                 <th>{{ config_b }}</th>
                 <th>% Change</th>
+                <th style="width:50px">Sig.</th>
             </tr>
         </thead>
         <tbody>
@@ -70,15 +71,21 @@
                 <td class="metric-value">{% if d.b_na %}<span style="color:#9ca3af">N/A</span>{% else %}{{ "%.4f"|format(d.value_b) }}{% endif %}</td>
                 {% if d.a_na and d.b_na %}
                 <td class="metric-value" style="color:#9ca3af">-</td>
+                <td></td>
                 {% else %}
                 <td class="metric-value {% if d.pct_change > 0 %}positive{% elif d.pct_change < 0 %}negative{% else %}neutral{% endif %}">
                     {{ "%+.1f"|format(d.pct_change) }}%
+                </td>
+                <td class="metric-value" style="text-align:center;">
+                    {% if d.significant %}<span style="color:#16a34a; font-weight:700;" title="p={{ '%.4f'|format(d.p_value) }}">*</span>{% elif d.p_value is not none %}<span style="color:#9ca3af;" title="p={{ '%.4f'|format(d.p_value) }}"></span>{% else %}<span style="color:#9ca3af;">--</span>{% endif %}
                 </td>
                 {% endif %}
             </tr>
             {% endfor %}
         </tbody>
-    </table></div>
+    </table>
+    <p style="color:#9ca3af; font-size:12px; margin-top:8px;">* Statistically significant at p &lt; 0.05 (paired bootstrap, 10,000 resamples). Hover for exact p-value.</p>
+    </div>
 
     {% if win_loss %}
     <h2>Query-Level Outcome</h2>
@@ -498,6 +505,7 @@
             <tr>
                 <th>Metric</th>
                 <th>Value</th>
+                <th>95% CI</th>
             </tr>
         </thead>
         <tbody>
@@ -518,6 +526,13 @@
                   <span style="color:#9ca3af; font-size:12px; font-weight:normal">(n={{ m.query_count }} of {{ m.total_queries }} queries)</span>
                   {% else %}
                   {{ "%.4f"|format(m.value) }}
+                  {% endif %}
+                </td>
+                <td class="metric-value" style="color:#6b7280; font-weight:normal; font-size:13px;">
+                  {% if m.ci_lower is not none and m.ci_upper is not none %}
+                  [{{ "%.4f"|format(m.ci_lower) }}, {{ "%.4f"|format(m.ci_upper) }}]
+                  {% else %}
+                  --
                   {% endif %}
                 </td>
             </tr>

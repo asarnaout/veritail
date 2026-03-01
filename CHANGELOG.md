@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- 95% BCa bootstrap confidence intervals on all aggregate IR metrics (NDCG@5, NDCG@10, MRR, MAP, P@5, P@10, Attribute Match@5/10). Displayed in both terminal and HTML reports. Uses 10,000 resamples with a fixed seed for reproducibility; zero extra LLM calls.
+- Paired bootstrap significance test for A/B comparison mode. Statistically significant metric differences (p < 0.05) are marked with `*` in the metrics comparison table, with exact p-values available on hover in HTML reports.
+
 ## [0.3.1] - 2026-02-28
 
 ### Changed

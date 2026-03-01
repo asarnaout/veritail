@@ -115,6 +115,8 @@ class MetricResult:
     by_query_type: dict[str, float] = field(default_factory=dict)
     query_count: int | None = None  # queries that contributed to the aggregate
     total_queries: int | None = None  # total queries in the evaluation
+    ci_lower: float | None = None  # 95% bootstrap CI lower bound
+    ci_upper: float | None = None  # 95% bootstrap CI upper bound
 
 
 @dataclass

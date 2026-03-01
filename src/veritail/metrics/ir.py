@@ -7,6 +7,7 @@ import math
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping
 
+from veritail.metrics.bootstrap import bootstrap_ci
 from veritail.types import JudgmentRecord, MetricResult, QueryEntry
 
 logger = logging.getLogger(__name__)
@@ -194,12 +195,15 @@ def compute_all_metrics(
         # Average by type
         by_query_type = {t: sum(vals) / len(vals) for t, vals in by_type.items()}
 
+        ci = bootstrap_ci(all_values)
         results.append(
             MetricResult(
                 metric_name=metric_name,
                 value=aggregate,
                 per_query=per_query,
                 by_query_type=by_query_type,
+                ci_lower=ci.lower if ci else None,
+                ci_upper=ci.upper if ci else None,
             )
         )
 
@@ -223,6 +227,7 @@ def compute_all_metrics(
 
         by_query_type = {t: sum(vals) / len(vals) for t, vals in attr_by_type.items()}
 
+        ci = bootstrap_ci(all_values)
         results.append(
             MetricResult(
                 metric_name=metric_name,
@@ -231,6 +236,8 @@ def compute_all_metrics(
                 by_query_type=by_query_type,
                 query_count=len(all_values),
                 total_queries=total_queries,
+                ci_lower=ci.lower if ci else None,
+                ci_upper=ci.upper if ci else None,
             )
         )
 

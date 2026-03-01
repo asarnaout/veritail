@@ -11,6 +11,7 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
+from veritail.metrics.bootstrap import paired_bootstrap_test
 from veritail.reporting.single import (
     CHECK_DESCRIPTIONS,
     METRIC_DESCRIPTIONS,
@@ -112,7 +113,9 @@ def _generate_terminal(
     table.add_column(config_a, justify="right")
     table.add_column(config_b, justify="right")
     table.add_column("% Change", justify="right")
+    table.add_column("Sig.", justify="center", style="dim")
 
+    has_any_sig = False
     metrics_b_lookup = {m.metric_name: m for m in metrics_b}
     for m_a in metrics_a:
         m_b = metrics_b_lookup.get(m_a.metric_name)
@@ -127,6 +130,7 @@ def _generate_terminal(
                     "[dim]N/A[/dim]",
                     "[dim]N/A[/dim]",
                     "[dim]-[/dim]",
+                    "",
                 )
                 continue
 
@@ -145,14 +149,28 @@ def _generate_terminal(
             elif delta < 0:
                 pct_str = f"[red]{pct_str}[/red]"
 
+            # Paired bootstrap significance test
+            common_keys = [q for q in m_a.per_query if q in m_b.per_query]
+            sig_str = ""
+            if len(common_keys) >= 2:
+                vals_a = [m_a.per_query[q] for q in common_keys]
+                vals_b = [m_b.per_query[q] for q in common_keys]
+                test = paired_bootstrap_test(vals_a, vals_b)
+                if test and test.significant:
+                    sig_str = "[bold]*[/bold]"
+                    has_any_sig = True
+
             table.add_row(
                 display,
                 _fmt_value(m_a),
                 _fmt_value(m_b),
                 pct_str,
+                sig_str,
             )
 
     console.print(table)
+    if has_any_sig:
+        console.print("  [dim]* p < 0.05 (paired bootstrap, 10,000 resamples)[/dim]")
 
     # By query type comparison
     all_types: set[str] = set()
@@ -307,6 +325,18 @@ def _generate_html(
             b_na = m_b.query_count is not None and m_b.query_count == 0
             delta = m_b.value - m_a.value
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
+            # Paired bootstrap significance test
+            common_keys = [q for q in m_a.per_query if q in m_b.per_query]
+            p_value: float | None = None
+            significant = False
+            if len(common_keys) >= 2:
+                vals_a = [m_a.per_query[q] for q in common_keys]
+                vals_b = [m_b.per_query[q] for q in common_keys]
+                test = paired_bootstrap_test(vals_a, vals_b)
+                if test:
+                    p_value = test.p_value
+                    significant = test.significant
+
             comparison_data.append(
                 {
                     "name": metric_display_name(m_a.metric_name),
@@ -316,6 +346,8 @@ def _generate_html(
                     "pct_change": pct,
                     "a_na": a_na,
                     "b_na": b_na,
+                    "p_value": p_value,
+                    "significant": significant,
                 }
             )
 
