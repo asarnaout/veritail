@@ -77,7 +77,7 @@
                     {{ "%+.1f"|format(d.pct_change) }}%
                 </td>
                 <td class="metric-value" style="text-align:center;">
-                    {% if d.significant %}<span style="color:#16a34a; font-weight:700;" title="p={{ '%.4f'|format(d.p_value) }}">*</span>{% elif d.p_value is not none %}<span style="color:#9ca3af;" title="p={{ '%.4f'|format(d.p_value) }}"></span>{% else %}<span style="color:#9ca3af;">--</span>{% endif %}
+                    {% if d.significant %}<span style="color:#16a34a; font-weight:700;" title="p={{ '%.4f'|format(d.p_value) }}">*</span>{% elif d.p_value is not none %}<span style="color:#9ca3af;" title="p={{ '%.4f'|format(d.p_value) }}">p={{ '%.2f'|format(d.p_value) }}</span>{% else %}<span style="color:#9ca3af;">--</span>{% endif %}
                 </td>
                 {% endif %}
             </tr>
