@@ -64,11 +64,11 @@ def _make_checks() -> list[CheckResult]:
             detail="OK",
         ),
         CheckResult(
-            check_name="text_overlap",
+            check_name="oos_prominence",
             query="laptop",
             product_id="SKU-1",
             passed=False,
-            detail="Low keyword overlap: 10%",
+            detail="Out-of-stock product appears in top 5 (position 1)",
         ),
         CheckResult(
             check_name="price_outlier",
@@ -361,7 +361,65 @@ class TestBuildSinglePayload:
             None,
         )
         assert "Check Summary" in payload
-        assert "text_overlap" in payload
+        assert "oos_prominence" in payload
+        assert "price_outlier" in payload
+
+    def test_detection_only_checks_use_findings_label(self):
+        """Checks with 0 passes should say 'N findings' not '0 passed, N failed'."""
+        checks = [
+            CheckResult(
+                check_name="near_duplicate",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Near-duplicate pair",
+            ),
+            CheckResult(
+                check_name="near_duplicate",
+                query="shoes",
+                product_id="SKU-2",
+                passed=False,
+                detail="Near-duplicate pair",
+            ),
+            CheckResult(
+                check_name="price_outlier",
+                query="shoes",
+                product_id="SKU-1",
+                passed=True,
+                detail="OK",
+            ),
+            CheckResult(
+                check_name="price_outlier",
+                query="shoes",
+                product_id="SKU-2",
+                passed=False,
+                detail="Outlier price",
+            ),
+        ]
+        payload = _build_single_payload(_make_metrics(), checks, None, None, None)
+        assert "near_duplicate: 2 findings" in payload
+        assert "price_outlier: 1 passed, 1 failed (50% fail rate)" in payload
+
+    def test_text_overlap_excluded_from_payload(self):
+        """text_overlap is redundant with judge scores and should be filtered."""
+        checks = [
+            CheckResult(
+                check_name="text_overlap",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Low keyword overlap: 10%",
+            ),
+            CheckResult(
+                check_name="price_outlier",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Outlier price",
+            ),
+        ]
+        payload = _build_single_payload(_make_metrics(), checks, None, None, None)
+        assert "text_overlap" not in payload
         assert "price_outlier" in payload
 
     def test_includes_worst_queries(self):
@@ -406,7 +464,7 @@ class TestBuildSinglePayload:
             None,
         )
         assert "Check Failure Samples" in payload
-        assert "Low keyword overlap" in payload
+        assert "Out-of-stock product" in payload
 
     def test_includes_corrections(self):
         payload = _build_single_payload(
@@ -464,11 +522,11 @@ class TestBuildSinglePayload:
         ]
         checks = [
             CheckResult(
-                check_name="text_overlap",
+                check_name="price_outlier",
                 query="shoes",
                 product_id="SKU-1",
                 passed=False,
-                detail="Low overlap",
+                detail="Outlier price",
             ),
         ]
         payload = _build_single_payload(metrics, checks, judgments, None, None)
@@ -479,7 +537,7 @@ class TestBuildSinglePayload:
         # Raw-query lookup should find score data
         assert "pos1=" in payload
         # Raw-query lookup should find failed checks
-        assert "text_overlap" in payload
+        assert "price_outlier" in payload
 
     def test_no_judgments_skips_judgment_sections(self):
         payload = _build_single_payload(
@@ -555,7 +613,7 @@ class TestBuildComparisonPayload:
     def test_includes_check_deltas(self):
         checks_a = [
             CheckResult(
-                check_name="text_overlap",
+                check_name="price_outlier",
                 query="q1",
                 product_id="p1",
                 passed=False,
@@ -564,7 +622,7 @@ class TestBuildComparisonPayload:
         ]
         checks_b = [
             CheckResult(
-                check_name="text_overlap",
+                check_name="price_outlier",
                 query="q1",
                 product_id="p1",
                 passed=True,
@@ -585,6 +643,40 @@ class TestBuildComparisonPayload:
             None,
         )
         assert "Check Failure Deltas" in payload
+
+    def test_text_overlap_excluded_from_comparison_payload(self):
+        """text_overlap should be filtered from comparison payloads too."""
+        checks_a = [
+            CheckResult(
+                check_name="text_overlap",
+                query="q1",
+                product_id="p1",
+                passed=False,
+                detail="Low overlap",
+            ),
+            CheckResult(
+                check_name="price_outlier",
+                query="q1",
+                product_id="p1",
+                passed=False,
+                detail="Outlier",
+            ),
+        ]
+        payload = _build_comparison_payload(
+            _make_metrics(),
+            _make_metrics(),
+            checks_a,
+            None,
+            None,
+            None,
+            [],
+            "A",
+            "B",
+            None,
+            None,
+        )
+        assert "text_overlap" not in payload
+        assert "price_outlier" in payload
 
     def test_includes_query_type_metrics(self):
         payload = _build_comparison_payload(

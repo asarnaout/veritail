@@ -26,6 +26,12 @@ _NO_INSIGHTS_SENTINEL = "__NO_INSIGHTS__"
 _MIN_SUMMARY_LENGTH = 20
 _VISIBLE_BULLETS = 3
 
+# Checks that are redundant with the LLM judge scores and would add noise
+# to the summary payload.  text_overlap is a crude keyword-matching proxy
+# for relevance — the judge already evaluates this more accurately and the
+# per-query NDCG reflects it.
+_SUMMARY_EXCLUDED_CHECKS: frozenset[str] = frozenset({"text_overlap"})
+
 
 def _truncate(text: str, max_len: int) -> str:
     """Truncate *text* to *max_len* characters, appending '...' if cut."""
@@ -51,6 +57,9 @@ def _build_single_payload(
 ) -> str:
     """Build a structured text payload for the single-report summary LLM call."""
     sections: list[str] = []
+
+    # Filter out checks that are redundant with judge scores.
+    checks = [c for c in checks if c.check_name not in _SUMMARY_EXCLUDED_CHECKS]
 
     # 1. Score distribution
     if judgments:
@@ -91,12 +100,18 @@ def _build_single_payload(
             check_counts[c.check_name][key] += 1
         lines = ["## Check Summary"]
         for name, counts in sorted(check_counts.items()):
-            total_c = counts["passed"] + counts["failed"]
-            fail_rate = counts["failed"] / total_c * 100 if total_c > 0 else 0
-            lines.append(
-                f"- {name}: {counts['passed']} passed, "
-                f"{counts['failed']} failed ({fail_rate:.0f}% fail rate)"
-            )
+            if counts["passed"] == 0:
+                # Detection-only check (only emits failures when an issue
+                # is found).  Reporting "0 passed" would mislead the LLM
+                # into thinking every result failed.
+                lines.append(f"- {name}: {counts['failed']} findings")
+            else:
+                total_c = counts["passed"] + counts["failed"]
+                fail_rate = counts["failed"] / total_c * 100 if total_c > 0 else 0
+                lines.append(
+                    f"- {name}: {counts['passed']} passed, "
+                    f"{counts['failed']} failed ({fail_rate:.0f}% fail rate)"
+                )
         sections.append("\n".join(lines))
 
     # 4. Worst 5 queries (by NDCG@10)
@@ -216,6 +231,17 @@ def _build_comparison_payload(
 ) -> str:
     """Build a structured text payload for the comparison summary LLM call."""
     sections: list[str] = []
+
+    # Filter out checks that are redundant with judge scores.
+    def _filter_checks(
+        cs: list[CheckResult] | None,
+    ) -> list[CheckResult] | None:
+        if cs is None:
+            return None
+        return [c for c in cs if c.check_name not in _SUMMARY_EXCLUDED_CHECKS]
+
+    checks_a = _filter_checks(checks_a)
+    checks_b = _filter_checks(checks_b)
 
     metrics_b_lookup = {m.metric_name: m for m in metrics_b}
 

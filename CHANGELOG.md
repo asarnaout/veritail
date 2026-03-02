@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Renamed "High-Variance Queries" section to "Mixed-Relevance Queries (widest score spread)" in single-report summary payloads to avoid misleading the LLM about expected relevance decay.
+- The `text_overlap` check is now excluded from the AI Summary payload. It is redundant with the LLM judge's relevance scores (which feed into NDCG) and added noise without diagnostic value.
 
 ### Fixed
 
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed CSS unicode escapes (bullet markers, Show more arrows) being mangled by Python string interpretation in the shared stylesheet.
 - Fixed "Show more" collapsible breaking when the LLM separates bullets with blank lines — overflow bullets now stay collapsed regardless of whitespace.
 - "Show more" toggle in AI Summary now appears at the bottom of the expanded content (instead of staying at the top) and changes to "Show less" when expanded.
+- Detection-only checks (e.g. `near_duplicate`) that never emit pass results are now reported as "N findings" in the summary payload instead of "0 passed, N failed (100% fail rate)", preventing the LLM from incorrectly concluding that every result fails the check.
 
 ### Changed
 
