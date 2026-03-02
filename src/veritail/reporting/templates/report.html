@@ -13,6 +13,7 @@
 
     <nav class="report-nav" id="report-nav">
       <ul>
+        {% if summary %}<li><a href="#section-summary">Summary</a></li>{% endif %}
         <li><a href="#section-metrics">Metrics</a></li>
         {% if win_loss %}<li><a href="#section-win-loss">Win/Loss</a></li>{% endif %}
         {% if overlap_summary %}<li><a href="#section-overlap">Overlap</a></li>{% endif %}
@@ -31,6 +32,15 @@
     {% if sibling_report %}
     <div class="banner-link">
         This run also evaluated autocomplete. <a href="{{ sibling_report }}">View Autocomplete Report &rarr;</a>
+    </div>
+    {% endif %}
+
+    {% if summary %}
+    <div class="summary-card" id="section-summary">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <span class="summary-badge">AI Summary</span>
+        </div>
+        <div class="summary-content">{{ summary|safe }}</div>
     </div>
     {% endif %}
 
@@ -478,6 +488,7 @@
 
     <nav class="report-nav" id="report-nav">
       <ul>
+        {% if summary %}<li><a href="#section-summary">Summary</a></li>{% endif %}
         {% if kpi_cards %}<li><a href="#section-kpi">Overview</a></li>{% endif %}
         <li><a href="#section-metrics">Metrics</a></li>
         {% if position_chart %}<li><a href="#section-position">Position</a></li>{% endif %}
@@ -494,6 +505,15 @@
     {% if sibling_report %}
     <div class="banner-link">
         This run also evaluated autocomplete. <a href="{{ sibling_report }}">View Autocomplete Report &rarr;</a>
+    </div>
+    {% endif %}
+
+    {% if summary %}
+    <div class="summary-card" id="section-summary">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <span class="summary-badge">AI Summary</span>
+        </div>
+        <div class="summary-content">{{ summary|safe }}</div>
     </div>
     {% endif %}
 
