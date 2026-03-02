@@ -581,27 +581,15 @@ details[open] > summary .check-arrow { transform: rotate(90deg); }
   margin-bottom: var(--sp-2);
 }
 
-.summary-more {
-  margin-top: var(--sp-1);
-}
-
 .summary-toggle {
+  background: none;
+  border: none;
   cursor: pointer;
   color: var(--accent);
   font-size: var(--text-sm);
   font-weight: 500;
-  list-style: none;
   padding: var(--sp-1) 0;
-}
-
-.summary-toggle::-webkit-details-marker { display: none; }
-
-.summary-toggle::before {
-  content: "\\25B8\\00a0";
-}
-
-details[open] > .summary-toggle::before {
-  content: "\\25BE\\00a0";
+  font-family: inherit;
 }
 
 /* ── Banner Link ──────────────────────────────────────────────── */

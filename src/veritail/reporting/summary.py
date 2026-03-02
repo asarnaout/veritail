@@ -489,7 +489,7 @@ def summary_bullets_to_html(text: str) -> str:
     """
     lines = text.strip().splitlines()
     in_list = False
-    in_details = False
+    in_overflow = False
     bullet_count = 0
     parts: list[str] = []
 
@@ -499,20 +499,19 @@ def summary_bullets_to_html(text: str) -> str:
             if in_list:
                 parts.append("</ul>")
                 in_list = False
-            # Never close <details> on blank lines — only at the end
+            # Never close overflow on blank lines — only at the end
             continue
 
         if stripped.startswith("- "):
             bullet_count += 1
             if bullet_count == _VISIBLE_BULLETS + 1:
-                # Close the visible list, open collapsible section
+                # Close the visible list, open hidden overflow div
                 if in_list:
                     parts.append("</ul>")
-                parts.append('<details class="summary-more">')
-                parts.append('<summary class="summary-toggle">Show more</summary>')
+                parts.append('<div class="summary-overflow" hidden>')
                 parts.append("<ul>")
                 in_list = True
-                in_details = True
+                in_overflow = True
             elif not in_list:
                 parts.append("<ul>")
                 in_list = True
@@ -522,15 +521,24 @@ def summary_bullets_to_html(text: str) -> str:
             if in_list:
                 parts.append("</ul>")
                 in_list = False
-            if in_details:
-                parts.append("</details>")
-                in_details = False
+            if in_overflow:
+                parts.append("</div>")
+                in_overflow = False
             parts.append(f"<p>{_inline_markdown(html.escape(stripped))}</p>")
 
     if in_list:
         parts.append("</ul>")
-    if in_details:
-        parts.append("</details>")
+    if in_overflow:
+        parts.append("</div>")
+        parts.append(
+            '<button class="summary-toggle" onclick="'
+            "const o=this.previousElementSibling;"
+            "const v=o.hidden;"
+            "o.hidden=!v;"
+            "this.textContent=v?"
+            "'\\u25BE Show less':'\\u25B8 Show more'"
+            '">&#x25B8; Show more</button>'
+        )
 
     return "\n".join(parts)
 

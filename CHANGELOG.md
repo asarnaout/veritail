@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AI Summary no longer shows truncated mid-sentence bullets. If the LLM runs out of tokens, the incomplete final bullet is silently dropped.
 - Fixed CSS unicode escapes (bullet markers, Show more arrows) being mangled by Python string interpretation in the shared stylesheet.
 - Fixed "Show more" collapsible breaking when the LLM separates bullets with blank lines — overflow bullets now stay collapsed regardless of whitespace.
+- "Show more" toggle in AI Summary now appears at the bottom of the expanded content (instead of staying at the top) and changes to "Show less" when expanded.
 
 ### Changed
 

@@ -261,35 +261,38 @@ class TestSummaryBulletsToHtml:
     def test_three_or_fewer_bullets_no_collapse(self):
         text = "- First.\n- Second.\n- Third."
         result = summary_bullets_to_html(text)
-        assert "<details" not in result
+        assert "summary-overflow" not in result
+        assert "summary-toggle" not in result
         assert result.count("<li>") == 3
 
     def test_more_than_three_bullets_collapsed(self):
         text = "- One.\n- Two.\n- Three.\n- Four.\n- Five."
         result = summary_bullets_to_html(text)
         assert result.count("<li>") == 5
-        assert '<details class="summary-more">' in result
+        assert 'class="summary-overflow"' in result
         assert "Show more" in result
         # First 3 bullets in the visible <ul>
-        first_details = result.index("<details")
-        assert result.index("<li>One.</li>") < first_details
-        assert result.index("<li>Three.</li>") < first_details
-        # Bullets 4-5 inside <details>
-        assert result.index("<li>Four.</li>") > first_details
-        assert result.index("<li>Five.</li>") > first_details
+        overflow_start = result.index("summary-overflow")
+        assert result.index("<li>One.</li>") < overflow_start
+        assert result.index("<li>Three.</li>") < overflow_start
+        # Bullets 4-5 inside the overflow div
+        assert result.index("<li>Four.</li>") > overflow_start
+        assert result.index("<li>Five.</li>") > overflow_start
+        # Button is after the overflow div
+        assert '<button class="summary-toggle"' in result
 
     def test_blank_lines_between_bullets_stay_collapsed(self):
         """LLMs typically separate bullets with blank lines."""
         text = "- One.\n\n- Two.\n\n- Three.\n\n- Four.\n\n- Five."
         result = summary_bullets_to_html(text)
         assert result.count("<li>") == 5
-        assert '<details class="summary-more">' in result
-        # Both overflow bullets must be inside <details>
-        first_details = result.index("<details")
-        last_details_close = result.rindex("</details>")
-        assert result.index("<li>Four.</li>") > first_details
-        assert result.index("<li>Five.</li>") > first_details
-        assert result.index("<li>Five.</li>") < last_details_close
+        assert 'class="summary-overflow"' in result
+        # Both overflow bullets must be inside the overflow div
+        overflow_start = result.index("summary-overflow")
+        last_div_close = result.rindex("</div>")
+        assert result.index("<li>Four.</li>") > overflow_start
+        assert result.index("<li>Five.</li>") > overflow_start
+        assert result.index("<li>Five.</li>") < last_div_close
 
 
 class TestParseTruncation:
