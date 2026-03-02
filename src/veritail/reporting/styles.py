@@ -176,10 +176,14 @@ h1 {
 }
 
 h2 {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 600;
   margin: var(--sp-8) 0 var(--sp-3);
-  color: var(--text-heading);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-left: var(--sp-3);
+  border-left: 3px solid var(--accent);
 }
 
 h3 {
@@ -247,7 +251,7 @@ h3 {
   border-radius: var(--radius-lg);
   padding: var(--sp-4) var(--sp-5);
   box-shadow: var(--shadow-md);
-  border-top: 3px solid var(--border-default);
+  border-top: 4px solid var(--border-default);
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
