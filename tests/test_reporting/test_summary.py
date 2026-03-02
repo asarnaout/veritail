@@ -337,6 +337,63 @@ class TestBuildSinglePayload:
         payload = _build_single_payload([], [], None, None, None)
         assert payload == ""
 
+    def test_worst_queries_with_disambiguated_keys(self):
+        """Disambiguated keys like 'shoes [1]' should resolve to raw query data."""
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.50,
+                per_query={"shoes [1]": 0.3, "shoes [2]": 0.4, "laptop": 0.8},
+            ),
+        ]
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=_product(0, "SKU-1"),
+                score=2,
+                reasoning="Decent match.",
+                model="gpt-4o",
+                experiment="test",
+                query_type="broad",
+            ),
+            JudgmentRecord(
+                query="shoes",
+                product=_product(1, "SKU-2"),
+                score=1,
+                reasoning="Weak match.",
+                model="gpt-4o",
+                experiment="test",
+                query_type="broad",
+            ),
+            JudgmentRecord(
+                query="laptop",
+                product=_product(0, "SKU-3"),
+                score=3,
+                reasoning="Great match.",
+                model="gpt-4o",
+                experiment="test",
+                query_type="navigational",
+            ),
+        ]
+        checks = [
+            CheckResult(
+                check_name="text_overlap",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Low overlap",
+            ),
+        ]
+        payload = _build_single_payload(metrics, checks, judgments, None, None)
+        # Disambiguated key should appear in display
+        assert '"shoes [1]"' in payload
+        # Raw-query lookup should find the type
+        assert "type=broad" in payload
+        # Raw-query lookup should find score data
+        assert "pos1=" in payload
+        # Raw-query lookup should find failed checks
+        assert "text_overlap" in payload
+
     def test_no_judgments_skips_judgment_sections(self):
         payload = _build_single_payload(
             _make_metrics(),

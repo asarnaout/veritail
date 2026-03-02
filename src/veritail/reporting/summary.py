@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import logging
+import re
 import statistics
 from collections import defaultdict
 from collections.abc import Mapping
@@ -29,6 +30,11 @@ def _truncate(text: str, max_len: int) -> str:
     if len(text) <= max_len:
         return text
     return text[: max_len - 3] + "..."
+
+
+def _strip_disambiguation(key: str) -> str:
+    """Strip ``' [N]'`` suffix from disambiguated query keys."""
+    return re.sub(r" \[\d+\]$", "", key)
 
 
 # ── Single report payload ────────────────────────────────────────
@@ -113,11 +119,12 @@ def _build_single_payload(
         sorted_queries = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:5]
         lines = ["## Worst 5 Queries (by NDCG@10)"]
         for q, val in sorted_queries:
-            qt = query_type_lookup.get(q, "unknown")
-            scores = sorted(query_scores.get(q, []))
+            raw_q = _strip_disambiguation(q)
+            qt = query_type_lookup.get(raw_q, "unknown")
+            scores = sorted(query_scores.get(raw_q, []))
             score_str = ", ".join(f"pos{p + 1}={s}" for p, s in scores)
-            failed = per_query_failed.get(q, [])
-            reason = _truncate(query_reasoning.get(q, ""), 120)
+            failed = per_query_failed.get(raw_q, [])
+            reason = _truncate(query_reasoning.get(raw_q, ""), 120)
             lines.append(f'- "{q}" (type={qt}, NDCG@10={val:.4f})')
             if score_str:
                 lines.append(f"  Scores: [{score_str}]")
