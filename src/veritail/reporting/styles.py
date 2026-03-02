@@ -570,7 +570,7 @@ details[open] > summary .check-arrow { transform: rotate(90deg); }
 }
 
 .summary-content li::before {
-  content: "\2022";
+  content: "\\2022";
   position: absolute;
   left: 4px;
   color: var(--accent);
@@ -597,11 +597,11 @@ details[open] > summary .check-arrow { transform: rotate(90deg); }
 .summary-toggle::-webkit-details-marker { display: none; }
 
 .summary-toggle::before {
-  content: "\25B8\00a0";
+  content: "\\25B8\\00a0";
 }
 
 details[open] > .summary-toggle::before {
-  content: "\25BE\00a0";
+  content: "\\25BE\\00a0";
 }
 
 /* ── Banner Link ──────────────────────────────────────────────── */

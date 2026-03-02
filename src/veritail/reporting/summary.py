@@ -494,9 +494,7 @@ def summary_bullets_to_html(text: str) -> str:
             if in_list:
                 parts.append("</ul>")
                 in_list = False
-            if in_details:
-                parts.append("</details>")
-                in_details = False
+            # Never close <details> on blank lines — only at the end
             continue
 
         if stripped.startswith("- "):

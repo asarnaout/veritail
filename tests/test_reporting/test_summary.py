@@ -259,6 +259,19 @@ class TestSummaryBulletsToHtml:
         assert result.index("<li>Four.</li>") > first_details
         assert result.index("<li>Five.</li>") > first_details
 
+    def test_blank_lines_between_bullets_stay_collapsed(self):
+        """LLMs typically separate bullets with blank lines."""
+        text = "- One.\n\n- Two.\n\n- Three.\n\n- Four.\n\n- Five."
+        result = summary_bullets_to_html(text)
+        assert result.count("<li>") == 5
+        assert '<details class="summary-more">' in result
+        # Both overflow bullets must be inside <details>
+        first_details = result.index("<details")
+        last_details_close = result.rindex("</details>")
+        assert result.index("<li>Four.</li>") > first_details
+        assert result.index("<li>Five.</li>") > first_details
+        assert result.index("<li>Five.</li>") < last_details_close
+
 
 class TestParseTruncation:
     def test_drops_truncated_last_bullet(self):

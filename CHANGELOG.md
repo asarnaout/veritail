@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AI Summary now renders `**bold**` markdown as proper `<strong>` tags in HTML reports instead of showing raw asterisks.
 - AI Summary card in single-config HTML reports now appears after the KPI cards instead of before them.
 - AI Summary no longer shows truncated mid-sentence bullets. If the LLM runs out of tokens, the incomplete final bullet is silently dropped.
+- Fixed CSS unicode escapes (bullet markers, Show more arrows) being mangled by Python string interpretation in the shared stylesheet.
+- Fixed "Show more" collapsible breaking when the LLM separates bullets with blank lines — overflow bullets now stay collapsed regardless of whitespace.
 
 ### Changed
 
