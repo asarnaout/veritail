@@ -10,6 +10,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 
 from veritail.llm.client import LLMClient
+from veritail.metrics.bootstrap import paired_bootstrap_test
 from veritail.prompts import load_prompt
 from veritail.types import (
     CheckResult,
@@ -228,14 +229,32 @@ def _build_comparison_payload(
             )
     sections.append("\n".join(lines))
 
-    # 10. Metric deltas
+    # 10. Metric deltas (with significance when available)
+    sig_results: dict[str, float | None] = {}
+    for m_a in metrics_a:
+        m_b = metrics_b_lookup.get(m_a.metric_name)
+        if m_b:
+            common_keys = [q for q in m_a.per_query if q in m_b.per_query]
+            if len(common_keys) >= 2:
+                vals_a = [m_a.per_query[q] for q in common_keys]
+                vals_b = [m_b.per_query[q] for q in common_keys]
+                result = paired_bootstrap_test(vals_a, vals_b)
+                sig_results[m_a.metric_name] = result.p_value if result else None
+            else:
+                sig_results[m_a.metric_name] = None
+
     lines = ["## Metric Deltas"]
     for m_a in metrics_a:
         m_b = metrics_b_lookup.get(m_a.metric_name)
         if m_b:
             delta = m_b.value - m_a.value
             pct = (delta / m_a.value * 100) if m_a.value != 0 else 0.0
-            lines.append(f"- {m_a.metric_name}: delta={delta:+.4f} ({pct:+.1f}%)")
+            line = f"- {m_a.metric_name}: delta={delta:+.4f} ({pct:+.1f}%)"
+            p_val = sig_results.get(m_a.metric_name)
+            if p_val is not None:
+                marker = " *" if p_val < 0.05 else ""
+                line += f" [p={p_val:.4f}]{marker}"
+            lines.append(line)
     sections.append("\n".join(lines))
 
     # 11. Win/loss/tie
@@ -345,6 +364,59 @@ def _build_comparison_payload(
                     f"{cj.verdict} ({reason})"
                 )
             sections.append("\n".join(lines))
+
+    # Result overlap summary
+    overlap_checks = [c for c in comparison_checks if c.check_name == "result_overlap"]
+    if overlap_checks:
+        jaccards: list[float] = []
+        lines = ["## Result Overlap"]
+        for oc in overlap_checks:
+            match = re.search(r"Result overlap: ([\d.]+)", oc.detail)
+            if match:
+                jac = float(match.group(1))
+                jaccards.append(jac)
+                lines.append(f'- "{oc.query}": Jaccard={jac:.2f}')
+        if jaccards:
+            mean_jac = sum(jaccards) / len(jaccards)
+            lines.insert(1, f"- Mean Jaccard: {mean_jac:.2f}")
+        sections.append("\n".join(lines))
+
+    # Position shift summary
+    shift_checks = [c for c in comparison_checks if c.check_name == "position_shift"]
+    if shift_checks:
+        magnitudes: list[int] = []
+        examples: list[str] = []
+        for sc in shift_checks:
+            match = re.search(r"(\d+) positions", sc.detail)
+            if match:
+                mag = int(match.group(1))
+                magnitudes.append(mag)
+                if len(examples) < 3:
+                    examples.append(
+                        f'- "{sc.query}" ({sc.product_id}): {mag} positions'
+                    )
+        if magnitudes:
+            avg_mag = sum(magnitudes) / len(magnitudes)
+            lines = [
+                "## Position Shifts",
+                f"- Count: {len(magnitudes)}, avg magnitude: {avg_mag:.1f}",
+            ]
+            lines.extend(examples)
+            sections.append("\n".join(lines))
+
+    # Score distributions (side-by-side)
+    for label, js in [(config_a, judgments_a), (config_b, judgments_b)]:
+        if js:
+            score_counts: dict[int, int] = {0: 0, 1: 0, 2: 0, 3: 0}
+            for j in js:
+                score_counts[j.score] = score_counts.get(j.score, 0) + 1
+            total = sum(score_counts.values())
+            if total > 0:
+                lines = [f"## Score Distribution: {label} ({total} judgments)"]
+                for s in (3, 2, 1, 0):
+                    pct = score_counts[s] / total * 100
+                    lines.append(f"- Score {s}: {score_counts[s]} ({pct:.1f}%)")
+                sections.append("\n".join(lines))
 
     return "\n\n".join(sections)
 

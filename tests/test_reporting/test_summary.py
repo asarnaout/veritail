@@ -515,6 +515,112 @@ class TestBuildComparisonPayload:
         )
         assert "Metrics by Query Type" in payload
 
+    def test_includes_result_overlap(self):
+        comparison_checks = [
+            CheckResult(
+                check_name="result_overlap",
+                query="shoes",
+                product_id=None,
+                passed=True,
+                detail="Result overlap: 0.60 (6/10 shared)",
+            ),
+            CheckResult(
+                check_name="result_overlap",
+                query="laptop",
+                product_id=None,
+                passed=True,
+                detail="Result overlap: 0.40 (4/10 shared)",
+            ),
+        ]
+        payload = _build_comparison_payload(
+            _make_metrics(),
+            _make_metrics(),
+            None,
+            None,
+            None,
+            None,
+            comparison_checks,
+            "A",
+            "B",
+            None,
+            None,
+        )
+        assert "Result Overlap" in payload
+        assert "Mean Jaccard: 0.50" in payload
+
+    def test_includes_position_shifts(self):
+        comparison_checks = [
+            CheckResult(
+                check_name="position_shift",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Moved 3 positions (1 -> 4)",
+            ),
+        ]
+        payload = _build_comparison_payload(
+            _make_metrics(),
+            _make_metrics(),
+            None,
+            None,
+            None,
+            None,
+            comparison_checks,
+            "A",
+            "B",
+            None,
+            None,
+        )
+        assert "Position Shifts" in payload
+        assert "3 positions" in payload
+
+    def test_includes_score_distributions(self):
+        payload = _build_comparison_payload(
+            _make_metrics(),
+            _make_metrics(),
+            None,
+            None,
+            _make_judgments(),
+            _make_judgments(),
+            [],
+            "A",
+            "B",
+            None,
+            None,
+        )
+        assert "Score Distribution: A" in payload
+        assert "Score Distribution: B" in payload
+
+    def test_includes_significance_data(self):
+        metrics_a = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.50,
+                per_query={"q1": 0.3, "q2": 0.5, "q3": 0.7},
+            ),
+        ]
+        metrics_b = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.80,
+                per_query={"q1": 0.7, "q2": 0.8, "q3": 0.9},
+            ),
+        ]
+        payload = _build_comparison_payload(
+            metrics_a,
+            metrics_b,
+            None,
+            None,
+            None,
+            None,
+            [],
+            "A",
+            "B",
+            None,
+            None,
+        )
+        assert "p=" in payload
+
 
 # ── generate_summary ─────────────────────────────────────────────
 
