@@ -422,6 +422,21 @@ class TestBuildSinglePayload:
         assert "text_overlap" not in payload
         assert "price_outlier" in payload
 
+    def test_duplicate_check_displayed_as_near_duplicate(self):
+        """The 'duplicate' check should appear as 'near_duplicate' in the payload."""
+        checks = [
+            CheckResult(
+                check_name="duplicate",
+                query="shoes",
+                product_id="SKU-1",
+                passed=False,
+                detail="Near-duplicate pair found",
+            ),
+        ]
+        payload = _build_single_payload(_make_metrics(), checks, None, None, None)
+        assert "near_duplicate" in payload
+        assert "- duplicate:" not in payload
+
     def test_includes_worst_queries(self):
         payload = _build_single_payload(
             _make_metrics(),

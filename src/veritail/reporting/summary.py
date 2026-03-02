@@ -32,6 +32,17 @@ _VISIBLE_BULLETS = 3
 # per-query NDCG reflects it.
 _SUMMARY_EXCLUDED_CHECKS: frozenset[str] = frozenset({"text_overlap"})
 
+# Display names for checks in the summary payload.  Lets us clarify
+# semantics for the LLM without renaming the actual check.
+_SUMMARY_CHECK_DISPLAY: dict[str, str] = {
+    "duplicate": "near_duplicate",
+}
+
+
+def _check_display_name(name: str) -> str:
+    """Return the display name for a check in the summary payload."""
+    return _SUMMARY_CHECK_DISPLAY.get(name, name)
+
 
 def _truncate(text: str, max_len: int) -> str:
     """Truncate *text* to *max_len* characters, appending '...' if cut."""
@@ -99,7 +110,8 @@ def _build_single_payload(
             key = "passed" if c.passed else "failed"
             check_counts[c.check_name][key] += 1
         lines = ["## Check Summary"]
-        for name, counts in sorted(check_counts.items()):
+        for raw_name, counts in sorted(check_counts.items()):
+            name = _check_display_name(raw_name)
             if counts["passed"] == 0:
                 # Detection-only check (only emits failures when an issue
                 # is found).  Reporting "0 passed" would mislead the LLM
@@ -130,8 +142,9 @@ def _build_single_payload(
 
         per_query_failed: dict[str, list[str]] = defaultdict(list)
         for c in checks:
-            if not c.passed and c.check_name not in per_query_failed[c.query]:
-                per_query_failed[c.query].append(c.check_name)
+            display = _check_display_name(c.check_name)
+            if not c.passed and display not in per_query_failed[c.query]:
+                per_query_failed[c.query].append(display)
 
         sorted_queries = sorted(ndcg.per_query.items(), key=lambda x: x[1])[:5]
         lines = ["## Worst 5 Queries (by NDCG@10)"]
@@ -190,8 +203,8 @@ def _build_single_payload(
                 failed_by_check[c.check_name].append(c)
         if failed_by_check:
             lines = ["## Check Failure Samples (up to 3 per check)"]
-            for name, failures in sorted(failed_by_check.items()):
-                lines.append(f"### {name}")
+            for raw_name, failures in sorted(failed_by_check.items()):
+                lines.append(f"### {_check_display_name(raw_name)}")
                 for f in failures[:3]:
                     detail = _truncate(f.detail, 100)
                     lines.append(
@@ -348,12 +361,13 @@ def _build_comparison_payload(
         all_names = sorted(set(fail_a.keys()) | set(fail_b.keys()))
         if all_names:
             lines = ["## Check Failure Deltas"]
-            for name in all_names:
-                a_count = fail_a.get(name, 0)
-                b_count = fail_b.get(name, 0)
+            for raw_name in all_names:
+                display = _check_display_name(raw_name)
+                a_count = fail_a.get(raw_name, 0)
+                b_count = fail_b.get(raw_name, 0)
                 delta = b_count - a_count
                 lines.append(
-                    f"- {name}: {config_a}={a_count}, "
+                    f"- {display}: {config_a}={a_count}, "
                     f"{config_b}={b_count} (delta={delta:+d})"
                 )
             sections.append("\n".join(lines))
