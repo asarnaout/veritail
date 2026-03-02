@@ -4,55 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Evaluation Report</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 960px; margin: 0 auto; padding: 24px; background: #f8f9fa; }
-        h1 { font-size: 24px; margin-bottom: 24px; color: #1a1a2e; border-bottom: 2px solid #e0e0e0; padding-bottom: 12px; }
-        h2 { font-size: 18px; margin: 24px 0 12px; color: #1a1a2e; }
-        .table-wrap { border-radius: 8px; overflow: visible; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; background: white; border-radius: 8px; }
-        thead tr:first-child th:first-child { border-top-left-radius: 8px; }
-        thead tr:first-child th:last-child { border-top-right-radius: 8px; }
-        tbody tr:last-child td:first-child { border-bottom-left-radius: 8px; }
-        tbody tr:last-child td:last-child { border-bottom-right-radius: 8px; }
-        th { background: #1a1a2e; color: white; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 14px; }
-        td { padding: 10px 16px; border-bottom: 1px solid #eee; font-size: 14px; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover { background: #f5f5ff; }
-        .metric-value { font-family: 'Menlo', monospace; font-weight: 600; }
-        .positive { color: #16a34a; }
-        .negative { color: #dc2626; }
-        .neutral { color: #6b7280; }
-        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e0e0e0; color: #9ca3af; font-size: 12px; }
-        .footer-meta { margin-top: 10px; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; align-items: baseline; }
-        .footer-key { color: #6b7280; font-weight: 600; }
-        .footer-value { color: #4b5563; font-family: 'Menlo', monospace; word-break: break-all; }
-        .tip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 5px; border-radius: 50%; background: #e5e7eb; color: #6b7280; font-size: 11px; font-weight: 600; cursor: default; vertical-align: middle; }
-        .tip::after { content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 8px); padding: 8px 12px; background: #1a1a2e; color: #f3f4f6; font-size: 12px; font-weight: 400; line-height: 1.4; white-space: normal; width: max-content; max-width: 280px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; }
-        .tip::before { content: ""; position: absolute; left: 4px; bottom: calc(100% + 2px); border: 5px solid transparent; border-top-color: #1a1a2e; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; }
-        .tip:hover::after, .tip:hover::before { opacity: 1; }
-        .pagination { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 20px; flex-wrap: wrap; }
-        .pagination button { border: 1px solid #d1d5db; background: white; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.15s; min-width: 36px; }
-        .pagination button:hover:not(:disabled) { background: #f0f0ff; border-color: #4f6bed; color: #4f6bed; }
-        .pagination button:disabled { opacity: 0.4; cursor: default; }
-        .pagination button.active { background: #1a1a2e; color: white; border-color: #1a1a2e; font-weight: 600; }
-        .pagination .page-info { font-size: 13px; color: #6b7280; margin: 0 8px; }
-        details summary::-webkit-details-marker { display: none; }
-        details summary::marker { display: none; content: ""; }
-        details[open] > summary .check-arrow { transform: rotate(90deg); }
-    </style>
+    <style>{{ shared_css|safe }}</style>
 </head>
 <body>
     {% if is_comparison %}
     <h1>Search Evaluation Comparison: {{ config_a }} vs {{ config_b }}</h1>
+
+    <nav class="report-nav" id="report-nav">
+      <ul>
+        <li><a href="#section-metrics">Metrics</a></li>
+        {% if win_loss %}<li><a href="#section-win-loss">Win/Loss</a></li>{% endif %}
+        {% if overlap_summary %}<li><a href="#section-overlap">Overlap</a></li>{% endif %}
+        {% if scatter_plot %}<li><a href="#section-scatter">Scatter</a></li>{% endif %}
+        {% if score_dist_a or score_dist_b %}<li><a href="#section-score-dist">Scores</a></li>{% endif %}
+        {% if position_line_chart %}<li><a href="#section-position">Position</a></li>{% endif %}
+        {% if check_comparison %}<li><a href="#section-checks">Checks</a></li>{% endif %}
+        {% if correction_data_a or correction_data_b %}<li><a href="#section-corrections">Corrections</a></li>{% endif %}
+        {% if winners %}<li><a href="#section-winners">Improvements</a></li>{% endif %}
+        {% if losers %}<li><a href="#section-losers">Regressions</a></li>{% endif %}
+        {% if type_comparison %}<li><a href="#section-query-types">Query Types</a></li>{% endif %}
+        {% if shift_checks %}<li><a href="#section-shifts">Shifts</a></li>{% endif %}
+      </ul>
+    </nav>
+
     {% if sibling_report %}
-    <div class="card" style="background: #f0f4ff; border-left: 4px solid #4f6bed; padding: 12px 16px; margin-bottom: 24px;">
-        This run also evaluated autocomplete. <a href="{{ sibling_report }}" style="color: #4f6bed; font-weight: 600;">View Autocomplete Report &rarr;</a>
+    <div class="banner-link">
+        This run also evaluated autocomplete. <a href="{{ sibling_report }}">View Autocomplete Report &rarr;</a>
     </div>
     {% endif %}
 
-    <h2>Metrics Comparison</h2>
+    <h2 id="section-metrics">Metrics Comparison</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -67,93 +48,93 @@
             {% for d in comparison_data %}
             <tr>
                 <td>{{ d.name }}</td>
-                <td class="metric-value">{% if d.a_na %}<span style="color:#9ca3af">N/A</span>{% else %}{{ "%.4f"|format(d.value_a) }}{% endif %}</td>
-                <td class="metric-value">{% if d.b_na %}<span style="color:#9ca3af">N/A</span>{% else %}{{ "%.4f"|format(d.value_b) }}{% endif %}</td>
+                <td class="metric-value">{% if d.a_na %}<span class="text-muted">N/A</span>{% else %}{{ "%.4f"|format(d.value_a) }}{% endif %}</td>
+                <td class="metric-value">{% if d.b_na %}<span class="text-muted">N/A</span>{% else %}{{ "%.4f"|format(d.value_b) }}{% endif %}</td>
                 {% if d.a_na and d.b_na %}
-                <td class="metric-value" style="color:#9ca3af">-</td>
+                <td class="metric-value text-muted">-</td>
                 <td></td>
                 {% else %}
                 <td class="metric-value {% if d.pct_change > 0 %}positive{% elif d.pct_change < 0 %}negative{% else %}neutral{% endif %}">
                     {{ "%+.1f"|format(d.pct_change) }}%
                 </td>
                 <td class="metric-value" style="text-align:center;">
-                    {% if d.significant %}<span style="color:#16a34a; font-weight:700;" title="p={{ '%.4f'|format(d.p_value) }}">*</span>{% elif d.p_value is not none %}<span style="color:#9ca3af;" title="p={{ '%.4f'|format(d.p_value) }}">p={{ '%.2f'|format(d.p_value) }}</span>{% else %}<span style="color:#9ca3af;">--</span>{% endif %}
+                    {% if d.significant %}<span class="positive" style="font-weight:700;" title="p={{ '%.4f'|format(d.p_value) }}">*</span>{% elif d.p_value is not none %}<span class="text-muted" title="p={{ '%.4f'|format(d.p_value) }}">p={{ '%.2f'|format(d.p_value) }}</span>{% else %}<span class="text-muted">--</span>{% endif %}
                 </td>
                 {% endif %}
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    <p style="color:#9ca3af; font-size:12px; margin-top:8px;">* Statistically significant at p &lt; 0.05 (paired bootstrap, 10,000 resamples). Hover for exact p-value.</p>
+    <p class="text-muted text-xs" style="margin-top:8px;">* Statistically significant at p &lt; 0.05 (paired bootstrap, 10,000 resamples). Hover for exact p-value.</p>
     </div>
 
     {% if win_loss %}
-    <h2>Query-Level Outcome</h2>
+    <h2 id="section-win-loss">Query-Level Outcome</h2>
     <div class="card">
-        <div style="font-size:13px; color:#6b7280; margin-bottom:10px;">
+        <div class="text-sm text-secondary" style="margin-bottom:10px;">
             {{ win_loss.total }} queries compared on NDCG@10
         </div>
         <div style="display:flex; height:28px; border-radius:6px; overflow:hidden;">
             {% if win_loss.win_pct > 0 %}
-            <div style="width:{{ win_loss.win_pct }}%; background:#16a34a; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
+            <div style="width:{{ win_loss.win_pct }}%; background:var(--positive); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
                 {% if win_loss.win_pct >= 8 %}{{ win_loss.wins }}{% endif %}
             </div>
             {% endif %}
             {% if win_loss.tie_pct > 0 %}
-            <div style="width:{{ win_loss.tie_pct }}%; background:#6b7280; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
+            <div style="width:{{ win_loss.tie_pct }}%; background:var(--text-secondary); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
                 {% if win_loss.tie_pct >= 8 %}{{ win_loss.ties }}{% endif %}
             </div>
             {% endif %}
             {% if win_loss.loss_pct > 0 %}
-            <div style="width:{{ win_loss.loss_pct }}%; background:#dc2626; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
+            <div style="width:{{ win_loss.loss_pct }}%; background:var(--negative); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">
                 {% if win_loss.loss_pct >= 8 %}{{ win_loss.losses }}{% endif %}
             </div>
             {% endif %}
         </div>
         <div style="display:flex; gap:20px; font-size:13px; margin-top:10px;">
-            <span><span style="display:inline-block; width:10px; height:10px; background:#16a34a; border-radius:2px; vertical-align:middle;"></span> {{ config_b }} wins &mdash; {{ win_loss.wins }} ({{ win_loss.win_pct }}%)</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#6b7280; border-radius:2px; vertical-align:middle;"></span> Tied &mdash; {{ win_loss.ties }} ({{ win_loss.tie_pct }}%)</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#dc2626; border-radius:2px; vertical-align:middle;"></span> {{ config_a }} wins &mdash; {{ win_loss.losses }} ({{ win_loss.loss_pct }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--positive); border-radius:2px; vertical-align:middle;"></span> {{ config_b }} wins &mdash; {{ win_loss.wins }} ({{ win_loss.win_pct }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--text-secondary); border-radius:2px; vertical-align:middle;"></span> Tied &mdash; {{ win_loss.ties }} ({{ win_loss.tie_pct }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--negative); border-radius:2px; vertical-align:middle;"></span> {{ config_a }} wins &mdash; {{ win_loss.losses }} ({{ win_loss.loss_pct }}%)</span>
         </div>
     </div>
     {% endif %}
 
     {% if overlap_summary %}
-    <h2>Result Set Overlap</h2>
+    <h2 id="section-overlap">Result Set Overlap</h2>
     <div class="card" style="text-align:center;">
-        <div style="font-size:48px; font-weight:700; color:#1a1a2e; line-height:1.2;">{{ overlap_summary.mean_jaccard }}</div>
-        <div style="font-size:14px; color:#6b7280; margin-top:4px;">Mean Jaccard Index</div>
-        <div style="font-size:14px; color:#4b5563; margin-top:12px; max-width:480px; margin-left:auto; margin-right:auto;">
+        <div style="font-size:48px; font-weight:700; color:var(--text-heading); line-height:1.2;">{{ overlap_summary.mean_jaccard }}</div>
+        <div class="text-secondary" style="margin-top:4px;">Mean Jaccard Index</div>
+        <div style="font-size:14px; color:var(--text-primary); margin-top:12px; max-width:480px; margin-left:auto; margin-right:auto;">
             {{ overlap_summary.interpretation }}
         </div>
-        <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Based on {{ overlap_summary.query_count }} queries</div>
+        <div class="text-sm text-muted" style="margin-top:8px;">Based on {{ overlap_summary.query_count }} queries</div>
     </div>
     {% endif %}
 
     {% if scatter_plot %}
-    <h2>NDCG@10 Scatter Plot</h2>
+    <h2 id="section-scatter">NDCG@10 Scatter Plot</h2>
     <div class="card">
-        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+        <p class="text-sm text-secondary" style="margin-bottom:16px;">
             Each point is a query. Points above the diagonal improved in {{ config_b }}; points below regressed.
         </p>
         <svg viewBox="0 0 500 500" style="width:100%; max-width:500px; display:block; margin:0 auto;" role="img" aria-label="NDCG scatter plot">
             {% for g in scatter_plot.gridlines %}
             <line x1="{{ scatter_plot.left }}" y1="{{ g.y }}" x2="{{ scatter_plot.right }}" y2="{{ g.y }}"
-                  stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4" />
+                  style="stroke:var(--chart-grid)" stroke-width="1" stroke-dasharray="4,4" />
             <line x1="{{ g.x }}" y1="{{ scatter_plot.top }}" x2="{{ g.x }}" y2="{{ scatter_plot.bottom }}"
-                  stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4" />
+                  style="stroke:var(--chart-grid)" stroke-width="1" stroke-dasharray="4,4" />
             <text x="{{ scatter_plot.left - 8 }}" y="{{ g.y + 4 }}" text-anchor="end"
-                  fill="#9ca3af" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.val }}</text>
+                  style="fill:var(--chart-label)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.val }}</text>
             <text x="{{ g.x }}" y="{{ scatter_plot.bottom + 16 }}" text-anchor="middle"
-                  fill="#9ca3af" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.val }}</text>
+                  style="fill:var(--chart-label)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.val }}</text>
             {% endfor %}
 
-            <line x1="{{ scatter_plot.left }}" y1="{{ scatter_plot.top }}" x2="{{ scatter_plot.left }}" y2="{{ scatter_plot.bottom }}" stroke="#d1d5db" stroke-width="1" />
-            <line x1="{{ scatter_plot.left }}" y1="{{ scatter_plot.bottom }}" x2="{{ scatter_plot.right }}" y2="{{ scatter_plot.bottom }}" stroke="#d1d5db" stroke-width="1" />
+            <line x1="{{ scatter_plot.left }}" y1="{{ scatter_plot.top }}" x2="{{ scatter_plot.left }}" y2="{{ scatter_plot.bottom }}" style="stroke:var(--chart-axis)" stroke-width="1" />
+            <line x1="{{ scatter_plot.left }}" y1="{{ scatter_plot.bottom }}" x2="{{ scatter_plot.right }}" y2="{{ scatter_plot.bottom }}" style="stroke:var(--chart-axis)" stroke-width="1" />
 
             <line x1="{{ scatter_plot.diag_start_x }}" y1="{{ scatter_plot.diag_start_y }}"
                   x2="{{ scatter_plot.diag_end_x }}" y2="{{ scatter_plot.diag_end_y }}"
-                  stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="6,4" />
+                  style="stroke:var(--chart-axis)" stroke-width="1.5" stroke-dasharray="6,4" />
 
             {% for p in scatter_plot.points %}
             <circle cx="{{ p.x }}" cy="{{ p.y }}" r="5" fill="{{ p.color }}" opacity="0.8">
@@ -162,9 +143,9 @@
             {% endfor %}
 
             <text x="{{ (scatter_plot.left + scatter_plot.right) / 2 }}" y="{{ scatter_plot.bottom + 34 }}" text-anchor="middle"
-                  fill="#4b5563" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ config_a }} NDCG@10</text>
+                  style="fill:var(--chart-text)" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ config_a }} NDCG@10</text>
             <text x="14" y="{{ (scatter_plot.top + scatter_plot.bottom) / 2 }}" text-anchor="middle"
-                  fill="#4b5563" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+                  style="fill:var(--chart-text)" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif"
                   transform="rotate(-90, 14, {{ (scatter_plot.top + scatter_plot.bottom) / 2 }})">{{ config_b }} NDCG@10</text>
         </svg>
         {% if scatter_plot.legend %}
@@ -178,54 +159,54 @@
     {% endif %}
 
     {% if score_dist_a or score_dist_b %}
-    <h2>Score Distribution</h2>
+    <h2 id="section-score-dist">Score Distribution</h2>
     <div class="card">
         <div style="display:flex; gap:40px; flex-wrap:wrap;">
             {% for label, dist in [(config_a, score_dist_a), (config_b, score_dist_b)] %}
             {% if dist %}
             <div style="flex:1; min-width:200px;">
                 <div style="font-weight:600; margin-bottom:8px;">{{ label }}</div>
-                <div style="font-size:13px; color:#6b7280; margin-bottom:8px;">{{ dist.total }} judgments</div>
+                <div class="text-sm text-secondary" style="margin-bottom:8px;">{{ dist.total }} judgments</div>
                 <div style="display:flex; height:28px; border-radius:6px; overflow:hidden;">
-                    {% if dist.pcts[3] > 0 %}<div style="width:{{ dist.pcts[3] }}%; background:#16a34a; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[3] >= 8 %}{{ dist.counts[3] }}{% endif %}</div>{% endif %}
-                    {% if dist.pcts[2] > 0 %}<div style="width:{{ dist.pcts[2] }}%; background:#ca8a04; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[2] >= 8 %}{{ dist.counts[2] }}{% endif %}</div>{% endif %}
-                    {% if dist.pcts[1] > 0 %}<div style="width:{{ dist.pcts[1] }}%; background:#ea580c; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[1] >= 8 %}{{ dist.counts[1] }}{% endif %}</div>{% endif %}
-                    {% if dist.pcts[0] > 0 %}<div style="width:{{ dist.pcts[0] }}%; background:#dc2626; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[0] >= 8 %}{{ dist.counts[0] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[3] > 0 %}<div style="width:{{ dist.pcts[3] }}%; background:var(--score-3); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[3] >= 8 %}{{ dist.counts[3] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[2] > 0 %}<div style="width:{{ dist.pcts[2] }}%; background:var(--score-2); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[2] >= 8 %}{{ dist.counts[2] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[1] > 0 %}<div style="width:{{ dist.pcts[1] }}%; background:var(--score-1); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[1] >= 8 %}{{ dist.counts[1] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[0] > 0 %}<div style="width:{{ dist.pcts[0] }}%; background:var(--score-0); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if dist.pcts[0] >= 8 %}{{ dist.counts[0] }}{% endif %}</div>{% endif %}
                 </div>
             </div>
             {% endif %}
             {% endfor %}
         </div>
         <div style="display:flex; gap:20px; font-size:13px; margin-top:14px; flex-wrap:wrap;">
-            <span><span style="display:inline-block; width:10px; height:10px; background:#16a34a; border-radius:2px; vertical-align:middle;"></span> 3</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#ca8a04; border-radius:2px; vertical-align:middle;"></span> 2</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#ea580c; border-radius:2px; vertical-align:middle;"></span> 1</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#dc2626; border-radius:2px; vertical-align:middle;"></span> 0</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-3); border-radius:2px; vertical-align:middle;"></span> 3</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-2); border-radius:2px; vertical-align:middle;"></span> 2</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-1); border-radius:2px; vertical-align:middle;"></span> 1</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-0); border-radius:2px; vertical-align:middle;"></span> 0</span>
         </div>
     </div>
     {% endif %}
 
     {% if position_line_chart %}
-    <h2>Mean Relevance by Position</h2>
+    <h2 id="section-position">Mean Relevance by Position</h2>
     <div class="card">
-        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+        <p class="text-sm text-secondary" style="margin-bottom:16px;">
             Average relevance score (0–3) at each result position. Lines should slope downward if ranking places the most relevant results first.
         </p>
         <svg viewBox="0 0 630 280" style="width:100%; max-width:630px; display:block; margin:0 auto;" role="img" aria-label="Mean relevance by position chart">
             {% for g in position_line_chart.gridlines %}
             <line x1="{{ position_line_chart.chart_left }}" y1="{{ g.y }}" x2="{{ position_line_chart.chart_right }}" y2="{{ g.y }}"
-                  stroke="#e5e7eb" stroke-width="1" {% if g.label > 0 %}stroke-dasharray="4,4"{% endif %} />
+                  style="stroke:var(--chart-grid)" stroke-width="1" {% if g.label > 0 %}stroke-dasharray="4,4"{% endif %} />
             <text x="{{ position_line_chart.chart_left - 8 }}" y="{{ g.y + 4 }}" text-anchor="end"
-                  fill="#9ca3af" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.label }}</text>
+                  style="fill:var(--chart-label)" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ g.label }}</text>
             {% endfor %}
 
             {% for t in position_line_chart.x_ticks %}
             <text x="{{ t.x }}" y="{{ position_line_chart.chart_bottom + 18 }}" text-anchor="middle"
-                  fill="#9ca3af" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">#{{ t.label }}</text>
+                  style="fill:var(--chart-label)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">#{{ t.label }}</text>
             {% endfor %}
 
-            <line x1="{{ position_line_chart.chart_left }}" y1="{{ position_line_chart.chart_top }}" x2="{{ position_line_chart.chart_left }}" y2="{{ position_line_chart.chart_bottom }}" stroke="#d1d5db" stroke-width="1" />
-            <line x1="{{ position_line_chart.chart_left }}" y1="{{ position_line_chart.chart_bottom }}" x2="{{ position_line_chart.chart_right }}" y2="{{ position_line_chart.chart_bottom }}" stroke="#d1d5db" stroke-width="1" />
+            <line x1="{{ position_line_chart.chart_left }}" y1="{{ position_line_chart.chart_top }}" x2="{{ position_line_chart.chart_left }}" y2="{{ position_line_chart.chart_bottom }}" style="stroke:var(--chart-axis)" stroke-width="1" />
+            <line x1="{{ position_line_chart.chart_left }}" y1="{{ position_line_chart.chart_bottom }}" x2="{{ position_line_chart.chart_right }}" y2="{{ position_line_chart.chart_bottom }}" style="stroke:var(--chart-axis)" stroke-width="1" />
 
             {% if position_line_chart.polyline_a %}
             <polyline points="{{ position_line_chart.polyline_a }}" fill="none" stroke="#4f6bed" stroke-width="2.5" stroke-linejoin="round" />
@@ -253,7 +234,7 @@
     {% endif %}
 
     {% if check_comparison %}
-    <h2>Deterministic Checks</h2>
+    <h2 id="section-checks">Deterministic Checks</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -284,10 +265,10 @@
     {% endif %}
 
     {% if correction_data_a or correction_data_b %}
-    <h2>Query Corrections</h2>
+    <h2 id="section-corrections">Query Corrections</h2>
     {% for label, cdata in [(config_a, correction_data_a), (config_b, correction_data_b)] %}
     {% if cdata %}
-    <h3 style="font-size:15px; color:#4b5563; margin:12px 0 8px;">{{ label }}</h3>
+    <h3>{{ label }}</h3>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -305,7 +286,7 @@
                 <td class="{% if c.verdict == 'appropriate' %}positive{% elif c.verdict == 'inappropriate' %}negative{% else %}neutral{% endif %}">
                     {{ c.verdict }}
                 </td>
-                <td style="font-size:13px">{{ c.reasoning }}</td>
+                <td class="text-sm">{{ c.reasoning }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -315,7 +296,7 @@
     {% endif %}
 
     {% if winners %}
-    <h2>Biggest Improvements (NDCG@10)</h2>
+    <h2 id="section-winners">Biggest Improvements (NDCG@10)</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -328,13 +309,13 @@
         <tbody>
             {% for w in winners %}
             <tr>
-                <td>{% if w.has_details %}<a href="javascript:void(0)" onclick="var d=document.getElementById('winner-{{ loop.index0 }}');if(d)d.toggleAttribute('open')" style="color:#4f6bed; text-decoration:none; font-weight:500;">{{ w.query }}</a>{% else %}{{ w.query }}{% endif %}</td>
+                <td>{% if w.has_details %}<a href="javascript:void(0)" onclick="var d=document.getElementById('winner-{{ loop.index0 }}');if(d)d.toggleAttribute('open')" style="color:var(--accent); text-decoration:none; font-weight:500;">{{ w.query }}</a>{% else %}{{ w.query }}{% endif %}</td>
                 <td class="metric-value">{{ "%.4f"|format(w.value_a) }}</td>
                 <td class="metric-value">{{ "%.4f"|format(w.value_b) }}</td>
                 <td class="metric-value positive">{{ "%+.1f"|format(w.pct_change) }}%</td>
             </tr>
             {% if w.has_details %}
-            <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
+            <tr><td colspan="4" style="padding:0; border-bottom:1px solid var(--border-subtle);">
                 <details id="winner-{{ loop.index0 }}" style="padding:8px 16px;">
                     <summary style="display:none;"></summary>
                     <div style="display:flex; gap:24px; margin-top:10px; flex-wrap:wrap;">
@@ -347,12 +328,12 @@
                                 <tbody>
                                 {% for r in results %}
                                 <tr title="{{ r.reasoning }}">
-                                    <td style="padding:4px 8px; color:#9ca3af;">{{ r.position }}</td>
-                                    <td style="padding:4px 8px;"><strong>{{ r.title }}</strong><br><span style="color:#9ca3af; font-size:11px;">{{ r.product_id }}</span></td>
-                                    <td style="padding:4px 8px;" class="metric-value {% if r.score == 3 %}positive{% elif r.score >= 2 %}{% elif r.score == 1 %}{% else %}negative{% endif %}" >
-                                        <span style="color:{% if r.score == 3 %}#16a34a{% elif r.score == 2 %}#ca8a04{% elif r.score == 1 %}#ea580c{% else %}#dc2626{% endif %}">{{ r.score }}/3</span>
+                                    <td style="padding:4px 8px;" class="text-muted">{{ r.position }}</td>
+                                    <td style="padding:4px 8px;"><strong>{{ r.title }}</strong><br><span class="text-muted text-xs">{{ r.product_id }}</span></td>
+                                    <td style="padding:4px 8px;">
+                                        <span class="score-badge score-badge--{{ r.score }}">{{ r.score }}/3</span>
                                     </td>
-                                    <td style="padding:4px 8px; color:{% if r.attribute_verdict == 'match' %}#16a34a{% elif r.attribute_verdict == 'partial' %}#ca8a04{% elif r.attribute_verdict == 'mismatch' %}#dc2626{% else %}#9ca3af{% endif %}">
+                                    <td style="padding:4px 8px; color:{% if r.attribute_verdict == 'match' %}var(--score-3){% elif r.attribute_verdict == 'partial' %}var(--score-2){% elif r.attribute_verdict == 'mismatch' %}var(--score-0){% else %}var(--text-muted){% endif %}">
                                         {{ r.attribute_verdict }}
                                     </td>
                                 </tr>
@@ -372,7 +353,7 @@
     {% endif %}
 
     {% if losers %}
-    <h2>Biggest Regressions (NDCG@10)</h2>
+    <h2 id="section-losers">Biggest Regressions (NDCG@10)</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -385,13 +366,13 @@
         <tbody>
             {% for l in losers %}
             <tr>
-                <td>{% if l.has_details %}<a href="javascript:void(0)" onclick="var d=document.getElementById('loser-{{ loop.index0 }}');if(d)d.toggleAttribute('open')" style="color:#4f6bed; text-decoration:none; font-weight:500;">{{ l.query }}</a>{% else %}{{ l.query }}{% endif %}</td>
+                <td>{% if l.has_details %}<a href="javascript:void(0)" onclick="var d=document.getElementById('loser-{{ loop.index0 }}');if(d)d.toggleAttribute('open')" style="color:var(--accent); text-decoration:none; font-weight:500;">{{ l.query }}</a>{% else %}{{ l.query }}{% endif %}</td>
                 <td class="metric-value">{{ "%.4f"|format(l.value_a) }}</td>
                 <td class="metric-value">{{ "%.4f"|format(l.value_b) }}</td>
                 <td class="metric-value negative">{{ "%+.1f"|format(l.pct_change) }}%</td>
             </tr>
             {% if l.has_details %}
-            <tr><td colspan="4" style="padding:0; border-bottom:1px solid #eee;">
+            <tr><td colspan="4" style="padding:0; border-bottom:1px solid var(--border-subtle);">
                 <details id="loser-{{ loop.index0 }}" style="padding:8px 16px;">
                     <summary style="display:none;"></summary>
                     <div style="display:flex; gap:24px; margin-top:10px; flex-wrap:wrap;">
@@ -404,12 +385,12 @@
                                 <tbody>
                                 {% for r in results %}
                                 <tr title="{{ r.reasoning }}">
-                                    <td style="padding:4px 8px; color:#9ca3af;">{{ r.position }}</td>
-                                    <td style="padding:4px 8px;"><strong>{{ r.title }}</strong><br><span style="color:#9ca3af; font-size:11px;">{{ r.product_id }}</span></td>
-                                    <td style="padding:4px 8px;" class="metric-value">
-                                        <span style="color:{% if r.score == 3 %}#16a34a{% elif r.score == 2 %}#ca8a04{% elif r.score == 1 %}#ea580c{% else %}#dc2626{% endif %}">{{ r.score }}/3</span>
+                                    <td style="padding:4px 8px;" class="text-muted">{{ r.position }}</td>
+                                    <td style="padding:4px 8px;"><strong>{{ r.title }}</strong><br><span class="text-muted text-xs">{{ r.product_id }}</span></td>
+                                    <td style="padding:4px 8px;">
+                                        <span class="score-badge score-badge--{{ r.score }}">{{ r.score }}/3</span>
                                     </td>
-                                    <td style="padding:4px 8px; color:{% if r.attribute_verdict == 'match' %}#16a34a{% elif r.attribute_verdict == 'partial' %}#ca8a04{% elif r.attribute_verdict == 'mismatch' %}#dc2626{% else %}#9ca3af{% endif %}">
+                                    <td style="padding:4px 8px; color:{% if r.attribute_verdict == 'match' %}var(--score-3){% elif r.attribute_verdict == 'partial' %}var(--score-2){% elif r.attribute_verdict == 'mismatch' %}var(--score-0){% else %}var(--text-muted){% endif %}">
                                         {{ r.attribute_verdict }}
                                     </td>
                                 </tr>
@@ -429,7 +410,7 @@
     {% endif %}
 
     {% if type_comparison %}
-    <h2>Metrics by Query Type</h2>
+    <h2 id="section-query-types">Metrics by Query Type</h2>
     {% for qt in query_types %}
     <div class="table-wrap">
         <table>
@@ -470,7 +451,7 @@
     {% endif %}
 
     {% if shift_checks %}
-    <h2>Biggest Position Shifts</h2>
+    <h2 id="section-shifts">Biggest Position Shifts</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -493,13 +474,41 @@
 
     {% else %}
     <h1>Search Evaluation Report</h1>
+
+    <nav class="report-nav" id="report-nav">
+      <ul>
+        {% if kpi_cards %}<li><a href="#section-kpi">Overview</a></li>{% endif %}
+        <li><a href="#section-metrics">Metrics</a></li>
+        {% if position_chart %}<li><a href="#section-position">Position</a></li>{% endif %}
+        {% if ndcg_histogram %}<li><a href="#section-ndcg-dist">NDCG Dist.</a></li>{% endif %}
+        {% if score_counts %}<li><a href="#section-score-dist">Scores</a></li>{% endif %}
+        {% if query_types %}<li><a href="#section-query-types">Query Types</a></li>{% endif %}
+        {% if check_summary %}<li><a href="#section-checks">Checks</a></li>{% endif %}
+        {% if correction_summary %}<li><a href="#section-corrections">Corrections</a></li>{% endif %}
+        {% if worst_queries %}<li><a href="#section-worst">Worst Queries</a></li>{% endif %}
+        {% if judgments_for_template %}<li><a href="#section-judgments">Judgments</a></li>{% endif %}
+      </ul>
+    </nav>
+
     {% if sibling_report %}
-    <div class="card" style="background: #f0f4ff; border-left: 4px solid #4f6bed; padding: 12px 16px; margin-bottom: 24px;">
-        This run also evaluated autocomplete. <a href="{{ sibling_report }}" style="color: #4f6bed; font-weight: 600;">View Autocomplete Report &rarr;</a>
+    <div class="banner-link">
+        This run also evaluated autocomplete. <a href="{{ sibling_report }}">View Autocomplete Report &rarr;</a>
     </div>
     {% endif %}
 
-    <h2>IR Metrics</h2>
+    {% if kpi_cards %}
+    <div class="kpi-grid" id="section-kpi">
+      {% for card in kpi_cards %}
+      <div class="kpi-card kpi-card--{{ card.tier }}">
+        <div class="kpi-card__label">{{ card.label }}</div>
+        <div class="kpi-card__value">{{ card.value }}</div>
+        {% if card.ci %}<div class="kpi-card__ci">{{ card.ci }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <h2 id="section-metrics">IR Metrics</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -519,16 +528,16 @@
                 </td>
                 <td class="metric-value">
                   {% if m.query_count is not none and m.query_count == 0 %}
-                  <span style="color:#9ca3af">N/A</span>
-                  <span style="color:#9ca3af; font-size:12px; font-weight:normal"> (no queries with attribute constraints)</span>
+                  <span class="text-muted">N/A</span>
+                  <span class="text-muted" style="font-size:12px; font-weight:normal"> (no queries with attribute constraints)</span>
                   {% elif m.query_count is not none and m.total_queries is not none and m.query_count < m.total_queries %}
                   {{ "%.4f"|format(m.value) }}
-                  <span style="color:#9ca3af; font-size:12px; font-weight:normal">(n={{ m.query_count }} of {{ m.total_queries }} queries)</span>
+                  <span class="text-muted" style="font-size:12px; font-weight:normal">(n={{ m.query_count }} of {{ m.total_queries }} queries)</span>
                   {% else %}
                   {{ "%.4f"|format(m.value) }}
                   {% endif %}
                 </td>
-                <td class="metric-value" style="color:#6b7280; font-weight:normal; font-size:13px;">
+                <td class="metric-value text-secondary" style="font-weight:normal; font-size:13px;">
                   {% if m.ci_lower is not none and m.ci_upper is not none %}
                   [{{ "%.4f"|format(m.ci_lower) }}, {{ "%.4f"|format(m.ci_upper) }}]
                   {% else %}
@@ -541,17 +550,17 @@
     </table></div>
 
     {% if position_chart %}
-    <h2>Average Score by Result Position</h2>
+    <h2 id="section-position">Average Score by Result Position</h2>
     <div class="card">
-        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+        <p class="text-sm text-secondary" style="margin-bottom:16px;">
             Bars should decrease from left to right if your ranking places the most relevant results first.
         </p>
         <svg viewBox="0 0 700 200" style="width:100%; max-width:700px; display:block; margin:0 auto;" role="img" aria-label="Average score by result position chart">
             {% for score in [0, 1, 2, 3] %}
             <line x1="40" y1="{{ 15 + 150 - score * 50 }}" x2="680" y2="{{ 15 + 150 - score * 50 }}"
-                  stroke="#e5e7eb" stroke-width="1" {% if score > 0 %}stroke-dasharray="4,4"{% endif %} />
+                  style="stroke:var(--chart-grid)" stroke-width="1" {% if score > 0 %}stroke-dasharray="4,4"{% endif %} />
             <text x="32" y="{{ 15 + 150 - score * 50 + 4 }}" text-anchor="end"
-                  fill="#9ca3af" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ score }}</text>
+                  style="fill:var(--chart-label)" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ score }}</text>
             {% endfor %}
 
             {% for bar in position_chart %}
@@ -560,33 +569,33 @@
                 <title>Position {{ bar.position }}: avg {{ "%.2f"|format(bar.avg_score) }}/3 ({{ bar.count }} queries)</title>
             </rect>
             <text x="{{ bar.x + bar.width / 2 }}" y="{{ bar.label_y }}" text-anchor="middle"
-                  fill="#374151" font-size="11" font-weight="600" font-family="Menlo, monospace">{{ "%.2f"|format(bar.avg_score) }}</text>
+                  style="fill:var(--chart-text)" font-size="11" font-weight="600" font-family="Menlo, monospace">{{ "%.2f"|format(bar.avg_score) }}</text>
             <text x="{{ bar.x + bar.width / 2 }}" y="185" text-anchor="middle"
-                  fill="#6b7280" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">#{{ bar.position }}</text>
+                  style="fill:var(--text-secondary)" font-size="12" font-family="-apple-system, BlinkMacSystemFont, sans-serif">#{{ bar.position }}</text>
             {% endfor %}
 
-            <line x1="40" y1="15" x2="40" y2="165" stroke="#d1d5db" stroke-width="1" />
-            <line x1="40" y1="165" x2="680" y2="165" stroke="#d1d5db" stroke-width="1" />
+            <line x1="40" y1="15" x2="40" y2="165" style="stroke:var(--chart-axis)" stroke-width="1" />
+            <line x1="40" y1="165" x2="680" y2="165" style="stroke:var(--chart-axis)" stroke-width="1" />
         </svg>
     </div>
     {% endif %}
 
     {% if ndcg_histogram %}
-    <h2>NDCG@10 Distribution</h2>
+    <h2 id="section-ndcg-dist">NDCG@10 Distribution</h2>
     <div class="card">
         {% if ndcg_stats %}
-        <div style="margin-bottom:14px; font-size:13px; color:#4b5563;">
+        <div style="margin-bottom:14px; font-size:13px; color:var(--text-primary);">
             <strong>NDCG@10 spread:</strong>&nbsp;
             <span class="metric-value">min={{ "%.4f"|format(ndcg_stats.min) }}</span>
-            <span style="color:#d1d5db;">&middot;</span>
+            <span class="text-muted">&middot;</span>
             <span class="metric-value">median={{ "%.4f"|format(ndcg_stats.median) }}</span>
-            <span style="color:#d1d5db;">&middot;</span>
+            <span class="text-muted">&middot;</span>
             <span class="metric-value">max={{ "%.4f"|format(ndcg_stats.max) }}</span>
-            <span style="color:#d1d5db;">&middot;</span>
+            <span class="text-muted">&middot;</span>
             <span class="metric-value">stdev={{ "%.4f"|format(ndcg_stats.stdev) }}</span>
         </div>
         {% endif %}
-        <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+        <p class="text-sm text-secondary" style="margin-bottom:16px;">
             Distribution of per-query NDCG@10 scores. Red bins indicate poor relevance; green bins indicate strong relevance.
         </p>
         <svg viewBox="0 0 700 210" style="width:100%; max-width:700px; display:block; margin:0 auto;" role="img" aria-label="NDCG@10 histogram">
@@ -597,44 +606,44 @@
             </rect>
             {% if bar.count > 0 %}
             <text x="{{ bar.tick_x }}" y="{{ bar.label_y }}" text-anchor="middle"
-                  fill="#374151" font-size="11" font-weight="600" font-family="Menlo, monospace">{{ bar.count }}</text>
+                  style="fill:var(--chart-text)" font-size="11" font-weight="600" font-family="Menlo, monospace">{{ bar.count }}</text>
             {% endif %}
             <text x="{{ bar.tick_x }}" y="185" text-anchor="middle"
-                  fill="#6b7280" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ bar.bin_label }}</text>
+                  style="fill:var(--text-secondary)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">{{ bar.bin_label }}</text>
             {% endfor %}
-            <line x1="40" y1="15" x2="40" y2="165" stroke="#d1d5db" stroke-width="1" />
-            <line x1="40" y1="165" x2="680" y2="165" stroke="#d1d5db" stroke-width="1" />
+            <line x1="40" y1="15" x2="40" y2="165" style="stroke:var(--chart-axis)" stroke-width="1" />
+            <line x1="40" y1="165" x2="680" y2="165" style="stroke:var(--chart-axis)" stroke-width="1" />
         </svg>
     </div>
     {% endif %}
 
     {% if score_counts %}
-    <h2>Score Distribution</h2>
+    <h2 id="section-score-dist">Score Distribution</h2>
     <div class="card">
-        <div style="font-size:13px; color:#6b7280; margin-bottom:10px;">{{ score_total }} judgments across all queries</div>
+        <div class="text-sm text-secondary" style="margin-bottom:10px;">{{ score_total }} judgments across all queries</div>
         <div style="display:flex; height:28px; border-radius:6px; overflow:hidden;">
-            {% if score_pcts[3] > 0 %}<div style="width:{{ score_pcts[3] }}%; background:#16a34a; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[3] >= 8 %}{{ score_counts[3] }}{% endif %}</div>{% endif %}
-            {% if score_pcts[2] > 0 %}<div style="width:{{ score_pcts[2] }}%; background:#ca8a04; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[2] >= 8 %}{{ score_counts[2] }}{% endif %}</div>{% endif %}
-            {% if score_pcts[1] > 0 %}<div style="width:{{ score_pcts[1] }}%; background:#ea580c; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[1] >= 8 %}{{ score_counts[1] }}{% endif %}</div>{% endif %}
-            {% if score_pcts[0] > 0 %}<div style="width:{{ score_pcts[0] }}%; background:#dc2626; display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[0] >= 8 %}{{ score_counts[0] }}{% endif %}</div>{% endif %}
+            {% if score_pcts[3] > 0 %}<div style="width:{{ score_pcts[3] }}%; background:var(--score-3); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[3] >= 8 %}{{ score_counts[3] }}{% endif %}</div>{% endif %}
+            {% if score_pcts[2] > 0 %}<div style="width:{{ score_pcts[2] }}%; background:var(--score-2); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[2] >= 8 %}{{ score_counts[2] }}{% endif %}</div>{% endif %}
+            {% if score_pcts[1] > 0 %}<div style="width:{{ score_pcts[1] }}%; background:var(--score-1); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[1] >= 8 %}{{ score_counts[1] }}{% endif %}</div>{% endif %}
+            {% if score_pcts[0] > 0 %}<div style="width:{{ score_pcts[0] }}%; background:var(--score-0); display:flex; align-items:center; justify-content:center; color:white; font-size:11px; font-weight:600;">{% if score_pcts[0] >= 8 %}{{ score_counts[0] }}{% endif %}</div>{% endif %}
         </div>
         <div style="display:flex; gap:20px; font-size:13px; margin-top:10px; flex-wrap:wrap;">
-            <span><span style="display:inline-block; width:10px; height:10px; background:#16a34a; border-radius:2px; vertical-align:middle;"></span> 3 &mdash; {{ score_counts[3] }} ({{ "%.1f"|format(score_pcts[3]) }}%)</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#ca8a04; border-radius:2px; vertical-align:middle;"></span> 2 &mdash; {{ score_counts[2] }} ({{ "%.1f"|format(score_pcts[2]) }}%)</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#ea580c; border-radius:2px; vertical-align:middle;"></span> 1 &mdash; {{ score_counts[1] }} ({{ "%.1f"|format(score_pcts[1]) }}%)</span>
-            <span><span style="display:inline-block; width:10px; height:10px; background:#dc2626; border-radius:2px; vertical-align:middle;"></span> 0 &mdash; {{ score_counts[0] }} ({{ "%.1f"|format(score_pcts[0]) }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-3); border-radius:2px; vertical-align:middle;"></span> 3 &mdash; {{ score_counts[3] }} ({{ "%.1f"|format(score_pcts[3]) }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-2); border-radius:2px; vertical-align:middle;"></span> 2 &mdash; {{ score_counts[2] }} ({{ "%.1f"|format(score_pcts[2]) }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-1); border-radius:2px; vertical-align:middle;"></span> 1 &mdash; {{ score_counts[1] }} ({{ "%.1f"|format(score_pcts[1]) }}%)</span>
+            <span><span style="display:inline-block; width:10px; height:10px; background:var(--score-0); border-radius:2px; vertical-align:middle;"></span> 0 &mdash; {{ score_counts[0] }} ({{ "%.1f"|format(score_pcts[0]) }}%)</span>
         </div>
         {% if score_by_type %}
-        <div style="margin-top:16px; padding-top:14px; border-top:1px solid #eee;">
-            <div style="font-weight:600; font-size:13px; color:#4b5563; margin-bottom:10px;">By Query Type</div>
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border-subtle);">
+            <div style="font-weight:600; font-size:13px; color:var(--text-primary); margin-bottom:10px;">By Query Type</div>
             {% for dist in score_by_type %}
             <div style="margin-bottom:10px;">
-                <div style="font-size:12px; color:#6b7280; margin-bottom:4px;">{{ dist.display_name }} ({{ dist.total }} judgments)</div>
+                <div class="text-xs text-secondary" style="margin-bottom:4px;">{{ dist.display_name }} ({{ dist.total }} judgments)</div>
                 <div style="display:flex; height:22px; border-radius:5px; overflow:hidden;">
-                    {% if dist.pcts[3] > 0 %}<div style="width:{{ dist.pcts[3] }}%; background:#16a34a; display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[3] >= 10 %}{{ dist.counts[3] }}{% endif %}</div>{% endif %}
-                    {% if dist.pcts[2] > 0 %}<div style="width:{{ dist.pcts[2] }}%; background:#ca8a04; display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[2] >= 10 %}{{ dist.counts[2] }}{% endif %}</div>{% endif %}
-                    {% if dist.pcts[1] > 0 %}<div style="width:{{ dist.pcts[1] }}%; background:#ea580c; display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[1] >= 10 %}{{ dist.counts[1] }}{% endif %}</div>{% endif %}
-                    {% if dist.pcts[0] > 0 %}<div style="width:{{ dist.pcts[0] }}%; background:#dc2626; display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[0] >= 10 %}{{ dist.counts[0] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[3] > 0 %}<div style="width:{{ dist.pcts[3] }}%; background:var(--score-3); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[3] >= 10 %}{{ dist.counts[3] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[2] > 0 %}<div style="width:{{ dist.pcts[2] }}%; background:var(--score-2); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[2] >= 10 %}{{ dist.counts[2] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[1] > 0 %}<div style="width:{{ dist.pcts[1] }}%; background:var(--score-1); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[1] >= 10 %}{{ dist.counts[1] }}{% endif %}</div>{% endif %}
+                    {% if dist.pcts[0] > 0 %}<div style="width:{{ dist.pcts[0] }}%; background:var(--score-0); display:flex; align-items:center; justify-content:center; color:white; font-size:10px; font-weight:600;">{% if dist.pcts[0] >= 10 %}{{ dist.counts[0] }}{% endif %}</div>{% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -644,7 +653,7 @@
     {% endif %}
 
     {% if query_types %}
-    <h2>Metrics by Query Type</h2>
+    <h2 id="section-query-types">Metrics by Query Type</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -673,7 +682,7 @@
     {% endif %}
 
     {% if check_summary %}
-    <h2>Deterministic Checks</h2>
+    <h2 id="section-checks">Deterministic Checks</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -691,26 +700,23 @@
                   {% set cf = check_failures[name] %}
                   <details style="margin:0;">
                     <summary style="cursor:pointer; list-style:none; display:inline;">
-                      <span style="display:inline-block; width:12px; font-size:10px; color:#9ca3af; transition:transform 0.15s;" class="check-arrow">&#9654;</span>
+                      <span style="display:inline-block; width:12px; font-size:10px; color:var(--text-muted); transition:transform 0.15s;" class="check-arrow">&#9654;</span>
                       {{ counts.display_name }}
                       {% if check_descriptions and check_descriptions.get(name) %}
                       <span class="tip" data-tip="{{ check_descriptions[name] }}">?</span>
                       {% endif %}
                     </summary>
-                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid #f3f4f6;">
+                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border-subtle);">
                       {% for item in cf["entries"] %}
-                      <div style="display:flex; align-items:baseline; gap:8px; padding:4px 0; font-size:13px; border-bottom:1px solid #f3f4f6;">
+                      <div style="display:flex; align-items:baseline; gap:8px; padding:4px 0; font-size:13px; border-bottom:1px solid var(--border-subtle);">
                           <span style="font-weight:600; min-width:120px;">{{ item.query }}</span>
-                          {% if item.product_id %}<span style="color:#6b7280; font-size:12px;">{{ item.product_id }}</span>{% endif %}
-                          <span style="flex:1; color:#4b5563;">{{ item.detail }}</span>
-                          <span style="font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; white-space:nowrap;
-                              {% if item.severity == 'fail' %}background:#fee2e2; color:#991b1b;
-                              {% elif item.severity == 'warning' %}background:#fef3c7; color:#92400e;
-                              {% else %}background:#dbeafe; color:#1e40af;{% endif %}">{{ item.severity }}</span>
+                          {% if item.product_id %}<span class="text-secondary text-xs">{{ item.product_id }}</span>{% endif %}
+                          <span style="flex:1; color:var(--text-primary);">{{ item.detail }}</span>
+                          <span class="{% if item.severity == 'fail' %}severity-fail{% elif item.severity == 'warning' %}severity-warning{% else %}severity-info{% endif %}">{{ item.severity }}</span>
                       </div>
                       {% endfor %}
                       {% if cf["total"] > cf["entries"]|length %}
-                      <div style="font-size:12px; color:#9ca3af; margin-top:6px;">&hellip;and {{ cf["total"] - cf["entries"]|length }} more</div>
+                      <div class="text-xs text-muted" style="margin-top:6px;">&hellip;and {{ cf["total"] - cf["entries"]|length }} more</div>
                       {% endif %}
                     </div>
                   </details>
@@ -730,7 +736,7 @@
     {% endif %}
 
     {% if correction_summary %}
-    <h2>Query Corrections</h2>
+    <h2 id="section-corrections">Query Corrections</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -748,7 +754,7 @@
                 <td class="{% if c.verdict == 'appropriate' %}positive{% elif c.verdict == 'inappropriate' %}negative{% else %}neutral{% endif %}">
                     {{ c.verdict }}
                 </td>
-                <td style="font-size:13px">{{ c.reasoning }}</td>
+                <td class="text-sm">{{ c.reasoning }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -756,7 +762,7 @@
     {% endif %}
 
     {% if worst_queries %}
-    <h2>Worst Performing Queries (NDCG@10)</h2>
+    <h2 id="section-worst">Worst Performing Queries (NDCG@10)</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -769,7 +775,7 @@
         <tbody>
             {% for wq in worst_queries %}
             <tr>
-                <td>{% if wq.anchor_id %}<a href="#{{ wq.anchor_id }}" data-judgment-anchor="{{ wq.anchor_id }}" style="color:#4f6bed; text-decoration:none; font-weight:500;">{{ wq.query }}</a>{% else %}{{ wq.query }}{% endif %}</td>
+                <td>{% if wq.anchor_id %}<a href="#{{ wq.anchor_id }}" data-judgment-anchor="{{ wq.anchor_id }}" style="color:var(--accent); text-decoration:none; font-weight:500;">{{ wq.query }}</a>{% else %}{{ wq.query }}{% endif %}</td>
                 <td>{{ wq.query_type }}</td>
                 <td class="metric-value">{{ "%.4f"|format(wq.ndcg) }}</td>
                 <td class="{% if wq.failed_checks > 0 %}negative{% else %}neutral{% endif %}">{{ wq.failed_checks }}</td>
@@ -780,8 +786,8 @@
     {% endif %}
 
     {% if judgments_for_template %}
-    <h2>Judgment Details</h2>
-    <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+    <h2 id="section-judgments">Judgment Details</h2>
+    <p class="text-sm text-secondary" style="margin-bottom:16px;">
       Click a query to expand individual product scores and LLM reasoning.
       Sorted by worst average score first.
     </p>
@@ -789,12 +795,12 @@
     <div id="judgment-list">
     {% for item in judgments_for_template %}
     <details id="query-{{ loop.index0 }}" class="paginated-item" style="margin-bottom:12px;">
-      <summary style="cursor:pointer; padding:10px 16px; background:white;
-                      border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);
+      <summary style="cursor:pointer; padding:10px 16px; background:var(--bg-surface);
+                      border-radius:8px; box-shadow:var(--shadow-md);
                       font-weight:600; list-style:none; display:flex;
                       justify-content:space-between; align-items:center;">
-        <span>{{ item.query }}{% if item.correction %} <span style="font-weight:normal; font-size:13px; color:#6b7280;">&rarr; {{ item.correction.corrected_query }} (<span class="{% if item.correction.verdict == 'appropriate' %}positive{% elif item.correction.verdict == 'inappropriate' %}negative{% else %}neutral{% endif %}">{{ item.correction.verdict }}</span>)</span>{% endif %}</span>
-        <span style="color:#6b7280; font-size:13px; font-weight:normal;">
+        <span>{{ item.query }}{% if item.correction %} <span style="font-weight:normal; font-size:13px;" class="text-secondary">&rarr; {{ item.correction.corrected_query }} (<span class="{% if item.correction.verdict == 'appropriate' %}positive{% elif item.correction.verdict == 'inappropriate' %}negative{% else %}neutral{% endif %}">{{ item.correction.verdict }}</span>)</span>{% endif %}</span>
+        <span class="text-secondary text-sm" style="font-weight:normal;">
           avg score {{ "%.2f"|format(item.avg_score) }}
           &nbsp;·&nbsp; {{ item.judgments|length }} results
         </span>
@@ -812,28 +818,28 @@
         <tbody>
           {% for j in item.judgments %}
           <tr>
-            <td style="color:#9ca3af">{{ j.product.position + 1 }}</td>
+            <td class="text-muted">{{ j.product.position + 1 }}</td>
             <td>
               <strong>{{ j.product.title }}</strong><br>
-              <span style="color:#6b7280; font-size:12px">{{ j.product.product_id }}</span>
+              <span class="text-secondary text-xs">{{ j.product.product_id }}</span>
               {% if j.product.category or j.product.price > 0 or j.product.in_stock is false %}
-              <div style="display:flex; gap:8px; align-items:center; margin-top:3px; font-size:12px; color:#6b7280; flex-wrap:wrap;">
+              <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;" class="text-xs text-secondary">
                 {% if j.product.category %}<span>{{ j.product.category }}</span>{% endif %}
                 {% if j.product.price > 0 %}<span>${{ "%.2f"|format(j.product.price) }}</span>{% endif %}
-                {% if j.product.in_stock is false %}<span style="background:#fee2e2; color:#991b1b; padding:1px 6px; border-radius:3px; font-weight:600; font-size:11px;">Out of stock</span>{% endif %}
+                {% if j.product.in_stock is false %}<span class="severity-fail">Out of stock</span>{% endif %}
               </div>
               {% endif %}
             </td>
-            <td class="metric-value" style="color:{% if j.score == 3 %}#16a34a{% elif j.score == 2 %}#ca8a04{% elif j.score == 1 %}#ea580c{% else %}#dc2626{% endif %}">
-              {{ j.score }}/3
+            <td>
+              <span class="score-badge score-badge--{{ j.score }}">{{ j.score }}/3</span>
             </td>
-            <td class="metric-value" style="color:{% if j.attribute_verdict == 'match' %}#16a34a{% elif j.attribute_verdict == 'partial' %}#ca8a04{% elif j.attribute_verdict == 'mismatch' %}#dc2626{% else %}#9ca3af{% endif %}">
+            <td style="color:{% if j.attribute_verdict == 'match' %}var(--score-3){% elif j.attribute_verdict == 'partial' %}var(--score-2){% elif j.attribute_verdict == 'mismatch' %}var(--score-0){% else %}var(--text-muted){% endif %}">
               {{ j.attribute_verdict }}
             </td>
-            <td style="font-size:13px; color:#4b5563">
+            <td class="text-sm" style="color:var(--text-primary);">
               {{ j.reasoning }}
               {% if j.metadata.get('failed_checks') %}
-              <div style="margin-top:6px; padding:4px 8px; background:#fef3c7; border-radius:4px; font-size:12px; color:#92400e;">
+              <div style="margin-top:6px; padding:4px 8px; border-radius:4px;" class="severity-warning">
                 {% for fc in j.metadata.failed_checks %}
                 <span style="font-weight:600;">{{ fc.check_name }}:</span> {{ fc.detail }}{% if not loop.last %}; {% endif %}
                 {% endfor %}
@@ -853,7 +859,7 @@
     {% endif %}
 
     <div class="footer">
-        Generated by veritail
+        Generated by <strong>veritail</strong>
         {% if run_metadata_rows %}
         <div class="footer-meta">
           {% for row in run_metadata_rows %}
@@ -959,6 +965,45 @@
         }
 
         paginate('judgment-list', 'judgment-pagination');
+
+        /* Scrollspy */
+        (function() {
+            var nav = document.getElementById('report-nav');
+            if (!nav) return;
+            var links = nav.querySelectorAll('a[href^="#"]');
+            if (!links.length) return;
+            var sections = [];
+            links.forEach(function(a) {
+                var id = a.getAttribute('href').substring(1);
+                var el = document.getElementById(id);
+                if (el) sections.push({el: el, link: a});
+            });
+
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        links.forEach(function(l) { l.classList.remove('active'); });
+                        for (var i = 0; i < sections.length; i++) {
+                            if (sections[i].el === entry.target) {
+                                sections[i].link.classList.add('active');
+                                break;
+                            }
+                        }
+                    }
+                });
+            }, {rootMargin: '-20% 0px -60% 0px'});
+
+            sections.forEach(function(s) { observer.observe(s.el); });
+
+            links.forEach(function(a) {
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var id = this.getAttribute('href').substring(1);
+                    var target = document.getElementById(id);
+                    if (target) target.scrollIntoView({behavior: 'smooth', block: 'start'});
+                });
+            });
+        })();
     })();
     </script>
 </body>

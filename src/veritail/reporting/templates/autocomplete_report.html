@@ -4,52 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Autocomplete Evaluation Report</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 960px; margin: 0 auto; padding: 24px; background: #f8f9fa; }
-        h1 { font-size: 24px; margin-bottom: 24px; color: #1a1a2e; border-bottom: 2px solid #e0e0e0; padding-bottom: 12px; }
-        h2 { font-size: 18px; margin: 24px 0 12px; color: #1a1a2e; }
-        .table-wrap { border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th { background: #1a1a2e; color: white; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 14px; }
-        td { padding: 10px 16px; border-bottom: 1px solid #eee; font-size: 14px; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover { background: #f5f5ff; }
-        .metric-value { font-family: 'Menlo', monospace; font-weight: 600; }
-        .positive { color: #16a34a; }
-        .negative { color: #dc2626; }
-        .neutral { color: #6b7280; }
-        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e0e0e0; color: #9ca3af; font-size: 12px; }
-        .footer-meta { margin-top: 10px; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; align-items: baseline; }
-        .footer-key { color: #6b7280; font-weight: 600; }
-        .footer-value { color: #4b5563; font-family: 'Menlo', monospace; word-break: break-all; }
-        .tip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 5px; border-radius: 50%; background: #e5e7eb; color: #6b7280; font-size: 11px; font-weight: 600; cursor: default; vertical-align: middle; }
-        .tip::after { content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 8px); padding: 8px 12px; background: #1a1a2e; color: #f3f4f6; font-size: 12px; font-weight: 400; line-height: 1.4; white-space: normal; width: max-content; max-width: 280px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; }
-        .tip::before { content: ""; position: absolute; left: 4px; bottom: calc(100% + 2px); border: 5px solid transparent; border-top-color: #1a1a2e; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; }
-        .tip:hover::after, .tip:hover::before { opacity: 1; }
-        .suggestion-list { list-style: none; padding: 0; margin: 0; }
-        .suggestion-list li { display: inline-block; background: #f0f0f5; padding: 2px 8px; border-radius: 4px; margin: 2px 4px 2px 0; font-size: 13px; }
-        .failed-check { color: #dc2626; font-size: 13px; margin-top: 8px; }
-        .pagination { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 20px; flex-wrap: wrap; }
-        .pagination button { border: 1px solid #d1d5db; background: white; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.15s; min-width: 36px; }
-        .pagination button:hover:not(:disabled) { background: #f0f0ff; border-color: #4f6bed; color: #4f6bed; }
-        .pagination button:disabled { opacity: 0.4; cursor: default; }
-        .pagination button.active { background: #1a1a2e; color: white; border-color: #1a1a2e; font-weight: 600; }
-        .pagination .page-info { font-size: 13px; color: #6b7280; margin: 0 8px; }
-    </style>
+    <style>{{ shared_css|safe }}</style>
 </head>
 <body>
     {% if is_comparison %}
     <h1>Autocomplete Comparison: {{ config_a }} vs {{ config_b }}</h1>
+
+    <nav class="report-nav" id="report-nav">
+      <ul>
+        {% if check_comparison %}<li><a href="#section-checks">Checks</a></li>{% endif %}
+        {% if overlap_checks %}<li><a href="#section-overlap">Overlap</a></li>{% endif %}
+      </ul>
+    </nav>
+
     {% if sibling_report %}
-    <div class="card" style="background: #f0f4ff; border-left: 4px solid #4f6bed; padding: 12px 16px; margin-bottom: 24px;">
-        This run also evaluated search relevance. <a href="{{ sibling_report }}" style="color: #4f6bed; font-weight: 600;">View Search Report &rarr;</a>
+    <div class="banner-link">
+        This run also evaluated search relevance. <a href="{{ sibling_report }}">View Search Report &rarr;</a>
     </div>
     {% endif %}
 
     {% if check_comparison %}
-    <h2>Check Summary Comparison</h2>
+    <h2 id="section-checks">Check Summary Comparison</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -80,7 +55,7 @@
     {% endif %}
 
     {% if overlap_checks %}
-    <h2>Suggestion Overlap</h2>
+    <h2 id="section-overlap">Suggestion Overlap</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -101,14 +76,23 @@
 
     {% else %}
     <h1>Autocomplete Evaluation Report</h1>
+
+    <nav class="report-nav" id="report-nav">
+      <ul>
+        {% if check_summary %}<li><a href="#section-checks">Checks</a></li>{% endif %}
+        {% if llm_summary %}<li><a href="#section-llm">LLM Quality</a></li>{% endif %}
+        {% if prefix_details %}<li><a href="#section-prefixes">Per-Prefix</a></li>{% endif %}
+      </ul>
+    </nav>
+
     {% if sibling_report %}
-    <div class="card" style="background: #f0f4ff; border-left: 4px solid #4f6bed; padding: 12px 16px; margin-bottom: 24px;">
-        This run also evaluated search relevance. <a href="{{ sibling_report }}" style="color: #4f6bed; font-weight: 600;">View Search Report &rarr;</a>
+    <div class="banner-link">
+        This run also evaluated search relevance. <a href="{{ sibling_report }}">View Search Report &rarr;</a>
     </div>
     {% endif %}
 
     {% if check_summary %}
-    <h2>Deterministic Checks</h2>
+    <h2 id="section-checks">Deterministic Checks</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -135,7 +119,7 @@
     {% endif %}
 
     {% if llm_summary %}
-    <h2>LLM Suggestion Quality</h2>
+    <h2 id="section-llm">LLM Suggestion Quality</h2>
     <div class="table-wrap"><table>
         <thead>
             <tr>
@@ -166,7 +150,7 @@
             <tr>
                 <td>{{ fd.prefix }}</td>
                 <td>{{ fd.flagged | join(', ') }}</td>
-                <td style="font-size:13px; color:#6b7280;">{{ fd.reasoning }}</td>
+                <td class="text-sm text-secondary">{{ fd.reasoning }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -175,23 +159,23 @@
     {% endif %}
 
     {% if prefix_details %}
-    <h2>Per-Prefix Details</h2>
-    <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">
+    <h2 id="section-prefixes">Per-Prefix Details</h2>
+    <p class="text-sm text-secondary" style="margin-bottom:16px;">
       Click a prefix to expand its suggestions and failed checks.
     </p>
 
     <div id="prefix-list">
     {% for item in prefix_details %}
     <details class="paginated-item" style="margin-bottom:12px;">
-      <summary style="cursor:pointer; padding:10px 16px; background:white;
-                      border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);
+      <summary style="cursor:pointer; padding:10px 16px; background:var(--bg-surface);
+                      border-radius:8px; box-shadow:var(--shadow-md);
                       font-weight:600; list-style:none; display:flex;
                       justify-content:space-between; align-items:center;">
-        <span>"{{ item.prefix }}"{% if item.type %} <span style="font-weight:normal; font-size:12px; color:#9ca3af;">({{ item.type }})</span>{% endif %}</span>
-        <span style="color:#6b7280; font-size:13px; font-weight:normal;">
+        <span>"{{ item.prefix }}"{% if item.type %} <span style="font-weight:normal;" class="text-xs text-muted">({{ item.type }})</span>{% endif %}</span>
+        <span class="text-sm text-secondary" style="font-weight:normal;">
           {{ item.suggestions|length }} suggestions
-          {% if item.failed_checks %}&middot; <span style="color:#dc2626;">{{ item.failed_checks|length }} failed</span>{% endif %}
-          {% if item.relevance_score is not none %}&middot; <span style="{% if item.relevance_score >= 2 %}color:#16a34a{% elif item.relevance_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Rel:{{ item.relevance_score }}</span> <span style="{% if item.diversity_score >= 2 %}color:#16a34a{% elif item.diversity_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Div:{{ item.diversity_score }}</span>{% endif %}
+          {% if item.failed_checks %}&middot; <span class="negative">{{ item.failed_checks|length }} failed</span>{% endif %}
+          {% if item.relevance_score is not none %}&middot; <span style="color:{% if item.relevance_score >= 2 %}var(--score-3){% elif item.relevance_score == 1 %}var(--score-2){% else %}var(--score-0){% endif %}">Rel:{{ item.relevance_score }}</span> <span style="color:{% if item.diversity_score >= 2 %}var(--score-3){% elif item.diversity_score == 1 %}var(--score-2){% else %}var(--score-0){% endif %}">Div:{{ item.diversity_score }}</span>{% endif %}
         </span>
       </summary>
       <div class="card" style="margin-top:4px; border-radius:0 0 8px 8px;">
@@ -202,25 +186,25 @@
           {% endfor %}
         </ul>
         {% else %}
-        <span style="color:#9ca3af">No suggestions returned</span>
+        <span class="text-muted">No suggestions returned</span>
         {% endif %}
         {% if item.failed_checks %}
-        <div style="margin-top:12px; border-top:1px solid #eee; padding-top:8px;">
+        <div style="margin-top:12px; border-top:1px solid var(--border-subtle); padding-top:8px;">
           {% for fc in item.failed_checks %}
           <div class="failed-check">&#x2717; {{ fc.name }}: {{ fc.detail }}</div>
           {% endfor %}
         </div>
         {% endif %}
         {% if item.relevance_score is not none %}
-        <div style="margin-top:12px; border-top:1px solid #eee; padding-top:8px;">
-          <span style="font-size:13px; font-weight:600;">LLM Scores:</span>
-          <span style="margin-left:8px; font-size:13px; {% if item.relevance_score >= 2 %}color:#16a34a{% elif item.relevance_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Relevance: {{ item.relevance_score }}/3</span>
-          <span style="margin-left:12px; font-size:13px; {% if item.diversity_score >= 2 %}color:#16a34a{% elif item.diversity_score == 1 %}color:#d97706{% else %}color:#dc2626{% endif %}">Diversity: {{ item.diversity_score }}/3</span>
+        <div style="margin-top:12px; border-top:1px solid var(--border-subtle); padding-top:8px;">
+          <span class="text-sm" style="font-weight:600;">LLM Scores:</span>
+          <span style="margin-left:8px;" class="text-sm"><span style="color:{% if item.relevance_score >= 2 %}var(--score-3){% elif item.relevance_score == 1 %}var(--score-2){% else %}var(--score-0){% endif %}">Relevance: {{ item.relevance_score }}/3</span></span>
+          <span style="margin-left:12px;" class="text-sm"><span style="color:{% if item.diversity_score >= 2 %}var(--score-3){% elif item.diversity_score == 1 %}var(--score-2){% else %}var(--score-0){% endif %}">Diversity: {{ item.diversity_score }}/3</span></span>
           {% if item.flagged_suggestions %}
-          <div style="margin-top:6px; font-size:13px; color:#dc2626;">Flagged: {{ item.flagged_suggestions | join(', ') }}</div>
+          <div style="margin-top:6px;" class="text-sm negative">Flagged: {{ item.flagged_suggestions | join(', ') }}</div>
           {% endif %}
           {% if item.llm_reasoning %}
-          <div style="margin-top:6px; font-size:13px; color:#6b7280;">{{ item.llm_reasoning }}</div>
+          <div style="margin-top:6px;" class="text-sm text-secondary">{{ item.llm_reasoning }}</div>
           {% endif %}
         </div>
         {% endif %}
@@ -234,7 +218,7 @@
     {% endif %}
 
     <div class="footer">
-        Generated by veritail (autocomplete evaluation)
+        Generated by <strong>veritail</strong> (autocomplete evaluation)
         {% if run_metadata_rows %}
         <div class="footer-meta">
           {% for row in run_metadata_rows %}
@@ -309,6 +293,45 @@
         }
 
         paginate('prefix-list', 'prefix-pagination');
+
+        /* Scrollspy */
+        (function() {
+            var nav = document.getElementById('report-nav');
+            if (!nav) return;
+            var links = nav.querySelectorAll('a[href^="#"]');
+            if (!links.length) return;
+            var sections = [];
+            links.forEach(function(a) {
+                var id = a.getAttribute('href').substring(1);
+                var el = document.getElementById(id);
+                if (el) sections.push({el: el, link: a});
+            });
+
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        links.forEach(function(l) { l.classList.remove('active'); });
+                        for (var i = 0; i < sections.length; i++) {
+                            if (sections[i].el === entry.target) {
+                                sections[i].link.classList.add('active');
+                                break;
+                            }
+                        }
+                    }
+                });
+            }, {rootMargin: '-20% 0px -60% 0px'});
+
+            sections.forEach(function(s) { observer.observe(s.el); });
+
+            links.forEach(function(a) {
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var id = this.getAttribute('href').substring(1);
+                    var target = document.getElementById(id);
+                    if (target) target.scrollIntoView({behavior: 'smooth', block: 'start'});
+                });
+            });
+        })();
     })();
     </script>
 </body>

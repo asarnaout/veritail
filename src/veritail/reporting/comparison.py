@@ -21,6 +21,7 @@ from veritail.reporting.single import (
     metric_display_name,
     summarize_checks,
 )
+from veritail.reporting.styles import SHARED_CSS
 from veritail.types import CheckResult, CorrectionJudgment, JudgmentRecord, MetricResult
 
 _JINJA_ENV = Environment(
@@ -823,4 +824,5 @@ def _generate_html(
         correction_data_b=correction_data_b,
         winners=winners,
         losers=losers,
+        shared_css=SHARED_CSS,
     )

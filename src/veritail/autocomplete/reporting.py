@@ -10,6 +10,7 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
+from veritail.reporting.styles import SHARED_CSS
 from veritail.types import (
     AutocompleteResponse,
     CheckResult,
@@ -449,6 +450,7 @@ def _generate_html(
         run_metadata_rows=metadata_rows,
         sibling_report=sibling_report,
         llm_summary=llm_summary,
+        shared_css=SHARED_CSS,
     )
 
 
@@ -511,4 +513,5 @@ def _generate_comparison_html(
         check_descriptions=CHECK_DESCRIPTIONS,
         run_metadata_rows=metadata_rows,
         sibling_report=sibling_report,
+        shared_css=SHARED_CSS,
     )

@@ -11,6 +11,7 @@ from jinja2 import Environment, select_autoescape
 from rich.console import Console
 from rich.table import Table
 
+from veritail.reporting.styles import SHARED_CSS
 from veritail.types import (
     CheckResult,
     CorrectionJudgment,
@@ -191,6 +192,55 @@ def _build_check_failures(
         name: {"entries": items, "total": totals[name]}
         for name, items in failures.items()
     }
+
+
+_KPI_METRICS = ["ndcg@10", "mrr", "p@5", "p@10", "attribute_match@5"]
+
+_KPI_THRESHOLDS: dict[str, tuple[float, float, float]] = {
+    # (good, fair, poor) — below poor is bad
+    "ndcg@10": (0.7, 0.5, 0.3),
+    "mrr": (0.7, 0.5, 0.3),
+    "p@5": (0.6, 0.4, 0.2),
+    "p@10": (0.6, 0.4, 0.2),
+    "attribute_match@5": (0.7, 0.5, 0.3),
+}
+
+
+def _build_kpi_cards(metrics: list[MetricResult]) -> list[dict[str, object]]:
+    """Select primary metrics and compute quality tier for KPI display."""
+    cards: list[dict[str, object]] = []
+    metric_lookup = {m.metric_name: m for m in metrics}
+    for name in _KPI_METRICS:
+        m = metric_lookup.get(name)
+        if m is None:
+            continue
+        if m.query_count is not None and m.query_count == 0:
+            continue
+
+        good, fair, poor = _KPI_THRESHOLDS.get(name, (0.7, 0.5, 0.3))
+        if m.value >= good:
+            tier = "good"
+        elif m.value >= fair:
+            tier = "fair"
+        elif m.value >= poor:
+            tier = "poor"
+        else:
+            tier = "bad"
+
+        ci_str = ""
+        if m.ci_lower is not None and m.ci_upper is not None:
+            ci_str = f"95% CI [{m.ci_lower:.4f}, {m.ci_upper:.4f}]"
+
+        cards.append(
+            {
+                "label": METRIC_DISPLAY_NAMES.get(name, name),
+                "value": f"{m.value:.4f}",
+                "ci": ci_str,
+                "tier": tier,
+                "description": METRIC_DESCRIPTIONS.get(name, ""),
+            }
+        )
+    return cards
 
 
 def summarize_checks(
@@ -754,4 +804,6 @@ def _generate_html(
         query_type_display_names=QUERY_TYPE_DISPLAY_NAMES,
         query_type_descriptions=QUERY_TYPE_DESCRIPTIONS,
         sibling_report=sibling_report,
+        shared_css=SHARED_CSS,
+        kpi_cards=_build_kpi_cards(metrics),
     )

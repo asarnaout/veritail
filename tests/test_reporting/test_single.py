@@ -547,7 +547,7 @@ class TestGenerateSingleReport:
             ),
         ]
         report = generate_single_report(_make_metrics(), checks, format="html")
-        assert "background:#fee2e2" in report
+        assert "severity-fail" in report
         assert ">fail<" in report
 
     def test_html_check_failures_no_product_id(self):
@@ -884,3 +884,88 @@ class TestGenerateSingleReport:
         )
         assert "By Query Type" in report
         assert "Broad" in report
+
+    def test_html_kpi_cards_present(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        assert "kpi-card" in report
+        assert "kpi-grid" in report
+        assert "NDCG@10" in report
+
+    def test_html_kpi_cards_tier_good(self):
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.85,
+                per_query={"shoes": 0.9, "laptop": 0.8},
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "kpi-card--good" in report
+
+    def test_html_kpi_cards_tier_bad(self):
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.15,
+                per_query={"shoes": 0.1, "laptop": 0.2},
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        assert "kpi-card--bad" in report
+
+    def test_html_kpi_cards_skips_na_metrics(self):
+        metrics = [
+            MetricResult(
+                metric_name="attribute_match@5",
+                value=0.0,
+                query_count=0,
+                total_queries=5,
+            ),
+        ]
+        report = generate_single_report(metrics, _make_checks(), format="html")
+        # N/A metrics should not produce a KPI grid in the HTML body
+        assert 'class="kpi-grid"' not in report
+
+    def test_html_nav_bar_present(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        assert "report-nav" in report
+        assert 'href="#section-metrics"' in report
+
+    def test_html_section_ids_present(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        assert 'id="section-metrics"' in report
+        assert 'id="section-checks"' in report
+
+    def test_html_score_badge_markup(self):
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=3,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            _make_metrics(),
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        assert "score-badge score-badge--3" in report
+
+    def test_html_shared_css_injected(self):
+        report = generate_single_report(_make_metrics(), _make_checks(), format="html")
+        # CSS design tokens should be present from shared_css
+        assert "--bg-page" in report
+        assert "--text-primary" in report
+        assert "prefers-color-scheme: dark" in report

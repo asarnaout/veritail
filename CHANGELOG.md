@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - 95% BCa bootstrap confidence intervals on all aggregate IR metrics (NDCG@5, NDCG@10, MRR, MAP, P@5, P@10, Attribute Match@5/10). Displayed in both terminal and HTML reports. Uses 10,000 resamples with a fixed seed for reproducibility; zero extra LLM calls.
 - Paired bootstrap significance test for A/B comparison mode. Statistically significant metric differences (p < 0.05) are marked with `*` in the metrics comparison table, with exact p-values available on hover in HTML reports.
+- HTML report UI redesign: shared CSS design system with design tokens, dark mode support (`prefers-color-scheme`), KPI hero cards with color-coded quality tiers (good/fair/poor/bad), sticky navigation bar with scrollspy, score badges, severity badges, modern light table headers replacing dark navy, and a print stylesheet. Applies to all report types (single, comparison, autocomplete, autocomplete comparison).
 
 ### Fixed
 
