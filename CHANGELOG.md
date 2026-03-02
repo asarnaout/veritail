@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Paired bootstrap significance test now uses null-centered (shifted) methodology (Sakai 2006/2007) instead of resampling from observed deltas, which was anti-conservative on small query sets.
 - Non-significant p-values in HTML comparison reports are now visible as text (e.g. `p=0.23`) instead of rendering as an invisible empty element.
+- Clicking a query in the "Worst Performing Queries" table now correctly opens and scrolls to its judgment details. Previously, the click handler was not registered when the report had 10 or fewer queries.
 
 ## [0.3.1] - 2026-02-28
 
