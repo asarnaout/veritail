@@ -29,6 +29,7 @@ Run a single or dual-configuration evaluation.
 | `--sample` | *(none)* | Randomly sample N queries/prefixes for a faster evaluation (deterministic seed) |
 | `--batch` | off | Use provider batch API for LLM calls (50% cheaper, slower). Works with both search and autocomplete evaluation. Supported for OpenAI, Anthropic, and Gemini. Not compatible with `--llm-base-url` |
 | `--resume` | off | Resume a previously interrupted run. Requires `--config-name` to identify the previous run. In non-batch mode, skips queries already judged in `judgments.jsonl`. In batch mode, resumes polling for an in-flight batch from a saved checkpoint. `--llm-model` and `--top-k` must match the original run |
+| `--no-summary` | off | Disable the AI Summary section in reports. By default, one additional LLM call is made after evaluation to generate 3-5 non-obvious insights by cross-referencing metrics, checks, and judgments. Use this flag to skip that call |
 
 If `--config-name` is provided, pass one name per adapter.
 
