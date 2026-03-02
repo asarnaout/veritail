@@ -439,12 +439,24 @@ def _parse_summary_response(text: str) -> str | None:
 # ── HTML conversion ──────────────────────────────────────────────
 
 
+def _inline_markdown(text: str) -> str:
+    """Convert ``**bold**`` in already-escaped HTML text to ``<strong>`` tags."""
+    # The text is already HTML-escaped, so ** are literal asterisks.
+    # Use non-greedy match to handle multiple bold spans per line.
+    return re.sub(
+        r"\*\*(.+?)\*\*",
+        r"<strong>\1</strong>",
+        text,
+    )
+
+
 def summary_bullets_to_html(text: str) -> str:
     """Convert markdown bullet list to safe HTML.
 
     Each line starting with ``- `` becomes an ``<li>``.
     Non-bullet lines become ``<p>`` tags.
-    All text content is HTML-escaped.
+    All text content is HTML-escaped, then ``**bold**`` is
+    converted to ``<strong>`` tags.
     """
     lines = text.strip().splitlines()
     in_list = False
@@ -462,13 +474,13 @@ def summary_bullets_to_html(text: str) -> str:
             if not in_list:
                 parts.append("<ul>")
                 in_list = True
-            content = html.escape(stripped[2:].strip())
+            content = _inline_markdown(html.escape(stripped[2:].strip()))
             parts.append(f"<li>{content}</li>")
         else:
             if in_list:
                 parts.append("</ul>")
                 in_list = False
-            parts.append(f"<p>{html.escape(stripped)}</p>")
+            parts.append(f"<p>{_inline_markdown(html.escape(stripped))}</p>")
 
     if in_list:
         parts.append("</ul>")

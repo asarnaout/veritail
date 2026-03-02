@@ -488,8 +488,8 @@
 
     <nav class="report-nav" id="report-nav">
       <ul>
-        {% if summary %}<li><a href="#section-summary">Summary</a></li>{% endif %}
         {% if kpi_cards %}<li><a href="#section-kpi">Overview</a></li>{% endif %}
+        {% if summary %}<li><a href="#section-summary">Summary</a></li>{% endif %}
         <li><a href="#section-metrics">Metrics</a></li>
         {% if position_chart %}<li><a href="#section-position">Position</a></li>{% endif %}
         {% if ndcg_histogram %}<li><a href="#section-ndcg-dist">NDCG Dist.</a></li>{% endif %}
@@ -508,15 +508,6 @@
     </div>
     {% endif %}
 
-    {% if summary %}
-    <div class="summary-card" id="section-summary">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-            <span class="summary-badge">AI Summary</span>
-        </div>
-        <div class="summary-content">{{ summary|safe }}</div>
-    </div>
-    {% endif %}
-
     {% if kpi_cards %}
     <div class="kpi-grid" id="section-kpi">
       {% for card in kpi_cards %}
@@ -526,6 +517,15 @@
         {% if card.ci %}<div class="kpi-card__ci">{{ card.ci }}</div>{% endif %}
       </div>
       {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if summary %}
+    <div class="summary-card" id="section-summary">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <span class="summary-badge">AI Summary</span>
+        </div>
+        <div class="summary-content">{{ summary|safe }}</div>
     </div>
     {% endif %}
 

@@ -227,6 +227,18 @@ class TestSummaryBulletsToHtml:
         assert "<li>Bullet 2</li>" in result
         assert "<p>Footer</p>" in result
 
+    def test_bold_markdown_converted_to_strong(self):
+        text = "- **Important:** this is a key insight."
+        result = summary_bullets_to_html(text)
+        assert "<strong>Important:</strong> this is a key insight." in result
+        assert "**" not in result
+
+    def test_bold_xss_still_escaped(self):
+        text = '- **<script>alert("xss")</script>** bold attack'
+        result = summary_bullets_to_html(text)
+        assert "<script>" not in result
+        assert "<strong>&lt;script&gt;" in result
+
 
 # ── _build_single_payload ────────────────────────────────────────
 
