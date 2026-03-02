@@ -239,6 +239,25 @@ class TestSummaryBulletsToHtml:
         assert "<script>" not in result
         assert "<strong>&lt;script&gt;" in result
 
+    def test_italic_markdown_converted_to_em(self):
+        text = "- This is *important* context."
+        result = summary_bullets_to_html(text)
+        assert "<em>important</em>" in result
+        assert "*important*" not in result
+
+    def test_inline_code_converted_to_code(self):
+        text = "- The `text_overlap` check failed."
+        result = summary_bullets_to_html(text)
+        assert "<code>text_overlap</code>" in result
+        assert "`text_overlap`" not in result
+
+    def test_mixed_inline_markdown(self):
+        text = "- **Bold** and *italic* and `code` together."
+        result = summary_bullets_to_html(text)
+        assert "<strong>Bold</strong>" in result
+        assert "<em>italic</em>" in result
+        assert "<code>code</code>" in result
+
     def test_three_or_fewer_bullets_no_collapse(self):
         text = "- First.\n- Second.\n- Third."
         result = summary_bullets_to_html(text)

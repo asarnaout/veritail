@@ -460,14 +460,19 @@ def _parse_summary_response(text: str) -> str | None:
 
 
 def _inline_markdown(text: str) -> str:
-    """Convert ``**bold**`` in already-escaped HTML text to ``<strong>`` tags."""
-    # The text is already HTML-escaped, so ** are literal asterisks.
-    # Use non-greedy match to handle multiple bold spans per line.
-    return re.sub(
-        r"\*\*(.+?)\*\*",
-        r"<strong>\1</strong>",
-        text,
-    )
+    """Convert inline markdown in already-escaped HTML text to HTML tags.
+
+    Handles ``**bold**``, ``*italic*``, and ``` `code` ```.
+    The text is already HTML-escaped so the markers are literal characters.
+    Order matters: bold (``**``) must be processed before italic (``*``).
+    """
+    # Bold: **text**
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+    # Italic: *text* (but not inside <strong> tags' asterisks, already consumed)
+    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
+    # Inline code: `text`
+    text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
+    return text
 
 
 def summary_bullets_to_html(text: str) -> str:
