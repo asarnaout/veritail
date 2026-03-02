@@ -420,7 +420,13 @@ def generate_summary(
         return None
 
     system_prompt = load_prompt("reporting/summary.md")
-    response = client.complete(system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS)
+    try:
+        response = client.complete(
+            system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS
+        )
+    except Exception:
+        logger.warning("summary LLM call failed", exc_info=True)
+        return None
     logger.debug(
         "summary llm call: tokens=%d+%d",
         response.input_tokens,
@@ -465,7 +471,13 @@ def generate_comparison_summary(
         return None
 
     system_prompt = load_prompt("reporting/comparison_summary.md")
-    response = client.complete(system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS)
+    try:
+        response = client.complete(
+            system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS
+        )
+    except Exception:
+        logger.warning("comparison summary LLM call failed", exc_info=True)
+        return None
     logger.debug(
         "comparison summary llm call: tokens=%d+%d",
         response.input_tokens,

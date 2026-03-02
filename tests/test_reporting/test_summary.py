@@ -491,12 +491,7 @@ class TestGenerateSummary:
     def test_returns_none_on_exception(self):
         client = MagicMock(spec=LLMClient)
         client.complete.side_effect = RuntimeError("API error")
-        try:
-            result = generate_summary(client, _make_metrics(), _make_checks())
-        except RuntimeError:
-            # The function itself doesn't catch - the CLI does
-            result = None
-        # Either way, we don't crash
+        result = generate_summary(client, _make_metrics(), _make_checks())
         assert result is None
 
 
@@ -525,6 +520,23 @@ class TestGenerateComparisonSummary:
 
     def test_returns_none_on_no_insights(self):
         client = _mock_client("__NO_INSIGHTS__")
+        result = generate_comparison_summary(
+            client,
+            _make_metrics(),
+            _make_metrics(),
+            checks_a=None,
+            checks_b=None,
+            judgments_a=None,
+            judgments_b=None,
+            comparison_checks=[],
+            config_a="A",
+            config_b="B",
+        )
+        assert result is None
+
+    def test_returns_none_on_exception(self):
+        client = MagicMock(spec=LLMClient)
+        client.complete.side_effect = RuntimeError("API error")
         result = generate_comparison_summary(
             client,
             _make_metrics(),
