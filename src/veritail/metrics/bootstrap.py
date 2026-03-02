@@ -240,7 +240,10 @@ def paired_bootstrap_test(
     # Degenerate case: all deltas identical → zero within-sample variance.
     # Bootstrap cannot generate variability; fall back to the sign test:
     # p = 2^(1-n) for non-zero constant delta, 1.0 for zero delta.
-    if all(c == centered[0] for c in centered):
+    # Use tolerance-based check to handle floating-point residue from
+    # subtraction (e.g., 0.2-0.1 vs 1.0-0.9 differ at ~1e-17).
+    variance = sum(c * c for c in centered) / n
+    if variance < 1e-20:
         p_value = 1.0 if observed_delta == 0 else 2.0 ** (1 - n)
     else:
         rng2 = random.Random(seed)

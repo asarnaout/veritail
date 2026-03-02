@@ -222,6 +222,18 @@ class TestPairedBootstrapTest:
         assert result.p_value > 0.05
         assert not result.significant
 
+    def test_constant_delta_with_float_residue_not_significant(self) -> None:
+        """Constant deltas that differ only by float residue (e.g. 0.2-0.1
+        vs 1.0-0.9) should trigger the sign-test fallback, not the bootstrap
+        path which would incorrectly return p=0.0.
+        """
+        a = [0.1, 0.9]
+        b = [0.2, 1.0]
+        result = paired_bootstrap_test(a, b)
+        assert result is not None
+        assert result.p_value > 0.05
+        assert not result.significant
+
     def test_small_noisy_difference_not_significant(self) -> None:
         """Mixed small deltas with n=5 should not be significant."""
         a = [0.5, 0.6, 0.4, 0.55, 0.45]
