@@ -91,6 +91,24 @@ IR (Information Retrieval) metrics are computed from the LLM relevance scores to
 
 **Attribute match exclusion:** `attribute_match@K` excludes queries where all results have an `n/a` attribute verdict (i.e., the query did not specify filterable attributes), so the metric only reflects queries where attribute matching is meaningful.
 
+### Confidence intervals
+
+Every aggregate metric includes a 95% BCa (bias-corrected and accelerated) bootstrap confidence interval when the evaluation has 2 or more queries. The CI tells you the range of plausible values for the metric given the variability across your query set.
+
+- **Method:** 10,000 bootstrap resamples of the per-query metric values with a fixed seed (42) for reproducibility. BCa correction adjusts for bias and skewness in the bootstrap distribution.
+- **Cost:** Zero extra LLM calls — CIs are computed from the per-query scores that the evaluation already produces.
+- **Interpretation:** A narrow CI (e.g., `NDCG@10: 0.72 [0.69, 0.75]`) means the metric is stable across queries. A wide CI means performance varies significantly by query and the aggregate number should be interpreted cautiously.
+
+CIs appear in both terminal and HTML reports, displayed as `[lower, upper]` next to each metric value.
+
+### Significance testing (A/B comparison)
+
+In dual-config comparison mode, veritail runs a paired bootstrap significance test for each metric to determine whether the difference between configurations is statistically meaningful or could be explained by query-level noise.
+
+- **Method:** Null-centered paired bootstrap test (Sakai 2006/2007). Per-query deltas are centered under the null hypothesis (no difference), then resampled 10,000 times. The p-value is the fraction of null bootstrap means at least as extreme as the observed mean delta.
+- **Significance threshold:** p < 0.05. Significant differences are marked with `*` in the terminal metrics table and highlighted in the HTML report.
+- **Interpretation:** A `*` means the metric difference is unlikely to be due to chance variation across queries. No `*` means the difference could plausibly be noise — even if the percentage change looks large, it may not be reliable. Non-significant p-values are shown in the HTML report (e.g., `p=0.23`) to distinguish "tested but not significant" from "not tested."
+
 ## Related docs
 
 - [Enterprise Context](enterprise-context.md) -- business-specific evaluation rules

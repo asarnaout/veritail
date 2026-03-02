@@ -302,6 +302,42 @@ class TestComputeAllMetrics:
         assert attr5.total_queries == 2
         assert attr5.value == 0.0  # fallback, but reported as N/A by display
 
+    def test_metrics_have_ci_fields(self):
+        queries = [
+            QueryEntry(query="shoes", type="broad"),
+            QueryEntry(query="laptop", type="navigational"),
+        ]
+        judgments_by_query = {
+            "shoes": [
+                _j(3, 0, "shoes", attribute_verdict="match"),
+                _j(2, 1, "shoes", attribute_verdict="mismatch"),
+            ],
+            "laptop": [
+                _j(0, 0, "laptop", attribute_verdict="match"),
+                _j(3, 1, "laptop", attribute_verdict="partial"),
+            ],
+        }
+        results = compute_all_metrics(judgments_by_query, queries)
+        for m in results:
+            if m.query_count is not None and m.query_count < 2:
+                continue
+            assert m.ci_lower is not None, f"{m.metric_name} missing ci_lower"
+            assert m.ci_upper is not None, f"{m.metric_name} missing ci_upper"
+            assert m.ci_lower <= m.value <= m.ci_upper, (
+                f"{m.metric_name}: ci_lower={m.ci_lower} <= value={m.value}"
+                f" <= ci_upper={m.ci_upper}"
+            )
+
+    def test_single_query_no_ci(self):
+        queries = [QueryEntry(query="shoes")]
+        judgments_by_query = {0: [_j(3, 0, "shoes")]}
+        results = compute_all_metrics(judgments_by_query, queries)
+        for m in results:
+            if m.metric_name.startswith("attribute_match"):
+                continue  # 0 applicable queries
+            assert m.ci_lower is None, f"{m.metric_name} should have no CI"
+            assert m.ci_upper is None, f"{m.metric_name} should have no CI"
+
     def test_duplicate_query_text_disambiguated_by_occurrence(self):
         queries = [
             QueryEntry(query="shoes"),

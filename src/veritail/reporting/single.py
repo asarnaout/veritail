@@ -280,13 +280,20 @@ def _generate_terminal(
     table = Table(title="IR Metrics", show_header=True)
     table.add_column("Metric", style="cyan")
     table.add_column("Value", justify="right")
+    table.add_column("95% CI", justify="right", style="dim")
 
     for m in metrics:
         display = metric_display_name(m.metric_name)
+        ci_str = (
+            f"[{m.ci_lower:.4f}, {m.ci_upper:.4f}]"
+            if m.ci_lower is not None and m.ci_upper is not None
+            else "--"
+        )
         if m.query_count is not None and m.query_count == 0:
             table.add_row(
                 display,
                 "[dim]N/A (no queries with attribute constraints)[/dim]",
+                "--",
             )
         elif (
             m.query_count is not None
@@ -297,9 +304,10 @@ def _generate_terminal(
                 display,
                 f"{m.value:.4f}  [dim](n={m.query_count} of"
                 f" {m.total_queries} queries)[/dim]",
+                ci_str,
             )
         else:
-            table.add_row(display, f"{m.value:.4f}")
+            table.add_row(display, f"{m.value:.4f}", ci_str)
 
     console.print(table)
 
