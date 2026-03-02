@@ -21,9 +21,10 @@ from veritail.types import (
 
 logger = logging.getLogger(__name__)
 
-_SUMMARY_MAX_TOKENS = 512
+_SUMMARY_MAX_TOKENS = 1024
 _NO_INSIGHTS_SENTINEL = "__NO_INSIGHTS__"
 _MIN_SUMMARY_LENGTH = 20
+_VISIBLE_BULLETS = 3
 
 
 def _truncate(text: str, max_len: int) -> str:
@@ -425,7 +426,11 @@ def _build_comparison_payload(
 
 
 def _parse_summary_response(text: str) -> str | None:
-    """Parse LLM response. Returns ``None`` if no insights or too short."""
+    """Parse LLM response. Returns ``None`` if no insights or too short.
+
+    Drops a truncated final bullet (one that doesn't end with sentence
+    punctuation) so the summary never shows a cut-off mid-sentence line.
+    """
     stripped = text.strip()
     if not stripped:
         return None
@@ -433,7 +438,22 @@ def _parse_summary_response(text: str) -> str | None:
         return None
     if len(stripped) < _MIN_SUMMARY_LENGTH:
         return None
-    return stripped
+
+    # Drop truncated last bullet (no sentence-ending punctuation).
+    lines = stripped.splitlines()
+    while lines:
+        last = lines[-1].rstrip()
+        if not last:
+            lines.pop()
+            continue
+        if last.startswith("- ") and last[-1] not in ".!?:)\"'":
+            lines.pop()
+        else:
+            break
+    if not lines:
+        return None
+    cleaned = "\n".join(lines).strip()
+    return cleaned if len(cleaned) >= _MIN_SUMMARY_LENGTH else None
 
 
 # ── HTML conversion ──────────────────────────────────────────────
@@ -457,9 +477,15 @@ def summary_bullets_to_html(text: str) -> str:
     Non-bullet lines become ``<p>`` tags.
     All text content is HTML-escaped, then ``**bold**`` is
     converted to ``<strong>`` tags.
+
+    When there are more than :data:`_VISIBLE_BULLETS` bullets the
+    excess items are wrapped in a collapsible ``<details>`` block
+    so the summary card stays compact.
     """
     lines = text.strip().splitlines()
     in_list = False
+    in_details = False
+    bullet_count = 0
     parts: list[str] = []
 
     for line in lines:
@@ -468,10 +494,23 @@ def summary_bullets_to_html(text: str) -> str:
             if in_list:
                 parts.append("</ul>")
                 in_list = False
+            if in_details:
+                parts.append("</details>")
+                in_details = False
             continue
 
         if stripped.startswith("- "):
-            if not in_list:
+            bullet_count += 1
+            if bullet_count == _VISIBLE_BULLETS + 1:
+                # Close the visible list, open collapsible section
+                if in_list:
+                    parts.append("</ul>")
+                parts.append('<details class="summary-more">')
+                parts.append('<summary class="summary-toggle">Show more</summary>')
+                parts.append("<ul>")
+                in_list = True
+                in_details = True
+            elif not in_list:
                 parts.append("<ul>")
                 in_list = True
             content = _inline_markdown(html.escape(stripped[2:].strip()))
@@ -480,10 +519,15 @@ def summary_bullets_to_html(text: str) -> str:
             if in_list:
                 parts.append("</ul>")
                 in_list = False
+            if in_details:
+                parts.append("</details>")
+                in_details = False
             parts.append(f"<p>{_inline_markdown(html.escape(stripped))}</p>")
 
     if in_list:
         parts.append("</ul>")
+    if in_details:
+        parts.append("</details>")
 
     return "\n".join(parts)
 

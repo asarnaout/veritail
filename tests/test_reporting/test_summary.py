@@ -239,6 +239,46 @@ class TestSummaryBulletsToHtml:
         assert "<script>" not in result
         assert "<strong>&lt;script&gt;" in result
 
+    def test_three_or_fewer_bullets_no_collapse(self):
+        text = "- First.\n- Second.\n- Third."
+        result = summary_bullets_to_html(text)
+        assert "<details" not in result
+        assert result.count("<li>") == 3
+
+    def test_more_than_three_bullets_collapsed(self):
+        text = "- One.\n- Two.\n- Three.\n- Four.\n- Five."
+        result = summary_bullets_to_html(text)
+        assert result.count("<li>") == 5
+        assert '<details class="summary-more">' in result
+        assert "Show more" in result
+        # First 3 bullets in the visible <ul>
+        first_details = result.index("<details")
+        assert result.index("<li>One.</li>") < first_details
+        assert result.index("<li>Three.</li>") < first_details
+        # Bullets 4-5 inside <details>
+        assert result.index("<li>Four.</li>") > first_details
+        assert result.index("<li>Five.</li>") > first_details
+
+
+class TestParseTruncation:
+    def test_drops_truncated_last_bullet(self):
+        text = "- Complete insight about the data.\n- This one is cut off mid-sen"
+        result = _parse_summary_response(text)
+        assert result is not None
+        assert "Complete insight" in result
+        assert "cut off" not in result
+
+    def test_keeps_complete_bullets(self):
+        text = "- First insight about patterns.\n- Second insight about queries."
+        result = _parse_summary_response(text)
+        assert result is not None
+        assert "First insight" in result
+        assert "Second insight" in result
+
+    def test_returns_none_if_all_bullets_truncated(self):
+        text = "- Cut off"
+        assert _parse_summary_response(text) is None
+
 
 # ── _build_single_payload ────────────────────────────────────────
 

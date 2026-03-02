@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Worst-query payload lookups now correctly resolve disambiguated keys (e.g. `"shoes [1]"`) back to raw query data, fixing silent data loss for duplicate queries.
 - AI Summary now renders `**bold**` markdown as proper `<strong>` tags in HTML reports instead of showing raw asterisks.
 - AI Summary card in single-config HTML reports now appears after the KPI cards instead of before them.
+- AI Summary no longer shows truncated mid-sentence bullets. If the LLM runs out of tokens, the incomplete final bullet is silently dropped.
+
+### Changed
+
+- AI Summary token limit increased from 512 to 1024 so the LLM can complete all 5 bullets without truncation.
+- AI Summary bullets beyond the first 3 are now collapsed behind a "Show more" toggle to keep the card compact.
 - 95% BCa bootstrap confidence intervals on all aggregate IR metrics (NDCG@5, NDCG@10, MRR, MAP, P@5, P@10, Attribute Match@5/10). Displayed in both terminal and HTML reports. Uses 10,000 resamples with a fixed seed for reproducibility; zero extra LLM calls.
 - Paired bootstrap significance test for A/B comparison mode. Statistically significant metric differences (p < 0.05) are marked with `*` in the metrics comparison table, with exact p-values available on hover in HTML reports.
 - HTML report UI redesign: shared CSS design system with design tokens, dark mode support (`prefers-color-scheme`), KPI hero cards with color-coded quality tiers (good/fair/poor/bad), sticky navigation bar with scrollspy, score badges, severity badges, modern light table headers replacing dark navy, and a print stylesheet. Applies to all report types (single, comparison, autocomplete, autocomplete comparison).
