@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 
 from veritail.reporting.styles import SHARED_CSS
+from veritail.reporting.summary import summary_bullets_to_html
 from veritail.types import (
     CheckResult,
     CorrectionJudgment,
@@ -286,6 +287,7 @@ def generate_single_report(
     run_metadata: Mapping[str, object] | None = None,
     correction_judgments: list[CorrectionJudgment] | None = None,
     sibling_report: str | None = None,
+    summary: str | None = None,
 ) -> str:
     """Generate a report for a single evaluation configuration.
 
@@ -297,6 +299,7 @@ def generate_single_report(
         correction_judgments: Optional list of correction judgments
         sibling_report: Optional relative path to a sibling report (e.g.
             autocomplete-report.html) to render as a cross-link banner.
+        summary: Optional LLM-generated summary (markdown bullet list).
 
     Returns:
         Formatted report string.
@@ -309,9 +312,10 @@ def generate_single_report(
             run_metadata,
             correction_judgments,
             sibling_report=sibling_report,
+            summary=summary,
         )
     return _generate_terminal(
-        metrics, checks, correction_judgments, judgments=judgments
+        metrics, checks, correction_judgments, judgments=judgments, summary=summary
     )
 
 
@@ -320,11 +324,26 @@ def _generate_terminal(
     checks: list[CheckResult],
     correction_judgments: list[CorrectionJudgment] | None = None,
     judgments: list[JudgmentRecord] | None = None,
+    summary: str | None = None,
 ) -> str:
     """Generate a rich-formatted terminal report."""
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+
     console = Console(file=StringIO(), width=100)
 
     console.print("\n[bold]Search Evaluation Report[/bold]\n")
+
+    if summary:
+        console.print(
+            Panel(
+                Markdown(summary),
+                title="[bold]AI Summary[/bold]",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
+        console.print()
 
     # Metrics table
     table = Table(title="IR Metrics", show_header=True)
@@ -490,6 +509,7 @@ def _generate_html(
     run_metadata: Mapping[str, object] | None = None,
     correction_judgments: list[CorrectionJudgment] | None = None,
     sibling_report: str | None = None,
+    summary: str | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -806,4 +826,5 @@ def _generate_html(
         sibling_report=sibling_report,
         shared_css=SHARED_CSS,
         kpi_cards=_build_kpi_cards(metrics),
+        summary=summary_bullets_to_html(summary) if summary else None,
     )

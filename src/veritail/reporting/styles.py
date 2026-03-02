@@ -529,6 +529,81 @@ details summary::-webkit-details-marker { display: none; }
 details summary::marker { display: none; content: ""; }
 details[open] > summary .check-arrow { transform: rotate(90deg); }
 
+/* ── Summary Card ────────────────────────────────────────────── */
+.summary-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5) var(--sp-6);
+  margin-bottom: var(--sp-6);
+  box-shadow: var(--shadow-md);
+  border-left: 4px solid var(--accent);
+}
+
+.summary-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.summary-content {
+  font-size: var(--text-base);
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.summary-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.summary-content li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: var(--sp-2);
+}
+
+.summary-content li::before {
+  content: "\\2022";
+  position: absolute;
+  left: 4px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.summary-content p {
+  margin-bottom: var(--sp-2);
+}
+
+.summary-more {
+  margin-top: var(--sp-1);
+}
+
+.summary-toggle {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  list-style: none;
+  padding: var(--sp-1) 0;
+}
+
+.summary-toggle::-webkit-details-marker { display: none; }
+
+.summary-toggle::before {
+  content: "\\25B8\\00a0";
+}
+
+details[open] > .summary-toggle::before {
+  content: "\\25BE\\00a0";
+}
+
 /* ── Banner Link ──────────────────────────────────────────────── */
 .banner-link {
   background: var(--accent-bg);
