@@ -134,6 +134,7 @@ def _run_search_pipeline(  # noqa: PLR0913
     use_batch: bool,
     use_resume: bool,
     search_sibling: str | None,
+    no_summary: bool = False,
     cancel_event: threading.Event | None = None,
 ) -> list[Path]:
     """Run the search evaluation pipeline. Returns list of HTML report paths."""
@@ -237,11 +238,28 @@ def _run_search_pipeline(  # noqa: PLR0913
             adapter_path=adapters[0],
         )
 
+        summary: str | None = None
+        if not no_summary:
+            try:
+                from veritail.reporting.summary import generate_summary
+
+                summary = generate_summary(
+                    llm_client,
+                    metrics,
+                    checks,
+                    judgments=judgments,
+                    correction_judgments=correction_judgments or None,
+                    run_metadata=run_metadata,
+                )
+            except Exception:
+                logger.warning("Failed to generate AI summary", exc_info=True)
+
         report = generate_single_report(
             metrics,
             checks,
             run_metadata=run_metadata,
             correction_judgments=correction_judgments or None,
+            summary=summary,
         )
         console.print(report)
 
@@ -276,6 +294,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             run_metadata=run_metadata,
             correction_judgments=correction_judgments or None,
             sibling_report=search_sibling,
+            summary=summary,
         )
         html_path = exp_dir / "report.html"
         html_path.write_text(html, encoding="utf-8")
@@ -338,6 +357,30 @@ def _run_search_pipeline(  # noqa: PLR0913
             adapter_path_b=adapters[1],
         )
 
+        cmp_summary: str | None = None
+        if not no_summary:
+            try:
+                from veritail.reporting.summary import generate_comparison_summary
+
+                cmp_summary = generate_comparison_summary(
+                    llm_client,
+                    metrics_a,
+                    metrics_b,
+                    checks_a=checks_a,
+                    checks_b=checks_b,
+                    judgments_a=judgments_a,
+                    judgments_b=judgments_b,
+                    comparison_checks=comparison_checks,
+                    config_a=config_names[0],
+                    config_b=config_names[1],
+                    corrections_a=corrections_a or None,
+                    corrections_b=corrections_b or None,
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to generate AI comparison summary", exc_info=True
+                )
+
         report = generate_comparison_report(
             metrics_a,
             metrics_b,
@@ -351,6 +394,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             judgments_b=judgments_b,
             checks_a=checks_a,
             checks_b=checks_b,
+            summary=cmp_summary,
         )
         console.print(report)
 
@@ -395,6 +439,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             judgments_b=judgments_b,
             checks_a=checks_a,
             checks_b=checks_b,
+            summary=cmp_summary,
         )
         cmp_dir = f"{config_names[0]}_vs_{config_names[1]}"
         html_path = Path(output_dir) / cmp_dir / "report.html"
@@ -1147,6 +1192,13 @@ def generate_queries_cmd(
     ),
 )
 @click.option(
+    "--no-summary",
+    "no_summary",
+    is_flag=True,
+    default=False,
+    help="Skip the LLM-generated AI summary in the report.",
+)
+@click.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -1173,6 +1225,7 @@ def run(
     sample: int | None,
     use_batch: bool,
     use_resume: bool,
+    no_summary: bool,
     verbose: bool,
 ) -> None:
     """Run evaluation (single or dual configuration)."""
@@ -1369,6 +1422,7 @@ def run(
             use_batch=use_batch,
             use_resume=use_resume,
             search_sibling=search_sibling,
+            no_summary=no_summary,
             cancel_event=cancel_event,
         )
 

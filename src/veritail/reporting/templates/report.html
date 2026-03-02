@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Evaluation Report</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80' fill='%23818CF8'>V</text></svg>">
     <style>{{ shared_css|safe }}</style>
 </head>
 <body>
@@ -12,6 +13,7 @@
 
     <nav class="report-nav" id="report-nav">
       <ul>
+        {% if summary %}<li><a href="#section-summary">Summary</a></li>{% endif %}
         <li><a href="#section-metrics">Metrics</a></li>
         {% if win_loss %}<li><a href="#section-win-loss">Win/Loss</a></li>{% endif %}
         {% if overlap_summary %}<li><a href="#section-overlap">Overlap</a></li>{% endif %}
@@ -30,6 +32,15 @@
     {% if sibling_report %}
     <div class="banner-link">
         This run also evaluated autocomplete. <a href="{{ sibling_report }}">View Autocomplete Report &rarr;</a>
+    </div>
+    {% endif %}
+
+    {% if summary %}
+    <div class="summary-card" id="section-summary">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <span class="summary-badge">AI Summary</span>
+        </div>
+        <div class="summary-content">{{ summary|safe }}</div>
     </div>
     {% endif %}
 
@@ -478,6 +489,7 @@
     <nav class="report-nav" id="report-nav">
       <ul>
         {% if kpi_cards %}<li><a href="#section-kpi">Overview</a></li>{% endif %}
+        {% if summary %}<li><a href="#section-summary">Summary</a></li>{% endif %}
         <li><a href="#section-metrics">Metrics</a></li>
         {% if position_chart %}<li><a href="#section-position">Position</a></li>{% endif %}
         {% if ndcg_histogram %}<li><a href="#section-ndcg-dist">NDCG Dist.</a></li>{% endif %}
@@ -505,6 +517,15 @@
         {% if card.ci %}<div class="kpi-card__ci">{{ card.ci }}</div>{% endif %}
       </div>
       {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if summary %}
+    <div class="summary-card" id="section-summary">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <span class="summary-badge">AI Summary</span>
+        </div>
+        <div class="summary-content">{{ summary|safe }}</div>
     </div>
     {% endif %}
 
@@ -880,8 +901,7 @@
             if (!container || !paginationEl) return;
 
             var items = container.querySelectorAll('.paginated-item');
-            if (items.length <= PER_PAGE) return;
-
+            var paginated = items.length > PER_PAGE;
             var totalPages = Math.ceil(items.length / PER_PAGE);
             var currentPage = 1;
 
@@ -904,8 +924,10 @@
                 if (!el) return;
                 for (var i = 0; i < items.length; i++) {
                     if (items[i] === el || items[i].contains(el)) {
-                        var page = Math.floor(i / PER_PAGE) + 1;
-                        showPage(page, true);
+                        if (paginated) {
+                            var page = Math.floor(i / PER_PAGE) + 1;
+                            showPage(page, true);
+                        }
                         el.setAttribute('open', '');
                         setTimeout(function() { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 50);
                         return;
@@ -939,13 +961,6 @@
                 paginationEl.innerHTML = html;
             }
 
-            paginationEl.addEventListener('click', function(e) {
-                var btn = e.target.closest('button');
-                if (btn && !btn.disabled && btn.dataset.page) {
-                    showPage(parseInt(btn.dataset.page, 10));
-                }
-            });
-
             document.addEventListener('click', function(e) {
                 var link = e.target.closest('a[data-judgment-anchor]');
                 if (link) {
@@ -954,14 +969,23 @@
                 }
             });
 
-            showPage(1);
-
             if (location.hash) {
                 var anchorId = location.hash.substring(1);
                 if (anchorId.indexOf('query-') === 0) {
                     revealAnchor(anchorId);
                 }
             }
+
+            if (!paginated) return;
+
+            paginationEl.addEventListener('click', function(e) {
+                var btn = e.target.closest('button');
+                if (btn && !btn.disabled && btn.dataset.page) {
+                    showPage(parseInt(btn.dataset.page, 10));
+                }
+            });
+
+            showPage(1);
         }
 
         paginate('judgment-list', 'judgment-pagination');

@@ -333,6 +333,7 @@ class TestCLI:
                     "test-model",
                     "--context",
                     str(context_file),
+                    "--no-summary",
                 ],
             )
 
@@ -819,6 +820,7 @@ class TestCLI:
                     "test-model",
                     "--sample",
                     "2",
+                    "--no-summary",
                 ],
             )
 
@@ -873,6 +875,7 @@ class TestCLI:
                     "test-model",
                     "--sample",
                     "10",
+                    "--no-summary",
                 ],
             )
 

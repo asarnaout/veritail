@@ -22,6 +22,7 @@ from veritail.reporting.single import (
     summarize_checks,
 )
 from veritail.reporting.styles import SHARED_CSS
+from veritail.reporting.summary import summary_bullets_to_html
 from veritail.types import CheckResult, CorrectionJudgment, JudgmentRecord, MetricResult
 
 _JINJA_ENV = Environment(
@@ -44,6 +45,7 @@ def generate_comparison_report(
     judgments_b: list[JudgmentRecord] | None = None,
     checks_a: list[CheckResult] | None = None,
     checks_b: list[CheckResult] | None = None,
+    summary: str | None = None,
 ) -> str:
     """Generate a comparison report for two evaluation configurations.
 
@@ -95,6 +97,7 @@ def generate_comparison_report(
             checks_b=checks_b,
             correction_judgments_a=correction_judgments_a,
             correction_judgments_b=correction_judgments_b,
+            summary=summary,
         )
     return _generate_terminal(
         metrics_a,
@@ -105,6 +108,7 @@ def generate_comparison_report(
         sig_results=sig_results,
         correction_judgments_a=correction_judgments_a,
         correction_judgments_b=correction_judgments_b,
+        summary=summary,
     )
 
 
@@ -117,13 +121,28 @@ def _generate_terminal(
     sig_results: dict[str, PairedBootstrapResult | None] | None = None,
     correction_judgments_a: list[CorrectionJudgment] | None = None,
     correction_judgments_b: list[CorrectionJudgment] | None = None,
+    summary: str | None = None,
 ) -> str:
     """Generate a rich-formatted terminal comparison report."""
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+
     console = Console(file=StringIO(), width=120)
 
     console.print(
         f"\n[bold]Search Evaluation Comparison: '{config_a}' vs '{config_b}'[/bold]\n"
     )
+
+    if summary:
+        console.print(
+            Panel(
+                Markdown(summary),
+                title="[bold]AI Summary[/bold]",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
+        console.print()
 
     # Side-by-side metrics
     table = Table(title="Metrics Comparison", show_header=True)
@@ -325,6 +344,7 @@ def _generate_html(
     checks_b: list[CheckResult] | None = None,
     correction_judgments_a: list[CorrectionJudgment] | None = None,
     correction_judgments_b: list[CorrectionJudgment] | None = None,
+    summary: str | None = None,
 ) -> str:
     """Generate an HTML comparison report."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -825,4 +845,5 @@ def _generate_html(
         winners=winners,
         losers=losers,
         shared_css=SHARED_CSS,
+        summary=summary_bullets_to_html(summary) if summary else None,
     )
