@@ -160,9 +160,9 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   line-height: 1.6;
   color: var(--text-primary);
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: var(--sp-6);
+  padding: var(--sp-8) var(--sp-6);
   background: var(--bg-page);
 }
 
@@ -191,45 +191,47 @@ h3 {
 /* ── Navigation ───────────────────────────────────────────────── */
 .report-nav {
   position: sticky;
-  top: 0;
+  top: var(--sp-3);
   z-index: 50;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-default);
-  margin: calc(-1 * var(--sp-6));
   margin-bottom: var(--sp-6);
-  padding: 0 var(--sp-6);
-  box-shadow: var(--shadow-sm);
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-default);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .report-nav ul {
   display: flex;
+  justify-content: center;
   list-style: none;
   gap: var(--sp-1);
-  padding: 0;
+  padding: var(--sp-1);
   margin: 0;
   white-space: nowrap;
 }
 
 .report-nav a {
   display: block;
-  padding: var(--sp-2) var(--sp-3);
+  padding: 5px var(--sp-3);
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  border-radius: var(--radius-md);
+  transition: color 0.15s, background 0.15s;
 }
 
 .report-nav a:hover {
   color: var(--text-primary);
+  background: var(--accent-bg);
 }
 
 .report-nav a.active {
   color: var(--accent);
-  border-bottom-color: var(--accent);
+  background: var(--accent-bg);
+  font-weight: 600;
 }
 
 /* ── KPI Cards ────────────────────────────────────────────────── */
@@ -288,7 +290,7 @@ h3 {
 /* ── Tables ───────────────────────────────────────────────────── */
 .table-wrap {
   border-radius: var(--radius-lg);
-  overflow: visible;
+  overflow-x: auto;
   box-shadow: var(--shadow-md);
   margin-bottom: var(--sp-6);
 }
@@ -323,6 +325,8 @@ td {
   border-bottom: 1px solid var(--border-subtle);
   font-size: var(--text-base);
   color: var(--text-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 tr:last-child td { border-bottom: none; }
@@ -367,7 +371,6 @@ tr:hover { background: var(--accent-bg); }
   font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--radius-sm);
-  white-space: nowrap;
   background: var(--severity-fail-bg);
   color: var(--severity-fail-text);
 }
@@ -377,7 +380,6 @@ tr:hover { background: var(--accent-bg); }
   font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--radius-sm);
-  white-space: nowrap;
   background: var(--severity-warn-bg);
   color: var(--severity-warn-text);
 }
@@ -387,7 +389,6 @@ tr:hover { background: var(--accent-bg); }
   font-weight: 600;
   padding: 2px 8px;
   border-radius: var(--radius-sm);
-  white-space: nowrap;
   background: var(--severity-info-bg);
   color: var(--severity-info-text);
 }

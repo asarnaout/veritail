@@ -194,14 +194,14 @@ def _build_check_failures(
     }
 
 
-_KPI_METRICS = ["ndcg@10", "mrr", "p@5", "p@10", "attribute_match@5"]
+_KPI_METRICS = ["ndcg@5", "ndcg@10", "mrr", "p@5", "attribute_match@5"]
 
 _KPI_THRESHOLDS: dict[str, tuple[float, float, float]] = {
     # (good, fair, poor) — below poor is bad
+    "ndcg@5": (0.7, 0.5, 0.3),
     "ndcg@10": (0.7, 0.5, 0.3),
     "mrr": (0.7, 0.5, 0.3),
     "p@5": (0.6, 0.4, 0.2),
-    "p@10": (0.6, 0.4, 0.2),
     "attribute_match@5": (0.7, 0.5, 0.3),
 }
 

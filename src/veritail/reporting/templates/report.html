@@ -805,20 +805,20 @@
           &nbsp;·&nbsp; {{ item.judgments|length }} results
         </span>
       </summary>
-      <table style="margin-top:6px; border-radius:0 0 8px 8px;">
+      <table style="margin-top:6px; border-radius:0 0 8px 8px; table-layout:fixed; width:100%;">
         <thead>
           <tr>
-            <th style="width:3%">#</th>
-            <th style="width:30%">Product</th>
-            <th style="width:8%">Score</th>
-            <th style="width:9%">Attributes</th>
+            <th style="width:40px;">#</th>
+            <th style="width:25%;">Product</th>
+            <th style="width:60px;">Score</th>
+            <th style="width:80px;">Attributes</th>
             <th>Reasoning</th>
           </tr>
         </thead>
         <tbody>
           {% for j in item.judgments %}
           <tr>
-            <td class="text-muted">{{ j.product.position + 1 }}</td>
+            <td class="text-muted" style="white-space:nowrap;">{{ j.product.position + 1 }}</td>
             <td>
               <strong>{{ j.product.title }}</strong><br>
               <span class="text-secondary text-xs">{{ j.product.product_id }}</span>
