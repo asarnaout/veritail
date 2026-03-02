@@ -297,7 +297,7 @@ class TestBuildSinglePayload:
             None,
         )
         # laptop has scores [0, 1] which has higher variance than others
-        assert "High-Variance" in payload
+        assert "Mixed-Relevance Queries" in payload
 
     def test_includes_position_decay(self):
         payload = _build_single_payload(
@@ -347,7 +347,7 @@ class TestBuildSinglePayload:
         )
         assert "Score Distribution" not in payload
         assert "Worst 5 Queries" not in payload
-        assert "High-Variance" not in payload
+        assert "Mixed-Relevance" not in payload
 
 
 # ── _build_comparison_payload ────────────────────────────────────

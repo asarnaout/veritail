@@ -140,7 +140,7 @@ def _build_single_payload(
         variance_items.sort(key=lambda x: -x[1])
         top_var = variance_items[:3]
         if top_var and top_var[0][1] > 0:
-            lines = ["## High-Variance Queries (most inconsistent scores)"]
+            lines = ["## Mixed-Relevance Queries (widest score spread)"]
             for q_var, var in top_var:
                 sorted_scores = sorted(query_score_lists[q_var])
                 lines.append(f'- "{q_var}": variance={var:.2f}, scores={sorted_scores}')
