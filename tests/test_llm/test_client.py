@@ -160,6 +160,140 @@ class TestOpenAIClient:
         client.preflight_check()
 
 
+class TestOpenAIClientTokenParam:
+    """Test auto-detection of max_tokens vs max_completion_tokens."""
+
+    @patch("openai.OpenAI")
+    def test_defaults_to_max_tokens(self, mock_openai_cls):
+        """Old models (gpt-4o) should use max_tokens as before."""
+        mock_choice = MagicMock()
+        mock_choice.message.content = "ok"
+        mock_usage = MagicMock(prompt_tokens=10, completion_tokens=5)
+        mock_response = MagicMock(choices=[mock_choice], usage=mock_usage)
+        mock_client = mock_openai_cls.return_value
+        mock_client.chat.completions.create.return_value = mock_response
+
+        client = OpenAIClient(model="gpt-4o")
+        client.complete("sys", "usr", max_tokens=512)
+
+        call_kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert "max_tokens" in call_kwargs
+        assert call_kwargs["max_tokens"] == 512
+        assert "max_completion_tokens" not in call_kwargs
+
+    @patch("openai.OpenAI")
+    def test_retries_with_max_completion_tokens_on_rejection(self, mock_openai_cls):
+        """When the API rejects max_tokens, auto-switch and retry."""
+        import openai
+
+        mock_choice = MagicMock()
+        mock_choice.message.content = "ok"
+        mock_usage = MagicMock(prompt_tokens=10, completion_tokens=5)
+        mock_response = MagicMock(choices=[mock_choice], usage=mock_usage)
+
+        mock_client = mock_openai_cls.return_value
+        mock_client.chat.completions.create.side_effect = [
+            openai.BadRequestError(
+                message=(
+                    "Unsupported parameter: 'max_tokens' is not supported "
+                    "with this model. Use 'max_completion_tokens' instead."
+                ),
+                response=MagicMock(status_code=400),
+                body=None,
+            ),
+            mock_response,
+        ]
+
+        client = OpenAIClient(model="gpt-5")
+        result = client.complete("sys", "usr", max_tokens=1024)
+
+        assert result.content == "ok"
+        assert mock_client.chat.completions.create.call_count == 2
+        # Second call should use max_completion_tokens
+        retry_kwargs = mock_client.chat.completions.create.call_args_list[1].kwargs
+        assert "max_completion_tokens" in retry_kwargs
+        assert retry_kwargs["max_completion_tokens"] == 1024
+        assert "max_tokens" not in retry_kwargs
+
+    @patch("openai.OpenAI")
+    def test_flag_cached_after_detection(self, mock_openai_cls):
+        """After auto-detecting, subsequent calls use the right param directly."""
+        import openai
+
+        mock_choice = MagicMock()
+        mock_choice.message.content = "ok"
+        mock_usage = MagicMock(prompt_tokens=10, completion_tokens=5)
+        mock_response = MagicMock(choices=[mock_choice], usage=mock_usage)
+
+        mock_client = mock_openai_cls.return_value
+        # First call: reject max_tokens, succeed on retry
+        mock_client.chat.completions.create.side_effect = [
+            openai.BadRequestError(
+                message="Use 'max_completion_tokens' instead.",
+                response=MagicMock(status_code=400),
+                body=None,
+            ),
+            mock_response,
+            mock_response,
+        ]
+
+        client = OpenAIClient(model="gpt-5")
+        client.complete("sys", "usr")
+        client.complete("sys", "usr")
+
+        # 3 total calls: failed + retry + second direct call
+        assert mock_client.chat.completions.create.call_count == 3
+        # Third call should directly use max_completion_tokens (no retry)
+        third_kwargs = mock_client.chat.completions.create.call_args_list[2].kwargs
+        assert "max_completion_tokens" in third_kwargs
+        assert "max_tokens" not in third_kwargs
+
+    @patch("openai.OpenAI")
+    def test_unrelated_bad_request_not_caught(self, mock_openai_cls):
+        """BadRequestError for other reasons should propagate normally."""
+        import openai
+
+        mock_client = mock_openai_cls.return_value
+        mock_client.chat.completions.create.side_effect = openai.BadRequestError(
+            message="Invalid model",
+            response=MagicMock(status_code=400),
+            body=None,
+        )
+
+        client = OpenAIClient(model="gpt-4o")
+        with pytest.raises(openai.BadRequestError, match="Invalid model"):
+            client.complete("sys", "usr")
+
+    @patch("openai.OpenAI")
+    def test_batch_uses_detected_param(self, mock_openai_cls):
+        """Batch submission should respect the detected token-limit key."""
+        import json
+
+        mock_client = mock_openai_cls.return_value
+        mock_uploaded = MagicMock()
+        mock_uploaded.id = "file-123"
+        mock_client.files.create.return_value = mock_uploaded
+        mock_batch = MagicMock()
+        mock_batch.id = "batch-123"
+        mock_client.batches.create.return_value = mock_batch
+
+        client = OpenAIClient(model="gpt-5")
+        # Simulate having already detected the parameter
+        client._use_max_completion_tokens = True
+
+        from veritail.llm.client import BatchRequest
+
+        client.submit_batch(
+            [BatchRequest(custom_id="r1", system_prompt="s", user_prompt="u")]
+        )
+
+        # Inspect the JSONL written to files.create
+        file_arg = mock_client.files.create.call_args.kwargs["file"]
+        line = json.loads(file_arg.read().decode())
+        assert "max_completion_tokens" in line["body"]
+        assert "max_tokens" not in line["body"]
+
+
 class TestOpenAIClientBaseUrl:
     @patch("openai.OpenAI")
     def test_base_url_passed_to_sdk(self, mock_openai_cls):

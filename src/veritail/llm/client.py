@@ -245,18 +245,56 @@ class OpenAIClient(LLMClient):
         self._client = openai.OpenAI(base_url=base_url, api_key=api_key)
         self._model = model
         self._base_url = base_url
+        # Auto-detect whether the model requires max_completion_tokens
+        # (e.g. o1, o3, gpt-5) vs the older max_tokens parameter.
+        # None = not yet determined; set on first API call.
+        self._use_max_completion_tokens: bool | None = None
+
+    def _token_limit_key(self) -> str:
+        """Return the appropriate token-limit parameter name for this model."""
+        if self._use_max_completion_tokens is True:
+            return "max_completion_tokens"
+        return "max_tokens"
 
     def complete(
         self, system_prompt: str, user_prompt: str, *, max_tokens: int = 1024
     ) -> LLMResponse:
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=[
+        import openai
+
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=max_tokens,
-        )
+            self._token_limit_key(): max_tokens,
+        }
+
+        try:
+            response = self._client.chat.completions.create(**kwargs)
+        except openai.BadRequestError as exc:
+            # Newer models (o1, o3, gpt-5, …) reject max_tokens and require
+            # max_completion_tokens.  Detect this on the first call, flip the
+            # flag, and transparently retry.
+            if (
+                self._use_max_completion_tokens is None
+                and "max_completion_tokens" in str(exc)
+            ):
+                self._use_max_completion_tokens = True
+                logger.debug(
+                    "model %s requires max_completion_tokens; retrying",
+                    self._model,
+                )
+                kwargs.pop("max_tokens", None)
+                kwargs["max_completion_tokens"] = max_tokens
+                response = self._client.chat.completions.create(**kwargs)
+            else:
+                raise
+
+        # First successful call — lock in whichever parameter worked.
+        if self._use_max_completion_tokens is None:
+            self._use_max_completion_tokens = False
+
         choice = response.choices[0]
         usage = response.usage
         resp = LLMResponse(
@@ -304,6 +342,7 @@ class OpenAIClient(LLMClient):
         import io
         import json
 
+        token_key = self._token_limit_key()
         lines = []
         for req in requests:
             line = json.dumps(
@@ -317,7 +356,7 @@ class OpenAIClient(LLMClient):
                             {"role": "system", "content": req.system_prompt},
                             {"role": "user", "content": req.user_prompt},
                         ],
-                        "max_tokens": req.max_tokens,
+                        token_key: req.max_tokens,
                     },
                 }
             )
