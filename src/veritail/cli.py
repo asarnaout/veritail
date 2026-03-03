@@ -240,19 +240,20 @@ def _run_search_pipeline(  # noqa: PLR0913
 
         summary: str | None = None
         if not no_summary:
-            try:
-                from veritail.reporting.summary import generate_summary
+            with console.status("Generating AI summary…"):
+                try:
+                    from veritail.reporting.summary import generate_summary
 
-                summary = generate_summary(
-                    llm_client,
-                    metrics,
-                    checks,
-                    judgments=judgments,
-                    correction_judgments=correction_judgments or None,
-                    run_metadata=run_metadata,
-                )
-            except Exception:
-                logger.warning("Failed to generate AI summary", exc_info=True)
+                    summary = generate_summary(
+                        llm_client,
+                        metrics,
+                        checks,
+                        judgments=judgments,
+                        correction_judgments=correction_judgments or None,
+                        run_metadata=run_metadata,
+                    )
+                except Exception:
+                    logger.warning("Failed to generate AI summary", exc_info=True)
 
         report = generate_single_report(
             metrics,
@@ -361,27 +362,30 @@ def _run_search_pipeline(  # noqa: PLR0913
 
         cmp_summary: str | None = None
         if not no_summary:
-            try:
-                from veritail.reporting.summary import generate_comparison_summary
+            with console.status("Generating AI summary…"):
+                try:
+                    from veritail.reporting.summary import (
+                        generate_comparison_summary,
+                    )
 
-                cmp_summary = generate_comparison_summary(
-                    llm_client,
-                    metrics_a,
-                    metrics_b,
-                    checks_a=checks_a,
-                    checks_b=checks_b,
-                    judgments_a=judgments_a,
-                    judgments_b=judgments_b,
-                    comparison_checks=comparison_checks,
-                    config_a=config_names[0],
-                    config_b=config_names[1],
-                    corrections_a=corrections_a or None,
-                    corrections_b=corrections_b or None,
-                )
-            except Exception:
-                logger.warning(
-                    "Failed to generate AI comparison summary", exc_info=True
-                )
+                    cmp_summary = generate_comparison_summary(
+                        llm_client,
+                        metrics_a,
+                        metrics_b,
+                        checks_a=checks_a,
+                        checks_b=checks_b,
+                        judgments_a=judgments_a,
+                        judgments_b=judgments_b,
+                        comparison_checks=comparison_checks,
+                        config_a=config_names[0],
+                        config_b=config_names[1],
+                        corrections_a=corrections_a or None,
+                        corrections_b=corrections_b or None,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to generate AI comparison summary", exc_info=True
+                    )
 
         report = generate_comparison_report(
             metrics_a,

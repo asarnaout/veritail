@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The CLI now shows a spinner ("Generating AI summary…") while the post-evaluation summary LLM call is in progress, instead of appearing to hang silently.
+
 ### Fixed
 
 - Transient LLM failures (network errors, unparseable responses) are now retried once automatically. This applies to query classification, relevance judging, correction judging, suggestion judging, query generation, and AI summary generation. Batch mode is unaffected.
