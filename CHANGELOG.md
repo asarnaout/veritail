@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-03-02
+
 ### Changed
 
 - The CLI now shows a spinner ("Generating AI summary…") while the post-evaluation summary LLM call is in progress, instead of appearing to hang silently.
@@ -205,7 +207,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preflight check validates LLM credentials before running
 - `veritail init` and the first `veritail run` (file backend) print a tip reminding users to add the output directory to `.gitignore`
 
-[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/asarnaout/veritail/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/asarnaout/veritail/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/asarnaout/veritail/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/asarnaout/veritail/compare/v0.2.2...v0.3.0
