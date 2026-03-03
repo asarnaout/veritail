@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import re
 
-from veritail.reporting.single import generate_single_report
+from veritail.reporting.single import _raw_query, generate_single_report
 from veritail.types import (
     CheckResult,
     CorrectionJudgment,
     JudgmentRecord,
     MetricResult,
+    QueryEntry,
     SearchResult,
 )
 
@@ -969,3 +970,104 @@ class TestGenerateSingleReport:
         assert "--bg-page" in report
         assert "--text-primary" in report
         assert "prefers-color-scheme: dark" in report
+
+    def test_html_worst_queries_zero_result_gets_anchor(self):
+        """Zero-result queries get anchor, query type, and zero-results text."""
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.45,
+                per_query={"shoes": 0.9, "nonexistent gadget": 0.0},
+                by_query_type={"broad": 0.45},
+            ),
+        ]
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=3,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+                query_type="broad",
+            ),
+        ]
+        queries = [
+            QueryEntry(query="shoes", type="broad"),
+            QueryEntry(query="nonexistent gadget", type="long_tail"),
+        ]
+        report = generate_single_report(
+            metrics,
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+            queries=queries,
+        )
+        # Zero-result query should have an anchor link
+        assert 'href="#query-' in report
+        assert "nonexistent gadget" in report
+        # Query type should be resolved from queries list
+        assert "Long-Tail" in report
+        # Zero-result message should appear in the judgment details
+        assert "zero results" in report.lower()
+
+    def test_html_worst_queries_disambiguated_key_matches_anchor(self):
+        """Disambiguated keys like 'shoes [1]' resolve to anchor."""
+        metrics = [
+            MetricResult(
+                metric_name="ndcg@10",
+                value=0.45,
+                per_query={"shoes [1]": 0.9, "shoes [2]": 0.0},
+            ),
+        ]
+        judgments = [
+            JudgmentRecord(
+                query="shoes",
+                product=SearchResult(
+                    product_id="SKU-1",
+                    title="Shoe",
+                    description="A shoe",
+                    category="Shoes",
+                    price=10.0,
+                    position=0,
+                ),
+                score=2,
+                reasoning="ok",
+                attribute_verdict="n/a",
+                model="test",
+                experiment="exp",
+            ),
+        ]
+        report = generate_single_report(
+            metrics,
+            _make_checks(),
+            format="html",
+            judgments=judgments,
+        )
+        # Both disambiguated keys should resolve to the "shoes" anchor
+        assert 'href="#query-' in report
+
+
+class TestRawQueryHelper:
+    def test_plain_text_unchanged(self):
+        assert _raw_query("shoes") == "shoes"
+
+    def test_strips_single_digit_suffix(self):
+        assert _raw_query("shoes [1]") == "shoes"
+
+    def test_strips_multi_digit_suffix(self):
+        assert _raw_query("shoes [42]") == "shoes"
+
+    def test_brackets_in_middle_unchanged(self):
+        assert _raw_query("shoes [red] leather") == "shoes [red] leather"
+
+    def test_empty_string(self):
+        assert _raw_query("") == ""

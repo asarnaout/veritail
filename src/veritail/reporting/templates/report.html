@@ -826,6 +826,11 @@
           &nbsp;·&nbsp; {{ item.judgments|length }} results
         </span>
       </summary>
+      {% if not item.judgments %}
+      <div style="padding:16px; color:var(--text-secondary); font-style:italic;">
+        This query returned zero results from the search engine.
+      </div>
+      {% else %}
       <table style="margin-top:6px; border-radius:0 0 8px 8px; table-layout:fixed; width:100%;">
         <thead>
           <tr>
@@ -871,6 +876,7 @@
           {% endfor %}
         </tbody>
       </table>
+      {% endif %}
     </details>
     {% endfor %}
     </div>

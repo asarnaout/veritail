@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import statistics
 from collections.abc import Mapping
 from io import StringIO
@@ -18,7 +19,16 @@ from veritail.types import (
     CorrectionJudgment,
     JudgmentRecord,
     MetricResult,
+    QueryEntry,
 )
+
+_DISAMBIG_SUFFIX_RE = re.compile(r" \[\d+\]$")
+
+
+def _raw_query(q: str) -> str:
+    """Strip disambiguation suffix, e.g. 'shoes [1]' → 'shoes'."""
+    return _DISAMBIG_SUFFIX_RE.sub("", q)
+
 
 _JINJA_ENV = Environment(
     autoescape=select_autoescape(("html", "xml"), default_for_string=True),
@@ -288,6 +298,7 @@ def generate_single_report(
     correction_judgments: list[CorrectionJudgment] | None = None,
     sibling_report: str | None = None,
     summary: str | None = None,
+    queries: list[QueryEntry] | None = None,
 ) -> str:
     """Generate a report for a single evaluation configuration.
 
@@ -300,6 +311,8 @@ def generate_single_report(
         sibling_report: Optional relative path to a sibling report (e.g.
             autocomplete-report.html) to render as a cross-link banner.
         summary: Optional LLM-generated summary (markdown bullet list).
+        queries: Optional list of QueryEntry objects (used to resolve query
+            types for zero-result queries that have no JudgmentRecords).
 
     Returns:
         Formatted report string.
@@ -313,6 +326,7 @@ def generate_single_report(
             correction_judgments,
             sibling_report=sibling_report,
             summary=summary,
+            queries=queries,
         )
     return _generate_terminal(
         metrics, checks, correction_judgments, judgments=judgments, summary=summary
@@ -510,6 +524,7 @@ def _generate_html(
     correction_judgments: list[CorrectionJudgment] | None = None,
     sibling_report: str | None = None,
     summary: str | None = None,
+    queries: list[QueryEntry] | None = None,
 ) -> str:
     """Generate an HTML report using Jinja2."""
     tmpl_dir = Path(__file__).parent / "templates"
@@ -590,7 +605,11 @@ def _generate_html(
     # Enriched worst queries (needs judgments_for_template for anchors)
     if ndcg and ndcg.per_query:
         query_type_lookup: dict[str, str] = {}
-        if judgments:
+        if queries:
+            for qe in queries:
+                if qe.type and qe.query not in query_type_lookup:
+                    query_type_lookup[qe.query] = qe.type
+        elif judgments:
             for j in judgments:
                 if j.query not in query_type_lookup and j.query_type:
                     query_type_lookup[j.query] = j.query_type
@@ -602,6 +621,29 @@ def _generate_html(
                     per_query_failed_checks.get(c.query, 0) + 1
                 )
 
+        # Add zero-result entries for queries present in per_query metrics
+        # but missing from judgments (they had no search results).
+        judged_queries = {str(item["query"]) for item in judgments_for_template}
+        zero_result_entries: list[dict[str, object]] = []
+        seen_zero: set[str] = set()
+        for q_key in ndcg.per_query:
+            q_raw = _raw_query(q_key)
+            if q_raw not in judged_queries and q_raw not in seen_zero:
+                zero_result_entries.append(
+                    {
+                        "query": q_raw,
+                        "avg_score": 0.0,
+                        "judgments": [],
+                        "correction": correction_lookup.get(q_raw),
+                    }
+                )
+                seen_zero.add(q_raw)
+        if zero_result_entries:
+            judgments_for_template = sorted(
+                judgments_for_template + zero_result_entries,
+                key=lambda x: float(x["avg_score"]),  # type: ignore[arg-type]
+            )
+
         query_anchor_map: dict[str, str] = {}
         for idx, item in enumerate(judgments_for_template):
             query_anchor_map[str(item["query"])] = f"query-{idx}"
@@ -612,10 +654,11 @@ def _generate_html(
                 "query": q,
                 "ndcg": v,
                 "query_type": QUERY_TYPE_DISPLAY_NAMES.get(
-                    query_type_lookup.get(q, ""), query_type_lookup.get(q, "")
+                    query_type_lookup.get(_raw_query(q), ""),
+                    query_type_lookup.get(_raw_query(q), ""),
                 ),
-                "failed_checks": per_query_failed_checks.get(q, 0),
-                "anchor_id": query_anchor_map.get(q, ""),
+                "failed_checks": per_query_failed_checks.get(_raw_query(q), 0),
+                "anchor_id": query_anchor_map.get(_raw_query(q), ""),
             }
             for q, v in sorted_ndcg
         ]

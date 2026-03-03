@@ -260,6 +260,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             run_metadata=run_metadata,
             correction_judgments=correction_judgments or None,
             summary=summary,
+            queries=query_entries,
         )
         console.print(report)
 
@@ -295,6 +296,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             correction_judgments=correction_judgments or None,
             sibling_report=search_sibling,
             summary=summary,
+            queries=query_entries,
         )
         html_path = exp_dir / "report.html"
         html_path.write_text(html, encoding="utf-8")
