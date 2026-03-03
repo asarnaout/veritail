@@ -65,6 +65,7 @@ def _build_user_prompt(
     vertical_name: str | None,
     vertical_text: str | None,
     context: str | None,
+    category_names: list[str] | None = None,
 ) -> str:
     """Build the user prompt specifying exact counts and context."""
     parts: list[str] = []
@@ -76,6 +77,14 @@ def _build_user_prompt(
     if vertical_text:
         label = f" ({vertical_name})" if vertical_name else ""
         parts.append(f"\n## Vertical context{label}\n\n{vertical_text}")
+
+    if category_names:
+        formatted = [name.replace("_", " ") for name in category_names]
+        parts.append(
+            "\n## Product categories\n\n"
+            "Spread queries across these product categories — do not cluster "
+            "multiple queries in the same area:\n" + ", ".join(formatted)
+        )
 
     if context:
         parts.append(f"\n## Business context\n\n{context}")
@@ -240,11 +249,15 @@ def generate_queries(
 
     vertical_name: str | None = None
     vertical_text: str | None = None
+    category_names: list[str] | None = None
     if vertical:
         from veritail.verticals import load_vertical
 
+        vert = load_vertical(vertical)
         vertical_name = vertical
-        vertical_text = load_vertical(vertical).core
+        vertical_text = vert.core
+        if vert.overlays:
+            category_names = list(vert.overlays.keys())
 
     # Read context from file if it looks like a file path
     if context and Path(context).is_file():
@@ -258,6 +271,7 @@ def generate_queries(
         vertical_name=vertical_name,
         vertical_text=vertical_text,
         context=context,
+        category_names=category_names,
     )
 
     last_exc: Exception | None = None

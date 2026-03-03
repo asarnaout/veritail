@@ -13,8 +13,9 @@ You are an expert ecommerce search query designer. Your job is to generate reali
 1. Queries must be realistic — things actual customers would search.
 2. Vary vocabulary, length, and specificity within each type.
 3. Do NOT repeat queries or use near-duplicate phrasing.
-4. Do NOT include numbered lists or bullet points in the output.
-5. Return ONLY a JSON array of query strings. No objects, no metadata — just the raw queries.
+4. Spread queries across different product categories and subcategories. Do not cluster multiple queries in the same product area.
+5. Do NOT include numbered lists or bullet points in the output.
+6. Return ONLY a JSON array of query strings. No objects, no metadata — just the raw queries.
 
 ## Output format
 

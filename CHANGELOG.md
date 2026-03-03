@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The CLI now shows a spinner ("Generating AI summary…") while the post-evaluation summary LLM call is in progress, instead of appearing to hang silently.
+- `generate-queries` now produces better category diversity when used with a built-in vertical. Overlay category names are injected into the prompt as diversity hints, and an anti-clustering rule tells the LLM to spread queries across different product areas rather than clustering in a single category. Verticals without overlays and `--context`-only invocations are unaffected.
 
 ### Fixed
 

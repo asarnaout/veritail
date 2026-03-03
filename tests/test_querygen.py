@@ -12,6 +12,7 @@ from veritail.llm.client import LLMClient, LLMResponse
 from veritail.querygen import (
     MAX_QUERY_COUNT,
     QUERY_TYPES,
+    _build_user_prompt,
     _compute_distribution,
     _deduplicate,
     _parse_response,
@@ -496,6 +497,99 @@ class TestGenerateQueries:
 
         assert result == ["shoes", "boots"]
         assert out.exists()
+
+
+# ---------------------------------------------------------------------------
+# TestCategoryDiversityHints
+# ---------------------------------------------------------------------------
+
+
+class TestCategoryDiversityHints:
+    def _make_mock_client(self, response_queries: list[str]) -> Mock:
+        mock = Mock(spec=LLMClient)
+        mock.complete.return_value = LLMResponse(
+            content=json.dumps(response_queries),
+            model="test-model",
+            input_tokens=500,
+            output_tokens=200,
+        )
+        return mock
+
+    def test_category_names_appear_in_user_prompt(self):
+        distribution = _compute_distribution(10)
+        prompt = _build_user_prompt(
+            distribution=distribution,
+            vertical_name="electronics",
+            vertical_text="Consumer electronics store.",
+            context=None,
+            category_names=["gaming_desktop_pcs", "headphones_and_earbuds", "monitors"],
+        )
+        assert "gaming desktop pcs" in prompt
+        assert "headphones and earbuds" in prompt
+        assert "monitors" in prompt
+        assert "Product categories" in prompt
+
+    def test_underscores_replaced_with_spaces(self):
+        prompt = _build_user_prompt(
+            distribution={"broad": 5},
+            vertical_name=None,
+            vertical_text=None,
+            context="test",
+            category_names=["printer_ink_and_toner"],
+        )
+        assert "printer ink and toner" in prompt
+        assert "printer_ink_and_toner" not in prompt
+
+    def test_no_category_section_without_names(self):
+        prompt = _build_user_prompt(
+            distribution={"broad": 5},
+            vertical_name=None,
+            vertical_text=None,
+            context="B2B widgets",
+        )
+        assert "Product categories" not in prompt
+
+    def test_no_category_section_with_empty_list(self):
+        prompt = _build_user_prompt(
+            distribution={"broad": 5},
+            vertical_name=None,
+            vertical_text=None,
+            context="B2B widgets",
+            category_names=[],
+        )
+        assert "Product categories" not in prompt
+
+    def test_vertical_with_overlays_injects_categories(self, tmp_path):
+        client = self._make_mock_client(["laptop", "earbuds"])
+        out = tmp_path / "queries.csv"
+
+        generate_queries(
+            llm_client=client,
+            output_path=out,
+            count=10,
+            vertical="electronics",
+        )
+
+        user_prompt = client.complete.call_args.args[1]
+        assert "Product categories" in user_prompt
+        # Electronics has 30+ overlays — spot-check a few
+        assert "gaming desktop pcs" in user_prompt
+        assert "monitors" in user_prompt
+        assert "headphones and earbuds" in user_prompt
+
+    def test_context_only_has_no_category_section(self, tmp_path):
+        client = self._make_mock_client(["widgets"])
+        out = tmp_path / "queries.csv"
+
+        generate_queries(
+            llm_client=client,
+            output_path=out,
+            count=5,
+            context="We sell industrial widgets.",
+        )
+
+        user_prompt = client.complete.call_args.args[1]
+        assert "Product categories" not in user_prompt
 
 
 # ---------------------------------------------------------------------------
