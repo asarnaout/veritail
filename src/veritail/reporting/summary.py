@@ -606,19 +606,33 @@ def generate_summary(
         return None
 
     system_prompt = load_prompt("reporting/summary.md")
-    try:
-        response = client.complete(
-            system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS
+    for _attempt in range(2):
+        try:
+            response = client.complete(
+                system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS
+            )
+        except Exception:
+            if _attempt == 0:
+                logger.debug("summary LLM call failed, retrying")
+                continue
+            logger.warning("summary LLM call failed", exc_info=True)
+            return None
+        logger.debug(
+            "summary llm call: tokens=%d+%d",
+            response.input_tokens,
+            response.output_tokens,
         )
-    except Exception:
-        logger.warning("summary LLM call failed", exc_info=True)
+        result = _parse_summary_response(response.content)
+        if result is not None:
+            return result
+        # Don't retry if the LLM explicitly said "no insights"
+        if _NO_INSIGHTS_SENTINEL in (response.content or ""):
+            return None
+        if _attempt == 0:
+            logger.debug("summary parse returned empty, retrying")
+            continue
         return None
-    logger.debug(
-        "summary llm call: tokens=%d+%d",
-        response.input_tokens,
-        response.output_tokens,
-    )
-    return _parse_summary_response(response.content)
+    return None  # unreachable, satisfies mypy
 
 
 def generate_comparison_summary(
@@ -657,16 +671,29 @@ def generate_comparison_summary(
         return None
 
     system_prompt = load_prompt("reporting/comparison_summary.md")
-    try:
-        response = client.complete(
-            system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS
+    for _attempt in range(2):
+        try:
+            response = client.complete(
+                system_prompt, payload, max_tokens=_SUMMARY_MAX_TOKENS
+            )
+        except Exception:
+            if _attempt == 0:
+                logger.debug("comparison summary LLM call failed, retrying")
+                continue
+            logger.warning("comparison summary LLM call failed", exc_info=True)
+            return None
+        logger.debug(
+            "comparison summary llm call: tokens=%d+%d",
+            response.input_tokens,
+            response.output_tokens,
         )
-    except Exception:
-        logger.warning("comparison summary LLM call failed", exc_info=True)
+        result = _parse_summary_response(response.content)
+        if result is not None:
+            return result
+        if _NO_INSIGHTS_SENTINEL in (response.content or ""):
+            return None
+        if _attempt == 0:
+            logger.debug("comparison summary parse returned empty, retrying")
+            continue
         return None
-    logger.debug(
-        "comparison summary llm call: tokens=%d+%d",
-        response.input_tokens,
-        response.output_tokens,
-    )
-    return _parse_summary_response(response.content)
+    return None  # unreachable, satisfies mypy

@@ -34,33 +34,44 @@ class SuggestionJudge:
     ) -> SuggestionJudgment:
         """Judge the quality of suggestions for a single prefix."""
         user_prompt = self._format_user_prompt(prefix, suggestions)
-        response = self._client.complete(self._system_prompt, user_prompt)
 
-        relevance, diversity, flagged, reasoning = self._parse_response(
-            response.content
-        )
-        logger.debug(
-            "suggestion judge: prefix=%r, relevance=%d, diversity=%d, flagged=%d",
-            prefix,
-            relevance,
-            diversity,
-            len(flagged),
-        )
-
-        return SuggestionJudgment(
-            prefix=prefix,
-            suggestions=suggestions,
-            relevance_score=relevance,
-            diversity_score=diversity,
-            flagged_suggestions=flagged,
-            reasoning=reasoning,
-            model=response.model,
-            experiment=self._experiment,
-            metadata={
-                "input_tokens": response.input_tokens,
-                "output_tokens": response.output_tokens,
-            },
-        )
+        last_exc: Exception | None = None
+        for _attempt in range(2):
+            try:
+                response = self._client.complete(self._system_prompt, user_prompt)
+                relevance, diversity, flagged, reasoning = self._parse_response(
+                    response.content
+                )
+            except Exception as exc:
+                last_exc = exc
+                if _attempt == 0:
+                    logger.debug(
+                        "suggestion judge failed for %r, retrying: %s", prefix, exc
+                    )
+                    continue
+                raise
+            logger.debug(
+                "suggestion judge: prefix=%r, relevance=%d, diversity=%d, flagged=%d",
+                prefix,
+                relevance,
+                diversity,
+                len(flagged),
+            )
+            return SuggestionJudgment(
+                prefix=prefix,
+                suggestions=suggestions,
+                relevance_score=relevance,
+                diversity_score=diversity,
+                flagged_suggestions=flagged,
+                reasoning=reasoning,
+                model=response.model,
+                experiment=self._experiment,
+                metadata={
+                    "input_tokens": response.input_tokens,
+                    "output_tokens": response.output_tokens,
+                },
+            )
+        raise last_exc  # type: ignore[misc]  # unreachable, satisfies mypy
 
     def prepare_request(
         self,

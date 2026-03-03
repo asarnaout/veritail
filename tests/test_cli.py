@@ -826,8 +826,9 @@ class TestCLI:
 
         assert result.exit_code == 0
         assert "Sampled 2 of 5 queries" in result.output
-        # 2 classifier pre-pass calls + 2 relevance judgment calls = 4
-        assert mock_client.complete.call_count == 4
+        # 2 classifier pre-pass calls (×2 attempts each, mock lacks QUERY_TYPE)
+        # + 2 relevance judgment calls = 6
+        assert mock_client.complete.call_count == 6
 
     def test_run_sample_gte_total_uses_all(self, tmp_path):
         queries_file = tmp_path / "queries.csv"
@@ -882,8 +883,9 @@ class TestCLI:
         assert result.exit_code == 0
         # --sample 10 >= 2 total queries, so all are used
         assert "Loaded 2 queries" in result.output
-        # 2 classifier pre-pass calls + 2 relevance judgment calls = 4
-        assert mock_client.complete.call_count == 4
+        # 2 classifier pre-pass calls (×2 attempts each, mock lacks QUERY_TYPE)
+        # + 2 relevance judgment calls = 6
+        assert mock_client.complete.call_count == 6
 
     def test_run_sample_is_deterministic(self, tmp_path):
         """Same --sample N with same query file should pick the same queries."""

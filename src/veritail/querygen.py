@@ -260,11 +260,23 @@ def generate_queries(
         context=context,
     )
 
-    response = llm_client.complete(
-        SYSTEM_PROMPT, user_prompt, max_tokens=_GENERATION_MAX_TOKENS
-    )
+    last_exc: Exception | None = None
+    for _attempt in range(2):
+        try:
+            response = llm_client.complete(
+                SYSTEM_PROMPT, user_prompt, max_tokens=_GENERATION_MAX_TOKENS
+            )
+            queries = _parse_response(response.content)
+        except Exception as exc:
+            last_exc = exc
+            if _attempt == 0:
+                logger.debug("generate_queries failed, retrying: %s", exc)
+                continue
+            raise
+        break
+    else:
+        raise last_exc  # type: ignore[misc]  # unreachable
 
-    queries = _parse_response(response.content)
     logger.debug("llm returned %d queries", len(queries))
 
     if len(queries) != count:

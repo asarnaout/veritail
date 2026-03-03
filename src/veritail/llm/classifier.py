@@ -66,14 +66,24 @@ def classify_query_type(
     system_prompt = build_classification_system_prompt(context, vertical)
     user_prompt = f"Query: {query}"
 
-    try:
-        response = llm_client.complete(
-            system_prompt, user_prompt, max_tokens=CLASSIFICATION_MAX_TOKENS
-        )
-    except Exception:
+    for _attempt in range(2):
+        try:
+            response = llm_client.complete(
+                system_prompt, user_prompt, max_tokens=CLASSIFICATION_MAX_TOKENS
+            )
+        except Exception:
+            if _attempt == 0:
+                logger.debug("classify_query_type failed for %r, retrying", query)
+                continue
+            return None
+        result = parse_classification_response(response.content)
+        if result is not None:
+            return result
+        if _attempt == 0:
+            logger.debug("classify_query_type parse failed for %r, retrying", query)
+            continue
         return None
-
-    return parse_classification_response(response.content)
+    return None  # unreachable, satisfies mypy
 
 
 def parse_classification_with_overlay(
@@ -148,19 +158,31 @@ def classify_query(
     system_prompt += _build_overlay_prompt_section(overlay_keys)
     user_prompt = f"Query: {query}"
 
-    try:
-        response = llm_client.complete(
-            system_prompt, user_prompt, max_tokens=CLASSIFICATION_MAX_TOKENS
+    for _attempt in range(2):
+        try:
+            response = llm_client.complete(
+                system_prompt, user_prompt, max_tokens=CLASSIFICATION_MAX_TOKENS
+            )
+        except Exception:
+            if _attempt == 0:
+                logger.debug(
+                    "classify_query failed for %r, retrying", query, exc_info=True
+                )
+                continue
+            return None, None
+        query_type, overlay = parse_classification_with_overlay(
+            response.content, overlay_keys
         )
-    except Exception:
-        logger.debug("classification failed for %r", query, exc_info=True)
-        return None, None
-
-    result = parse_classification_with_overlay(response.content, overlay_keys)
-    logger.debug(
-        "classify_query %r -> type=%s, overlay=%s",
-        query,
-        result[0],
-        result[1],
-    )
-    return result
+        if query_type is not None:
+            logger.debug(
+                "classify_query %r -> type=%s, overlay=%s",
+                query,
+                query_type,
+                overlay,
+            )
+            return query_type, overlay
+        if _attempt == 0:
+            logger.debug("classify_query parse failed for %r, retrying", query)
+            continue
+        return query_type, overlay
+    return None, None  # unreachable, satisfies mypy

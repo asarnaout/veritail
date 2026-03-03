@@ -52,31 +52,42 @@ class RelevanceJudge:
                 user_prompt = self._format_user_prompt(query, result)
         else:
             user_prompt = self._format_user_prompt(query, result)
-        response = self._client.complete(self._system_prompt, user_prompt)
 
-        score, attribute_verdict, reasoning = self._parse_response(response.content)
-        logger.debug(
-            "relevance judge: query=%r, product=%s, score=%d, attrs=%s",
-            query,
-            result.product_id,
-            score,
-            attribute_verdict,
-        )
-
-        return JudgmentRecord(
-            query=query,
-            product=result,
-            score=score,
-            reasoning=reasoning,
-            attribute_verdict=attribute_verdict,
-            model=response.model,
-            experiment=self._experiment,
-            query_type=query_type,
-            metadata={
-                "input_tokens": response.input_tokens,
-                "output_tokens": response.output_tokens,
-            },
-        )
+        last_exc: Exception | None = None
+        for _attempt in range(2):
+            try:
+                response = self._client.complete(self._system_prompt, user_prompt)
+                score, attribute_verdict, reasoning = self._parse_response(
+                    response.content
+                )
+            except Exception as exc:
+                last_exc = exc
+                if _attempt == 0:
+                    logger.debug("judge failed for %r, retrying: %s", query, exc)
+                    continue
+                raise
+            logger.debug(
+                "relevance judge: query=%r, product=%s, score=%d, attrs=%s",
+                query,
+                result.product_id,
+                score,
+                attribute_verdict,
+            )
+            return JudgmentRecord(
+                query=query,
+                product=result,
+                score=score,
+                reasoning=reasoning,
+                attribute_verdict=attribute_verdict,
+                model=response.model,
+                experiment=self._experiment,
+                query_type=query_type,
+                metadata={
+                    "input_tokens": response.input_tokens,
+                    "output_tokens": response.output_tokens,
+                },
+            )
+        raise last_exc  # type: ignore[misc]  # unreachable, satisfies mypy
 
     def prepare_request(
         self,
@@ -192,9 +203,29 @@ class CorrectionJudge:
     ) -> CorrectionJudgment:
         """Judge whether a query correction was appropriate."""
         user_prompt = self._format_user_prompt(original_query, corrected_query)
-        response = self._client.complete(self._system_prompt, user_prompt)
 
-        verdict, reasoning = self._parse_response(response.content)
+        verdict = "error"
+        reasoning = ""
+        response = None
+        for _attempt in range(2):
+            try:
+                response = self._client.complete(self._system_prompt, user_prompt)
+            except Exception:
+                if _attempt == 0:
+                    logger.debug(
+                        "correction judge failed for %r, retrying", original_query
+                    )
+                    continue
+                raise
+            verdict, reasoning = self._parse_response(response.content)
+            if verdict != "error":
+                break
+            if _attempt == 0:
+                logger.debug(
+                    "correction judge parse failed for %r, retrying", original_query
+                )
+                continue
+
         logger.debug(
             "correction judge: %r -> %r, verdict=%s",
             original_query,
@@ -207,11 +238,11 @@ class CorrectionJudge:
             corrected_query=corrected_query,
             verdict=verdict,
             reasoning=reasoning,
-            model=response.model,
+            model=response.model if response else "",
             experiment=self._experiment,
             metadata={
-                "input_tokens": response.input_tokens,
-                "output_tokens": response.output_tokens,
+                "input_tokens": response.input_tokens if response else 0,
+                "output_tokens": response.output_tokens if response else 0,
             },
         )
 

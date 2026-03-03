@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Transient LLM failures (network errors, unparseable responses) are now retried once automatically. This applies to query classification, relevance judging, correction judging, suggestion judging, query generation, and AI summary generation. Batch mode is unaffected.
 - OpenAI models that require `max_completion_tokens` instead of `max_tokens` (e.g. GPT-5, o1, o3) now work automatically. The client detects the correct parameter on the first API call and caches the result for subsequent calls and batch submissions.
 - Worst-performing queries that returned zero results now appear as clickable links in the HTML report and display their query type. Previously, zero-result queries appeared as plain text with no link or type.
 - Worst-performing queries with duplicate names (disambiguated as `[1]`, `[2]`, etc.) now correctly link to their judgment details section.
