@@ -294,9 +294,13 @@ h3 {
 /* ── Tables ───────────────────────────────────────────────────── */
 .table-wrap {
   border-radius: var(--radius-lg);
-  overflow: clip visible;
+  overflow-x: auto;
   box-shadow: var(--shadow-md);
   margin-bottom: var(--sp-6);
+}
+
+.table-wrap:has(.tip) {
+  overflow: visible;
 }
 
 table {
@@ -319,7 +323,6 @@ th {
   text-align: left;
   font-weight: 600;
   font-size: var(--text-xs);
-  text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 2px solid var(--border-default);
 }
@@ -417,7 +420,8 @@ tr:hover { background: var(--accent-bg); }
 .tip::after {
   content: attr(data-tip);
   position: absolute;
-  left: 0; bottom: calc(100% + 8px);
+  left: 50%; bottom: calc(100% + 8px);
+  transform: translateX(-50%);
   padding: 8px 12px;
   background: var(--tooltip-bg);
   color: var(--tooltip-text);
@@ -435,7 +439,8 @@ tr:hover { background: var(--accent-bg); }
 .tip::before {
   content: "";
   position: absolute;
-  left: 4px; bottom: calc(100% + 2px);
+  left: 50%; bottom: calc(100% + 2px);
+  transform: translateX(-50%);
   border: 5px solid transparent;
   border-top-color: var(--tooltip-bg);
   pointer-events: none;
