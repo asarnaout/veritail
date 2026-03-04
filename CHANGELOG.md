@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-03-03
+
 ### Fixed
 
 - Tooltips on query type labels (Attribute, Broad, Long-Tail, Navigational) in the "Metrics by Query Type" section were clipped and hidden in both single and comparison HTML reports. The `.table-wrap` container's overflow now allows tooltips to escape vertically. Tooltips in the last column are also right-aligned to prevent right-side clipping.
