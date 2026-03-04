@@ -294,7 +294,7 @@ h3 {
 /* ── Tables ───────────────────────────────────────────────────── */
 .table-wrap {
   border-radius: var(--radius-lg);
-  overflow-x: auto;
+  overflow: clip visible;
   box-shadow: var(--shadow-md);
   margin-bottom: var(--sp-6);
 }
