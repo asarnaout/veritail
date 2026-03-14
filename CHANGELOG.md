@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.5.0] - 2026-03-14
+
+### Breaking Changes
 
 - **Renamed `--context` to `--instructions`** across all commands (`run`, `generate-queries`). The new name better reflects that this flag is for injecting scoring rules and business guidance, not just background context.
+
+### Changed
+
 - `--instructions` is now placed after the built-in vertical in all system prompts, giving enterprise business rules natural priority over default vertical scoring guidance when instructions conflict.
 
 ## [0.4.2] - 2026-03-03
@@ -222,7 +227,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preflight check validates LLM credentials before running
 - `veritail init` and the first `veritail run` (file backend) print a tip reminding users to add the output directory to `.gitignore`
 
-[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/asarnaout/veritail/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/asarnaout/veritail/compare/v0.4.2...v0.5.0
+[0.4.2]: https://github.com/asarnaout/veritail/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/asarnaout/veritail/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/asarnaout/veritail/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/asarnaout/veritail/compare/v0.3.0...v0.3.1
