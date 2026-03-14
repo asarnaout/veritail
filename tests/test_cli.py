@@ -280,8 +280,8 @@ class TestCLI:
         # The file should be usable as a custom vertical
         assert out_file.read_text(encoding="utf-8") == result.output
 
-    def test_run_context_from_file(self, tmp_path):
-        """--context accepts a file path and reads its contents."""
+    def test_run_instructions_from_file(self, tmp_path):
+        """--instructions accepts a file path and reads its contents."""
         queries_file = tmp_path / "queries.csv"
         queries_file.write_text("query\nshoes\n")
 
@@ -331,7 +331,7 @@ class TestCLI:
                     str(tmp_path / "results"),
                     "--llm-model",
                     "test-model",
-                    "--context",
+                    "--instructions",
                     str(context_file),
                     "--no-summary",
                 ],

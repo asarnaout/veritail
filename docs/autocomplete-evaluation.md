@@ -122,13 +122,13 @@ veritail run \
   --adapter adapter.py \
   --llm-model gpt-4o
 
-# With vertical and business context
+# With vertical and custom instructions
 veritail run \
   --autocomplete prefixes.csv \
   --adapter adapter.py \
   --llm-model gpt-4o \
   --vertical home-improvement \
-  --context "Big-box home improvement retailer"
+  --instructions "Big-box home improvement retailer"
 
 # Combined with search evaluation
 veritail run \

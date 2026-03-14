@@ -64,7 +64,7 @@ console = Console()
 def _classify_missing_query_types(
     queries: list[QueryEntry],
     llm_client: LLMClient,
-    context: str | None,
+    instructions: str | None,
     vertical: VerticalContext | None,
     overlay_keys: dict[str, str] | None = None,
 ) -> None:
@@ -94,7 +94,7 @@ def _classify_missing_query_types(
             inferred_type, inferred_overlay = classify_query(
                 llm_client,
                 query_entry.query,
-                context=context,
+                instructions=instructions,
                 vertical=vertical_text,
                 overlay_keys=overlay_keys,
             )
@@ -117,7 +117,7 @@ def _classify_missing_query_types(
 def _classify_missing_query_types_batch(
     queries: list[QueryEntry],
     llm_client: LLMClient,
-    context: str | None,
+    instructions: str | None,
     vertical: VerticalContext | None,
     poll_interval: int,
     cancel_event: threading.Event | None = None,
@@ -138,7 +138,7 @@ def _classify_missing_query_types_batch(
         return
 
     vertical_text = vertical.core if vertical else None
-    system_prompt = build_classification_system_prompt(context, vertical_text)
+    system_prompt = build_classification_system_prompt(instructions, vertical_text)
     if overlay_keys:
         from veritail.llm.classifier import _build_overlay_prompt_section
 
@@ -200,7 +200,7 @@ def run_evaluation(
     config: ExperimentConfig,
     llm_client: LLMClient,
     backend: EvalBackend,
-    context: str | None = None,
+    instructions: str | None = None,
     vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
@@ -226,10 +226,10 @@ def run_evaluation(
     """
     system_prompt = SYSTEM_PROMPT
     prefix_parts: list[str] = []
-    if context:
-        prefix_parts.append(f"## Business Context\n{context}")
     if vertical:
         prefix_parts.append(vertical.core)
+    if instructions:
+        prefix_parts.append(f"## Custom Instructions\n{instructions}")
     if prefix_parts:
         prefix = "\n\n".join(prefix_parts)
         system_prompt = f"{prefix}\n\n{system_prompt}"
@@ -263,7 +263,7 @@ def run_evaluation(
                 "adapter_path": config.adapter_path,
                 "llm_model": config.llm_model,
                 "top_k": config.top_k,
-                "context": context,
+                "instructions": instructions,
                 "vertical": vertical,
             },
             resume=resume,
@@ -280,7 +280,7 @@ def run_evaluation(
 
     # Pre-pass: classify query types that are missing
     _classify_missing_query_types(
-        queries, llm_client, context, vertical, overlay_keys=overlay_keys
+        queries, llm_client, instructions, vertical, overlay_keys=overlay_keys
     )
 
     all_judgments: list[JudgmentRecord] = []
@@ -541,7 +541,7 @@ def run_dual_evaluation(
     config_b: ExperimentConfig,
     llm_client: LLMClient,
     backend: EvalBackend,
-    context: str | None = None,
+    instructions: str | None = None,
     vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
@@ -583,7 +583,7 @@ def run_dual_evaluation(
         config_a,
         llm_client,
         backend,
-        context=context,
+        instructions=instructions,
         vertical=vertical,
         custom_checks=custom_checks,
         resume=resume,
@@ -597,7 +597,7 @@ def run_dual_evaluation(
         config_b,
         llm_client,
         backend,
-        context=context,
+        instructions=instructions,
         vertical=vertical,
         custom_checks=custom_checks,
         resume=resume,
@@ -648,7 +648,7 @@ def run_batch_evaluation(
     config: ExperimentConfig,
     llm_client: LLMClient,
     backend: EvalBackend,
-    context: str | None = None,
+    instructions: str | None = None,
     vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
@@ -671,10 +671,10 @@ def run_batch_evaluation(
     # Phase 0: Build judges (identical to run_evaluation)
     system_prompt = SYSTEM_PROMPT
     prefix_parts: list[str] = []
-    if context:
-        prefix_parts.append(f"## Business Context\n{context}")
     if vertical:
         prefix_parts.append(vertical.core)
+    if instructions:
+        prefix_parts.append(f"## Custom Instructions\n{instructions}")
     if prefix_parts:
         prefix = "\n\n".join(prefix_parts)
         system_prompt = f"{prefix}\n\n{system_prompt}"
@@ -701,7 +701,7 @@ def run_batch_evaluation(
                 "adapter_path": config.adapter_path,
                 "llm_model": config.llm_model,
                 "top_k": config.top_k,
-                "context": context,
+                "instructions": instructions,
                 "vertical": vertical,
                 "batch_mode": True,
             },
@@ -721,7 +721,7 @@ def run_batch_evaluation(
     _classify_missing_query_types_batch(
         queries,
         llm_client,
-        context,
+        instructions,
         vertical,
         poll_interval,
         cancel_event=cancel_event,
@@ -1204,7 +1204,7 @@ def run_dual_batch_evaluation(
     config_b: ExperimentConfig,
     llm_client: LLMClient,
     backend: EvalBackend,
-    context: str | None = None,
+    instructions: str | None = None,
     vertical: VerticalContext | None = None,
     custom_checks: (
         list[Callable[[QueryEntry, list[SearchResult]], list[CheckResult]]] | None
@@ -1241,7 +1241,7 @@ def run_dual_batch_evaluation(
         config_a,
         llm_client,
         backend,
-        context=context,
+        instructions=instructions,
         vertical=vertical,
         custom_checks=custom_checks,
         poll_interval=poll_interval,
@@ -1256,7 +1256,7 @@ def run_dual_batch_evaluation(
         config_b,
         llm_client,
         backend,
-        context=context,
+        instructions=instructions,
         vertical=vertical,
         custom_checks=custom_checks,
         poll_interval=poll_interval,

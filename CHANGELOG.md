@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Renamed `--context` to `--instructions`** across all commands (`run`, `generate-queries`). The new name better reflects that this flag is for injecting scoring rules and business guidance, not just background context.
+- `--instructions` is now placed after the built-in vertical in all system prompts, giving enterprise business rules natural priority over default vertical scoring guidance when instructions conflict.
+
 ## [0.4.2] - 2026-03-03
 
 ### Fixed
@@ -22,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The CLI now shows a spinner ("Generating AI summary…") while the post-evaluation summary LLM call is in progress, instead of appearing to hang silently.
-- `generate-queries` now produces better category diversity when used with a built-in vertical. Overlay category names are injected into the prompt as diversity hints, and an anti-clustering rule tells the LLM to spread queries across different product areas rather than clustering in a single category. Verticals without overlays and `--context`-only invocations are unaffected.
+- `generate-queries` now produces better category diversity when used with a built-in vertical. Overlay category names are injected into the prompt as diversity hints, and an anti-clustering rule tells the LLM to spread queries across different product areas rather than clustering in a single category. Verticals without overlays and `--instructions`-only invocations are unaffected.
 
 ### Fixed
 

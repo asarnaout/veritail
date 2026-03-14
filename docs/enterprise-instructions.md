@@ -1,10 +1,10 @@
-# Enterprise Context
+# Enterprise Instructions
 
-`--context` accepts a short business description or a detailed file with enterprise-specific evaluation guidance. Use a file when your business has domain rules, brand priorities, or jargon that the LLM judge should consider during scoring.
+`--instructions` accepts a short business description or a detailed file with enterprise-specific evaluation guidance. Use a file when your business has domain rules, brand priorities, or jargon that the LLM judge should consider during scoring.
 
-The context is injected into the LLM system prompt alongside the vertical and rubric. Enterprise rules refine scoring within the existing framework -- they guide how the judge interprets queries and weighs product attributes, but they do not override the scoring scale.
+The instructions are injected into the LLM system prompt alongside the vertical and rubric. Enterprise rules refine scoring within the existing framework -- they guide how the judge interprets queries and weighs product attributes, but they do not override the scoring scale.
 
-### Inline context
+### Inline instructions
 
 Pass a short string directly:
 
@@ -12,15 +12,15 @@ Pass a short string directly:
 veritail run \
   --queries queries.csv \
   --adapter adapter.py \
-  --context "Pro contractor supplier. Queries for lumber should always prioritize pressure-treated options." \
+  --instructions "Pro contractor supplier. Queries for lumber should always prioritize pressure-treated options." \
   --llm-model gpt-4o
 ```
 
-### Context from a file
+### Instructions from a file
 
-For detailed guidance, point `--context` at a text file. veritail reads the file contents automatically when the value is a valid file path.
+For detailed guidance, point `--instructions` at a text file. veritail reads the file contents automatically when the value is a valid file path.
 
-Example `context.txt` for a home improvement retailer:
+Example `instructions.txt` for a home improvement retailer:
 
 ```text
 BuildRight Supply is a home improvement retailer serving both professional contractors
@@ -44,20 +44,20 @@ veritail run \
   --queries queries.csv \
   --adapter adapter.py \
   --vertical home-improvement \
-  --context context.txt \
+  --instructions instructions.txt \
   --llm-model gpt-4o
 ```
 
-### Combining context with verticals
+### Combining instructions with verticals
 
-`--context` and `--vertical` work together. The vertical provides general domain scoring guidance (e.g., what matters in home improvement search), while the context adds your specific business rules. Both are included in the system prompt sent to the LLM judge.
+`--instructions` and `--vertical` work together. The vertical provides general domain scoring guidance (e.g., what matters in home improvement search), while instructions add your specific business rules. Both are included in the system prompt sent to the LLM judge.
 
 ```bash
 veritail run \
   --queries queries.csv \
   --adapter adapter.py \
   --vertical home-improvement \
-  --context "Big-box retailer targeting both contractors and DIY homeowners" \
+  --instructions "Big-box retailer targeting both contractors and DIY homeowners" \
   --llm-model gpt-4o
 ```
 

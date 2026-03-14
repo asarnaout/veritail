@@ -275,7 +275,7 @@ class TestGenerateQueries:
         assert out.exists()
         client.complete.assert_called_once()
 
-    def test_requires_vertical_or_context(self, tmp_path):
+    def test_requires_vertical_or_instructions(self, tmp_path):
         import pytest
 
         client = self._make_mock_client([])
@@ -288,7 +288,7 @@ class TestGenerateQueries:
                 count=10,
             )
 
-    def test_accepts_context_only(self, tmp_path):
+    def test_accepts_instructions_only(self, tmp_path):
         fake_queries = ["widgets"]
         client = self._make_mock_client(fake_queries)
         out = tmp_path / "queries.csv"
@@ -297,7 +297,7 @@ class TestGenerateQueries:
             llm_client=client,
             output_path=out,
             count=5,
-            context="We sell industrial widgets for manufacturing.",
+            instructions="We sell industrial widgets for manufacturing.",
         )
 
         assert len(result) == 1
@@ -316,8 +316,8 @@ class TestGenerateQueries:
 
         assert len(result) == 1
 
-    def test_context_file_reading(self, tmp_path):
-        ctx_file = tmp_path / "context.txt"
+    def test_instructions_file_reading(self, tmp_path):
+        ctx_file = tmp_path / "instructions.txt"
         ctx_file.write_text("B2B HVAC distributor", encoding="utf-8")
 
         fake_queries = ["hvac filter"]
@@ -328,7 +328,7 @@ class TestGenerateQueries:
             llm_client=client,
             output_path=out,
             count=5,
-            context=str(ctx_file),
+            instructions=str(ctx_file),
             vertical="electronics",
         )
 
@@ -521,7 +521,7 @@ class TestCategoryDiversityHints:
             distribution=distribution,
             vertical_name="electronics",
             vertical_text="Consumer electronics store.",
-            context=None,
+            instructions=None,
             category_names=["gaming_desktop_pcs", "headphones_and_earbuds", "monitors"],
         )
         assert "gaming desktop pcs" in prompt
@@ -534,7 +534,7 @@ class TestCategoryDiversityHints:
             distribution={"broad": 5},
             vertical_name=None,
             vertical_text=None,
-            context="test",
+            instructions="test",
             category_names=["printer_ink_and_toner"],
         )
         assert "printer ink and toner" in prompt
@@ -545,7 +545,7 @@ class TestCategoryDiversityHints:
             distribution={"broad": 5},
             vertical_name=None,
             vertical_text=None,
-            context="B2B widgets",
+            instructions="B2B widgets",
         )
         assert "Product categories" not in prompt
 
@@ -554,7 +554,7 @@ class TestCategoryDiversityHints:
             distribution={"broad": 5},
             vertical_name=None,
             vertical_text=None,
-            context="B2B widgets",
+            instructions="B2B widgets",
             category_names=[],
         )
         assert "Product categories" not in prompt
@@ -577,7 +577,7 @@ class TestCategoryDiversityHints:
         assert "monitors" in user_prompt
         assert "headphones and earbuds" in user_prompt
 
-    def test_context_only_has_no_category_section(self, tmp_path):
+    def test_instructions_only_has_no_category_section(self, tmp_path):
         client = self._make_mock_client(["widgets"])
         out = tmp_path / "queries.csv"
 
@@ -585,7 +585,7 @@ class TestCategoryDiversityHints:
             llm_client=client,
             output_path=out,
             count=5,
-            context="We sell industrial widgets.",
+            instructions="We sell industrial widgets.",
         )
 
         user_prompt = client.complete.call_args.args[1]
@@ -631,7 +631,7 @@ class TestGenerateQueriesCLI:
         assert "Generated 2 queries" in result.output
         assert out.exists()
 
-    def test_rejects_missing_vertical_and_context(self, tmp_path):
+    def test_rejects_missing_vertical_and_instructions(self, tmp_path):
         out = tmp_path / "queries.csv"
         runner = CliRunner()
         result = runner.invoke(
@@ -751,7 +751,7 @@ class TestGenerateQueriesCLI:
         assert result.exit_code != 0
         assert "API key is invalid" in result.output
 
-    def test_custom_count_and_context_string(self, tmp_path):
+    def test_custom_count_and_instructions_string(self, tmp_path):
         mock_client = self._make_mock_client()
         out = tmp_path / "queries.csv"
 
@@ -763,7 +763,7 @@ class TestGenerateQueriesCLI:
                     "generate-queries",
                     "--output",
                     str(out),
-                    "--context",
+                    "--instructions",
                     "B2B industrial supplier",
                     "--llm-model",
                     "test-model",
@@ -822,7 +822,7 @@ class TestGenerateQueriesCLI:
         assert result.exit_code == 0
         assert "--output" in result.output
         assert "--vertical" in result.output
-        assert "--context" in result.output
+        assert "--instructions" in result.output
         assert "--count" in result.output
         assert "--append" in result.output
         assert "--force" in result.output

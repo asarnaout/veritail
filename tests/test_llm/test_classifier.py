@@ -57,9 +57,9 @@ class TestClassifyQueryType:
         client.complete.side_effect = RuntimeError("API down")
         assert classify_query_type(client, "shoes") is None
 
-    def test_context_included_in_prompt(self) -> None:
+    def test_instructions_included_in_prompt(self) -> None:
         client = _make_client("QUERY_TYPE: broad")
-        classify_query_type(client, "shoes", context="BBQ restaurant")
+        classify_query_type(client, "shoes", instructions="BBQ restaurant")
         system_prompt = client.complete.call_args[0][0]
         assert "BBQ restaurant" in system_prompt
         assert CLASSIFICATION_SYSTEM_PROMPT in system_prompt
@@ -96,13 +96,13 @@ class TestParseClassificationResponse:
 
 
 class TestBuildClassificationSystemPrompt:
-    def test_no_context_or_vertical(self) -> None:
+    def test_no_instructions_or_vertical(self) -> None:
         prompt = build_classification_system_prompt()
         assert prompt == CLASSIFICATION_SYSTEM_PROMPT
 
-    def test_context_prepended(self) -> None:
-        prompt = build_classification_system_prompt(context="BBQ supplier")
-        assert prompt.startswith("## Business Context\nBBQ supplier")
+    def test_instructions_prepended(self) -> None:
+        prompt = build_classification_system_prompt(instructions="BBQ supplier")
+        assert prompt.startswith("## Custom Instructions\nBBQ supplier")
         assert CLASSIFICATION_SYSTEM_PROMPT in prompt
 
     def test_vertical_prepended(self) -> None:
@@ -110,13 +110,13 @@ class TestBuildClassificationSystemPrompt:
         assert "## Vertical: Food" in prompt
         assert CLASSIFICATION_SYSTEM_PROMPT in prompt
 
-    def test_context_before_vertical(self) -> None:
+    def test_instructions_after_vertical(self) -> None:
         prompt = build_classification_system_prompt(
-            context="BBQ supplier", vertical="## Vertical: Food"
+            instructions="BBQ supplier", vertical="## Vertical: Food"
         )
         ctx_pos = prompt.index("BBQ supplier")
         vert_pos = prompt.index("## Vertical: Food")
-        assert ctx_pos < vert_pos
+        assert vert_pos < ctx_pos
 
 
 _OVERLAY_KEYS = {

@@ -183,8 +183,8 @@ class TestRunEvaluation:
         )
         assert "Foodservice" in system_prompt_used
 
-    def test_context_and_vertical_compose(self, tmp_path):
-        """Context comes before vertical, which comes before the rubric."""
+    def test_instructions_and_vertical_compose(self, tmp_path):
+        """Vertical comes before instructions, which comes before the rubric."""
         queries = [QueryEntry(query="gloves", type="broad")]
         adapter = _make_mock_adapter()
         config = ExperimentConfig(
@@ -202,7 +202,7 @@ class TestRunEvaluation:
             config,
             llm_client,
             backend,
-            context="BBQ restaurant supplier",
+            instructions="BBQ restaurant supplier",
             vertical=VerticalContext(
                 core="## Vertical: Foodservice\nScoring guidance here."
             ),
@@ -213,17 +213,17 @@ class TestRunEvaluation:
             or llm_client.complete.call_args_list[0][0][0]
         )
 
-        ctx_pos = system_prompt_used.index("## Business Context")
+        ctx_pos = system_prompt_used.index("## Custom Instructions")
         vert_pos = system_prompt_used.index("## Vertical: Foodservice")
         # The rubric system prompt follows after context and vertical
         from veritail.rubrics import SYSTEM_PROMPT as RUBRIC_PROMPT
 
         rubric_pos = system_prompt_used.index(RUBRIC_PROMPT[:30])
 
-        assert ctx_pos < vert_pos < rubric_pos
+        assert vert_pos < ctx_pos < rubric_pos
 
-    def test_vertical_alone_no_business_context_header(self, tmp_path):
-        """Vertical without context should not produce a Business Context header."""
+    def test_vertical_alone_no_instructions_header(self, tmp_path):
+        """Vertical alone should not produce a Custom Instructions header."""
         queries = [QueryEntry(query="pan", type="broad")]
         adapter = _make_mock_adapter()
         config = ExperimentConfig(
@@ -249,7 +249,7 @@ class TestRunEvaluation:
             or llm_client.complete.call_args_list[0][0][0]
         )
 
-        assert "## Business Context" not in system_prompt_used
+        assert "## Custom Instructions" not in system_prompt_used
         assert "## Vertical: Foodservice" in system_prompt_used
 
     def test_adapter_error_handled(self, tmp_path):

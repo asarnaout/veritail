@@ -305,7 +305,7 @@ class TestGenerateQueriesRetry:
             llm_client=client,
             output_path=output,
             count=3,
-            context="Shoe store",
+            instructions="Shoe store",
         )
         assert len(result) == 3
         assert client.complete.call_count == 2
@@ -322,7 +322,7 @@ class TestGenerateQueriesRetry:
             llm_client=client,
             output_path=output,
             count=2,
-            context="Shoe store",
+            instructions="Shoe store",
         )
         assert len(result) == 2
         assert client.complete.call_count == 2
@@ -340,7 +340,7 @@ class TestGenerateQueriesRetry:
                 llm_client=client,
                 output_path=output,
                 count=3,
-                context="Shoe store",
+                instructions="Shoe store",
             )
         assert client.complete.call_count == 2
 

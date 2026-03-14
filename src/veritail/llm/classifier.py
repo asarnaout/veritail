@@ -21,16 +21,16 @@ _OVERLAY_RE = re.compile(r"(?i)OVERLAY\s*[:=]\s*(\w+)")
 
 
 def build_classification_system_prompt(
-    context: str | None = None,
+    instructions: str | None = None,
     vertical: str | None = None,
 ) -> str:
     """Build the full system prompt for query type classification."""
     system_prompt = CLASSIFICATION_SYSTEM_PROMPT
     prefix_parts: list[str] = []
-    if context:
-        prefix_parts.append(f"## Business Context\n{context}")
     if vertical:
         prefix_parts.append(vertical)
+    if instructions:
+        prefix_parts.append(f"## Custom Instructions\n{instructions}")
     if prefix_parts:
         prefix = "\n\n".join(prefix_parts)
         system_prompt = f"{prefix}\n\n{system_prompt}"
@@ -56,14 +56,14 @@ def parse_classification_response(content: str) -> str | None:
 def classify_query_type(
     llm_client: LLMClient,
     query: str,
-    context: str | None = None,
+    instructions: str | None = None,
     vertical: str | None = None,
 ) -> str | None:
     """Classify a single query into one of the four query types.
 
     Returns the type string or None if classification fails.
     """
-    system_prompt = build_classification_system_prompt(context, vertical)
+    system_prompt = build_classification_system_prompt(instructions, vertical)
     user_prompt = f"Query: {query}"
 
     for _attempt in range(2):
@@ -137,7 +137,7 @@ def _build_overlay_prompt_section(
 def classify_query(
     llm_client: LLMClient,
     query: str,
-    context: str | None = None,
+    instructions: str | None = None,
     vertical: str | None = None,
     overlay_keys: dict[str, str] | None = None,
 ) -> tuple[str | None, str | None]:
@@ -152,9 +152,9 @@ def classify_query(
         Tuple of (query_type, overlay_key).
     """
     if not overlay_keys:
-        return classify_query_type(llm_client, query, context, vertical), None
+        return classify_query_type(llm_client, query, instructions, vertical), None
 
-    system_prompt = build_classification_system_prompt(context, vertical)
+    system_prompt = build_classification_system_prompt(instructions, vertical)
     system_prompt += _build_overlay_prompt_section(overlay_keys)
     user_prompt = f"Query: {query}"
 

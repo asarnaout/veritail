@@ -111,6 +111,6 @@ In dual-config comparison mode, veritail runs a paired bootstrap significance te
 
 ## Related docs
 
-- [Enterprise Context](enterprise-context.md) -- business-specific evaluation rules
+- [Enterprise Instructions](enterprise-instructions.md) -- business-specific evaluation rules
 - [Custom Checks](custom-checks.md) -- add domain-specific deterministic checks
 - [LLM Usage & Cost](llm-usage-and-cost.md) -- understanding API call volume

@@ -64,10 +64,10 @@ def _build_user_prompt(
     distribution: dict[str, int],
     vertical_name: str | None,
     vertical_text: str | None,
-    context: str | None,
+    instructions: str | None,
     category_names: list[str] | None = None,
 ) -> str:
-    """Build the user prompt specifying exact counts and context."""
+    """Build the user prompt specifying exact counts and instructions."""
     parts: list[str] = []
 
     parts.append("Generate the following search queries:\n")
@@ -86,8 +86,8 @@ def _build_user_prompt(
             "multiple queries in the same area:\n" + ", ".join(formatted)
         )
 
-    if context:
-        parts.append(f"\n## Business context\n\n{context}")
+    if instructions:
+        parts.append(f"\n## Custom instructions\n\n{instructions}")
 
     return "\n".join(parts)
 
@@ -198,13 +198,13 @@ def generate_queries(
     output_path: Path,
     count: int = DEFAULT_QUERY_COUNT,
     vertical: str | None = None,
-    context: str | None = None,
+    instructions: str | None = None,
     append: bool = False,
     force: bool = False,
 ) -> list[str]:
     """Generate evaluation queries using an LLM and save to CSV.
 
-    At least one of *vertical* or *context* must be provided so the LLM
+    At least one of *vertical* or *instructions* must be provided so the LLM
     has enough domain information to produce useful queries.
 
     Args:
@@ -214,7 +214,7 @@ def generate_queries(
             return slightly more or fewer). Must be between 1 and
             :data:`MAX_QUERY_COUNT`.
         vertical: Built-in vertical name or text file path.
-        context: Business context string or file path.
+        instructions: Custom instructions string or file path.
         append: If ``True``, merge new queries into an existing file
             (deduplicates automatically).
         force: If ``True``, overwrite an existing file.
@@ -223,7 +223,7 @@ def generate_queries(
         List of generated query strings.
 
     Raises:
-        ValueError: If neither vertical nor context is provided, or if
+        ValueError: If neither vertical nor instructions is provided, or if
             *count* exceeds :data:`MAX_QUERY_COUNT`.
         FileExistsError: If *output_path* already exists and neither
             *append* nor *force* is set.
@@ -235,9 +235,9 @@ def generate_queries(
             "or curate queries manually."
         )
 
-    if not vertical and not context:
+    if not vertical and not instructions:
         raise ValueError(
-            "At least one of --vertical or --context is required "
+            "At least one of --vertical or --instructions is required "
             "so the LLM has enough domain context to generate useful queries."
         )
 
@@ -259,9 +259,9 @@ def generate_queries(
         if vert.overlays:
             category_names = list(vert.overlays.keys())
 
-    # Read context from file if it looks like a file path
-    if context and Path(context).is_file():
-        context = Path(context).read_text(encoding="utf-8").rstrip()
+    # Read instructions from file if it looks like a file path
+    if instructions and Path(instructions).is_file():
+        instructions = Path(instructions).read_text(encoding="utf-8").rstrip()
 
     distribution = _compute_distribution(count)
     logger.debug("query distribution: %s", distribution)
@@ -270,7 +270,7 @@ def generate_queries(
         distribution=distribution,
         vertical_name=vertical_name,
         vertical_text=vertical_text,
-        context=context,
+        instructions=instructions,
         category_names=category_names,
     )
 

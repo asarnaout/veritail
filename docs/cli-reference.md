@@ -22,7 +22,7 @@ Run a single or dual-configuration evaluation.
 | `--output-dir` | `./eval-results` | Output directory (file backend) |
 | `--top-k` | `10` | Maximum number of results to evaluate per query (must be `>= 1`) |
 | `--open` | off | Open HTML report in browser |
-| `--context` | *(none)* | Business context for LLM judge -- business identity, customer base, query interpretation guidance, and enterprise-specific evaluation rules (brand priorities, certification requirements, domain jargon). Accepts a string or a path to a text file (see [Enterprise Context](enterprise-context.md)) |
+| `--instructions` | *(none)* | Custom instructions for LLM judge -- business identity, customer base, query interpretation guidance, and enterprise-specific evaluation rules (brand priorities, certification requirements, domain jargon). Accepts a string or a path to a text file (see [Enterprise Instructions](enterprise-instructions.md)) |
 | `--vertical` | *(none)* | Built-in vertical (`automotive`, `beauty`, `electronics`, `fashion`, `foodservice`, `furniture`, `groceries`, `home-improvement`, `industrial`, `marketplace`, `medical`, `office-supplies`, `pet-supplies`, `sporting-goods`) or path to text file |
 | `--checks` | *(none)* | Path to custom check module(s) with `check_*` functions for search evaluation (repeatable; see [Custom Checks](custom-checks.md)) |
 | `--autocomplete-checks` | *(none)* | Path to custom check module(s) with `check_*` functions for autocomplete evaluation (repeatable) |
@@ -75,14 +75,14 @@ Scaffold starter files for a new project. Generates an adapter module, a query C
 
 ## `veritail generate-queries`
 
-Generate evaluation queries with an LLM and save to CSV. At least one of `--vertical` or `--context` is required.
+Generate evaluation queries with an LLM and save to CSV. At least one of `--vertical` or `--instructions` is required.
 
 | Option | Default | Description |
 |---|---|---|
 | `--output` | `queries.csv` | Output CSV path (must end with `.csv`) |
 | `--count` | `25` | Target number of queries to generate (max 50, approximate -- see note below) |
 | `--vertical` | *(none)* | Built-in vertical name or path to text file |
-| `--context` | *(none)* | Business context string or path to a text file |
+| `--instructions` | *(none)* | Custom instructions string or path to a text file |
 | `--llm-model` | *(required)* | LLM model for generation (e.g. `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`) |
 | `--llm-base-url` | *(none)* | Base URL for an OpenAI-compatible endpoint |
 | `--llm-api-key` | *(none)* | API key override for the endpoint |

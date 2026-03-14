@@ -126,7 +126,7 @@ def _run_search_pipeline(  # noqa: PLR0913
     output_dir: str,
     backend_url: str | None,
     top_k: int,
-    context: str | None,
+    instructions: str | None,
     vertical_context: VerticalContext | None,
     vertical_raw: str | None,
     check_modules: tuple[str, ...],
@@ -222,7 +222,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             config,
             llm_client,
             backend,
-            context=context,
+            instructions=instructions,
             vertical=vertical_context,
             custom_checks=custom_check_fns,
             resume=use_resume,
@@ -343,7 +343,7 @@ def _run_search_pipeline(  # noqa: PLR0913
             config_b,
             llm_client,
             backend,
-            context=context,
+            instructions=instructions,
             vertical=vertical_context,
             custom_checks=custom_check_fns,
             resume=use_resume,
@@ -469,7 +469,7 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
     backend_url: str | None,
     output_dir: str,
     top_k: int,
-    context: str | None,
+    instructions: str | None,
     vertical_context: VerticalContext | None,
     autocomplete_check_modules: tuple[str, ...],
     sample: int | None,
@@ -621,13 +621,13 @@ def _run_autocomplete_pipeline(  # noqa: PLR0913
                     f"The model '{llm_model}' does not support batch operations."
                 )
 
-        # Build system prompt with vertical/context prefix
+        # Build system prompt with vertical/instructions prefix
         ac_system_prompt = SUGGESTION_SYSTEM_PROMPT
         prefix_parts: list[str] = []
         if vertical_context:
             prefix_parts.append(f"## Store Vertical\n{vertical_context.core}")
-        if context:
-            prefix_parts.append(f"## Business Context\n{context}")
+        if instructions:
+            prefix_parts.append(f"## Custom Instructions\n{instructions}")
         if prefix_parts:
             ac_system_prompt = "\n\n".join(prefix_parts) + "\n\n" + ac_system_prompt
 
@@ -913,10 +913,10 @@ def vertical_show(name: str) -> None:
     ),
 )
 @click.option(
-    "--context",
+    "--instructions",
     default=None,
     type=str,
-    help="Business context string or path to a text file.",
+    help="Custom instructions string or path to a text file.",
 )
 @click.option(
     "--llm-model",
@@ -963,7 +963,7 @@ def generate_queries_cmd(
     output: str,
     count: int,
     vertical: str | None,
-    context: str | None,
+    instructions: str | None,
     llm_model: str,
     llm_base_url: str | None,
     llm_api_key: str | None,
@@ -985,8 +985,10 @@ def generate_queries_cmd(
     if not output.endswith(".csv"):
         raise click.UsageError("--output must end with .csv.")
 
-    if not vertical and not context:
-        raise click.UsageError("At least one of --vertical or --context is required.")
+    if not vertical and not instructions:
+        raise click.UsageError(
+            "At least one of --vertical or --instructions is required."
+        )
 
     if append and force:
         raise click.UsageError("--append and --force are mutually exclusive.")
@@ -1017,7 +1019,7 @@ def generate_queries_cmd(
             output_path=output_path,
             count=count,
             vertical=vertical,
-            context=context,
+            instructions=instructions,
             append=append,
             force=force,
         )
@@ -1136,11 +1138,11 @@ def generate_queries_cmd(
     help="Open the HTML report in the browser when complete.",
 )
 @click.option(
-    "--context",
+    "--instructions",
     default=None,
     type=str,
     help=(
-        "Business context for the LLM judge — describes your business, "
+        "Custom instructions for the LLM judge — describes your business, "
         "customer base, and how queries should be interpreted. "
         "Can include enterprise-specific evaluation guidance such as brand "
         "priorities, certification requirements, or domain jargon. "
@@ -1224,7 +1226,7 @@ def run(
     backend_url: str | None,
     top_k: int,
     open_browser: bool,
-    context: str | None,
+    instructions: str | None,
     vertical: str | None,
     check_modules: tuple[str, ...],
     autocomplete_check_modules: tuple[str, ...],
@@ -1370,10 +1372,10 @@ def run(
     search_sibling = "autocomplete-report.html" if autocomplete_prefixes else None
     ac_sibling = "report.html" if queries else None
 
-    # ---- Resolve context and vertical (shared by search and autocomplete) ----
-    if context and Path(context).is_file():
-        context = Path(context).read_text(encoding="utf-8").rstrip()
-        logger.debug("loaded context from file (%d chars)", len(context))
+    # ---- Resolve instructions and vertical (shared by search and autocomplete) ----
+    if instructions and Path(instructions).is_file():
+        instructions = Path(instructions).read_text(encoding="utf-8").rstrip()
+        logger.debug("loaded instructions from file (%d chars)", len(instructions))
 
     vertical_context: VerticalContext | None = None
     if vertical:
@@ -1420,7 +1422,7 @@ def run(
             output_dir=output_dir,
             backend_url=backend_url,
             top_k=top_k,
-            context=context,
+            instructions=instructions,
             vertical_context=vertical_context,
             vertical_raw=vertical,
             check_modules=check_modules,
@@ -1446,7 +1448,7 @@ def run(
             backend_url=backend_url,
             output_dir=output_dir,
             top_k=top_k,
-            context=context,
+            instructions=instructions,
             vertical_context=vertical_context,
             autocomplete_check_modules=autocomplete_check_modules,
             sample=sample,

@@ -81,13 +81,13 @@ If you don't have query logs yet, let an LLM generate a starter set:
 # From a built-in vertical
 veritail generate-queries --vertical electronics --llm-model gpt-4o
 
-# From business context
-veritail generate-queries --context "B2B industrial fastener distributor" --llm-model gpt-4o
+# From custom instructions
+veritail generate-queries --instructions "B2B industrial fastener distributor" --llm-model gpt-4o
 
-# Both vertical and context, custom count and output path
+# Both vertical and instructions, custom count and output path
 veritail generate-queries \
   --vertical foodservice \
-  --context "BBQ restaurant equipment supplier" \
+  --instructions "BBQ restaurant equipment supplier" \
   --count 50 \
   --output my_queries.csv \
   --llm-model gpt-4o
@@ -195,7 +195,7 @@ Choose the vertical that best matches the ecommerce site you are evaluating.
 
 You can also provide a custom vertical as a plain text file with `--vertical ./my_vertical.txt`. Use the built-in verticals in `src/veritail/verticals/` as templates.
 
-Use `--context` to layer enterprise-specific rules on top of a vertical — things like brand priorities, certification requirements, or domain jargon unique to your store. See [Enterprise Context](docs/enterprise-context.md) for details.
+Use `--instructions` to layer enterprise-specific rules on top of a vertical — things like brand priorities, certification requirements, or domain jargon unique to your store. See [Enterprise Instructions](docs/enterprise-instructions.md) for details.
 
 Examples:
 
@@ -217,14 +217,14 @@ veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
   --vertical home-improvement \
-  --context "Pro contractor supplier. Queries for lumber should always prioritize pressure-treated options."
+  --instructions "Pro contractor supplier. Queries for lumber should always prioritize pressure-treated options."
 
-# Vertical + detailed business context from a file
+# Vertical + detailed instructions from a file
 veritail run \
   --queries queries.csv \
   --adapter my_adapter.py \
   --vertical home-improvement \
-  --context context.txt
+  --instructions instructions.txt
 ```
 
 ## More Reports
@@ -276,7 +276,7 @@ veritail run \
 | [Batch Mode & Resume](docs/batch-mode-and-resume.md) | 50% cost reduction via batch APIs and resuming interrupted runs |
 | [Autocorrect Evaluation](docs/autocorrect-evaluation.md) | Evaluating query correction quality |
 | [Autocomplete Evaluation](docs/autocomplete-evaluation.md) | Type-ahead suggestion evaluation with checks and LLM scoring |
-| [Enterprise Context](docs/enterprise-context.md) | Business-specific evaluation rules |
+| [Enterprise Instructions](docs/enterprise-instructions.md) | Business-specific evaluation rules |
 | [Custom Checks](docs/custom-checks.md) | Adding domain-specific deterministic checks |
 | [CLI Reference](docs/cli-reference.md) | Complete flag reference for all commands |
 | [Backends](docs/backends.md) | File and Langfuse storage backends |
