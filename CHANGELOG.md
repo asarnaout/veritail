@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-03-14
+
 ### Fixed
 
 - `precision_at_k` now divides by `k` instead of the number of results returned, matching the standard IR definition (trec_eval, ranx, ir-measures). Previously, P@K was inflated when a search engine returned fewer than `k` results.
