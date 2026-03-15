@@ -106,7 +106,7 @@ def precision_at_k(
         return 0.0
 
     relevant = sum(1 for j in top_k if j.score >= relevance_threshold)
-    return relevant / len(top_k)
+    return relevant / k
 
 
 def attribute_match_rate_at_k(
